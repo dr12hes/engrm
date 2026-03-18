@@ -1,41 +1,79 @@
 # Engrm
 
-**Shared memory and delivery review for AI coding agents.** Engrm keeps context, decisions, and project state moving across your machines, your team, and the agents you switch between.
+[![License: FSL-1.1-ALv2](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)](./LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![MCP Compatible](https://img.shields.io/badge/MCP-compatible-purple)](https://modelcontextprotocol.io)
 
-For npm users, Engrm runs on Node.js 18+ and does not require Bun to be installed.
+**The only AI memory that syncs across devices and agents.**
 
-```
-npx engrm init
-```
+Cross-device persistent memory for OpenClaw, Claude Code, Codex, and any MCP-compatible agent. Start free with 2 devices.
 
-Public beta. Engrm is built for Claude Code, Codex, OpenClaw skills, and other MCP-native coding workflows. The current source of truth for agent capability differences is [AGENT_SUPPORT.md](AGENT_SUPPORT.md).
+[Get Started](https://engrm.dev) • [Documentation](https://engrm.dev/developers) • [Blog](https://engrm.dev/blog)
 
 ---
 
-## What It Does
+## Why Engrm?
 
-Your AI agent forgets everything between sessions. Engrm fixes that, and helps you check whether the work really matched the brief.
+- **Cross-device sync** — Fix a bug on your laptop, continue on your desktop. No other memory tool does this.
+- **Cross-agent compatible** — Works with OpenClaw, Claude Code, Codex, Cursor, Windsurf, Cline, Zed
+- **Free tier** — 2 devices, 5,000 observations, full sync. £0 forever.
+- **Offline-first** — Local SQLite + sqlite-vec. <50ms search. Works on a plane.
+- **Delivery Review** — Compare what was promised vs what shipped
+- **Sentinel** — Real-time code audit before changes land
+- **Team memory** — Share insights across your whole team (Team plan)
 
-- **Works across agents** — Claude Code and Codex integrate directly, and OpenClaw can use Engrm through published skill bundles
-- **Remembers across devices** — fix a bug on your laptop, continue on your desktop with full context
-- **Shares with your team** — one developer's hard-won insight becomes everyone's knowledge
-- **Reviews delivery** — tie plans, decisions, and sessions together so you can see what actually shipped
-- **Works offline** — local SQLite is the source of truth; syncs when connected
-- **Guards your code** — Sentinel audits changes in real-time before they land
+---
 
-## Quick Start
+## vs Other Memory Tools
 
-### 1. Sign up
+| Feature | Engrm Free | Supermemory Pro | mem0 |
+|---------|------------|-----------------|------|
+| **Cost** | £0 | $20/mo | ~$2/mo + usage |
+| **Cross-device** | ✅ 2 devices | ❌ Single device | ❌ Single device |
+| **OpenClaw plugin** | ✅ Native | ✅ (Pro required) | ✅ (usage costs) |
+| **Works with Claude/Codex** | ✅ | ❌ | ❌ |
+| **Delivery Review** | ✅ | ❌ | ❌ |
+| **Sentinel** | ✅ (Vibe+) | ❌ | ❌ |
 
-Visit [engrm.dev](https://engrm.dev) and create an account.
+[Read the full comparison →](https://engrm.dev/blog/engrm-openclaw-cross-device-memory)
 
-### 2. Install
+---
+
+## Installation
+
+### For OpenClaw Users
+
+```bash
+# 1. Install the plugin
+openclaw plugins install engrm-openclaw-plugin
+
+# 2. Restart OpenClaw
+# Quit and reopen, or restart gateway
+
+# 3. Connect Engrm in chat
+/engrm connect
+
+# 4. Verify
+/engrm status
+```
+
+**What works:**
+- ✅ Session startup memory injection
+- ✅ Automatic session capture
+- ✅ Cross-device sync (unique to Engrm)
+- ✅ `/engrm` slash commands
+- ✅ Sentinel advisory mode (Vibe+ plans)
+
+**Blog:** [Engrm Now Supports OpenClaw →](https://engrm.dev/blog/engrm-openclaw-cross-device-memory)
+
+### For Claude Code / Codex
 
 ```bash
 npx engrm init
 ```
 
-This opens your browser for authentication, writes config to `~/.engrm/`, and registers Engrm in Claude Code and Codex when those configs are available. OpenClaw support is provided through the packaged skills in [`openclaw/`](openclaw/). Takes about 30 seconds.
+This auto-configures MCP servers and hooks in `~/.claude.json` and `~/.codex/config.toml`.
 
 **Alternative methods:**
 ```bash
@@ -49,9 +87,15 @@ npx engrm init --url=https://vector.internal.company.com
 npx engrm init --manual
 ```
 
-### 3. Use your agent normally
+For npm users, Engrm runs on Node.js 18+ and does not require Bun to be installed.
 
-That's it. Engrm works in the background:
+---
+
+## How It Works
+
+### Background Operation
+
+Engrm works automatically:
 
 - **Session start** — injects relevant project memory into context
 - **While you work** — captures observations from tool use where the agent exposes that hook surface
@@ -69,7 +113,7 @@ That's it. Engrm works in the background:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### 4. Check status
+### Check Status
 
 ```bash
 npx engrm status
@@ -95,49 +139,47 @@ Engrm Status
   Security:        3 findings (1 high, 2 medium)
 ```
 
----
+### Architecture
 
-## How It Works
-
+**Claude Code session:**
 ```
-Claude Code session
-  │
-  ├─ SessionStart hook ──→ inject relevant memory into context
-  │
-  ├─ PreToolUse hook ────→ Sentinel audits Edit/Write (optional)
-  │
-  ├─ PostToolUse hook ───→ extract observations from tool results
-  │
-  ├─ PreCompact hook ────→ re-inject memory before context compression
-  │
-  ├─ ElicitationResult ──→ capture MCP form submissions
-  │
-  └─ Stop hook ──────────→ session digest + sync + summary
-        │
-        ▼
-  Local SQLite (FTS5 + sqlite-vec)
-        │
-        ▼ (sync every 30s)
-  Candengo Vector (cloud)
-        │
-        ▼
-  Available on all your devices + team members
+ │
+ ├─ SessionStart hook ──→ inject relevant memory into context
+ │
+ ├─ PreToolUse hook ────→ Sentinel audits Edit/Write (optional)
+ │
+ ├─ PostToolUse hook ───→ extract observations from tool results
+ │
+ ├─ PreCompact hook ────→ re-inject memory before context compression
+ │
+ ├─ ElicitationResult ──→ capture MCP form submissions
+ │
+ └─ Stop hook ──────────→ session digest + sync + summary
+ │
+ ▼
+Local SQLite (FTS5 + sqlite-vec)
+ │
+ ▼ (sync every 30s)
+Candengo Vector (cloud)
+ │
+ ▼
+Available on all your devices + team members
 ```
 
+**Codex session:**
 ```
-Codex session
-  │
-  ├─ SessionStart hook ──→ inject relevant memory into context
-  │
-  ├─ MCP tools ──────────→ search, save, inspect, message, stats
-  │
-  └─ Stop hook ──────────→ session digest + sync + summary
+ │
+ ├─ SessionStart hook ──→ inject relevant memory into context
+ │
+ ├─ MCP tools ──────────→ search, save, inspect, message, stats
+ │
+ └─ Stop hook ──────────→ session digest + sync + summary
 ```
 
-### Agent Support
+### Agent Capability Matrix
 
 | Capability | Claude Code | Codex | OpenClaw |
-|---|---|---|---|
+|-----------|-------------|-------|----------|
 | MCP server tools | ✓ | ✓ | Via skills / MCP |
 | Session-start context injection | ✓ | ✓ | Via skill-guided workflow |
 | Stop/session summary hook | ✓ | ✓ | Via skill-guided workflow |
@@ -146,7 +188,11 @@ Codex session
 | Pre-compact reinjection | ✓ | Not exposed | Not exposed |
 | ElicitationResult capture | ✓ | Not exposed | Not exposed |
 
-OpenClaw support is packaged in [`openclaw/`](openclaw/) as `engrm-memory`, `engrm-delivery-review`, and `engrm-sentinel` skills for ClawHub-style distribution.
+See [AGENT_SUPPORT.md](AGENT_SUPPORT.md) for detailed comparison.
+
+---
+
+## Features
 
 ### MCP Tools
 
@@ -166,7 +212,7 @@ The MCP server exposes tools that supported agents can call directly:
 ### Observation Types
 
 | Type | What it captures |
-|------|-----------------|
+|------|------------------|
 | `discovery` | Learning about existing systems or codebases |
 | `bugfix` | Something was broken, now fixed |
 | `decision` | Architectural or design choice with rationale |
@@ -176,50 +222,55 @@ The MCP server exposes tools that supported agents can call directly:
 | `pattern` | Recurring issue or technique |
 | `digest` | Session summary (auto-generated) |
 
----
-
-## Features
-
 ### Hybrid Search
+
 Local FTS5 + sqlite-vec (all-MiniLM-L6-v2, 384 dims) combined with Candengo Vector's BGE-M3 semantic search. Results merged via Reciprocal Rank Fusion.
 
-### Sentinel — Real-Time Code Audit
-LLM-powered review of every Edit/Write before it executes. Catches security issues, anti-patterns, and drift from team decisions.
+### Sentinel
+
+LLM-powered review of every `Edit`/`Write` before it executes. Catches security issues, anti-patterns, and drift from team decisions.
 
 ```
-⚠️  Sentinel: SQL query uses string concatenation instead of parameterized query
+⚠️ Sentinel: SQL query uses string concatenation instead of parameterized query
    Rule: sql-injection
    (Advisory mode — change allowed)
 ```
 
-5 built-in rule packs: `security`, `auth`, `api`, `react`, `database`.
+**Built-in rule packs:** security, auth, api, react, database.
 
 ```bash
-npx engrm sentinel init-rules        # Install all rule packs
-npx engrm sentinel rules             # List available packs
+npx engrm sentinel init-rules  # Install all rule packs
+npx engrm sentinel rules        # List available packs
 ```
 
-### Starter Packs
+### Knowledge Packs
+
 Pre-loaded knowledge for your tech stack. Detected automatically on session start.
 
-Available: `typescript-patterns`, `nextjs-patterns`, `node-security`, `python-django`, `react-gotchas`, `api-best-practices`, `web-security`
+**Available:** typescript-patterns, nextjs-patterns, node-security, python-django, react-gotchas, api-best-practices, web-security
 
 ```bash
 npx engrm install-pack typescript-patterns
 ```
 
 ### Secret Scrubbing
+
 Multi-layer regex scanning for API keys, passwords, tokens, and credentials. Sensitive content is redacted before storage and sync. Custom patterns configurable in `~/.engrm/settings.json`.
 
-### Observation Lifecycle
+### Retention & Aging
+
 Observations age gracefully: **active** (30 days, full weight) → **aging** (0.7x search weight) → **archived** (compacted into digests) → **purged** (after 12 months). Pinned observations never age.
 
 ---
 
 ## Pricing
 
+**Free tier stays free forever.** No bait-and-switch.
+
+Start with 2 devices and 5,000 observations. Upgrade when you need more.
+
 | | Free | Vibe | Pro | Team |
-|---|---|---|---|---|
+|---|------|------|-----|------|
 | **Price** | £0 | £5.99/mo | £9.99/mo | £12.99/seat/mo |
 | **Observations** | 5,000 | 25,000 | 100,000 | Unlimited |
 | **Devices** | 2 | 3 | 5 | Unlimited |
@@ -232,7 +283,7 @@ Sign up at [engrm.dev](https://engrm.dev).
 
 ---
 
-## Self-Hosting
+## Self-Hosted
 
 Point Engrm at your own [Candengo Vector](https://www.candengo.com) instance:
 
@@ -246,11 +297,11 @@ Candengo Vector provides the backend: BGE-M3 hybrid search, multi-tenant namespa
 
 ## Configuration
 
-### User config: `~/.engrm/settings.json`
+### `~/.engrm/settings.json`
 
 Created by `engrm init`. Contains API credentials, sync settings, search preferences, secret scrubbing patterns, and Sentinel configuration.
 
-### Project config: `.engrm.json` (optional)
+### `.engrm-project.json`
 
 Place in your project root to override project identity for non-git projects:
 
@@ -261,24 +312,25 @@ Place in your project root to override project identity for non-git projects:
 }
 ```
 
-### Agent integration
+### Agent Auto-Registration
 
 Engrm auto-registers in:
+
 - `~/.claude.json` — MCP server (`engrm`)
 - `~/.claude/settings.json` — 6 lifecycle hooks
 - `~/.codex/config.toml` — MCP server (`engrm`) + `codex_hooks` feature flag
-- `~/.codex/hooks.json` — `SessionStart` and `Stop` hooks
+- `~/.codex/hooks.json` — SessionStart and Stop hooks
 
 ---
 
-## Tech Stack
+## Technical Stack
 
-- **Runtime**: TypeScript, runs on Bun (dev) or Node.js 18+ (npm)
-- **Local storage**: SQLite via better-sqlite3, FTS5 full-text search, sqlite-vec for embeddings
-- **Embeddings**: all-MiniLM-L6-v2 via @xenova/transformers (384 dims, ~23MB)
-- **Remote backend**: Candengo Vector (BGE-M3, Qdrant, hybrid dense+sparse search)
-- **MCP**: @modelcontextprotocol/sdk (stdio transport)
-- **AI extraction**: @anthropic-ai/claude-agent-sdk (optional, for richer observations)
+- **Runtime:** TypeScript, runs on Bun (dev) or Node.js 18+ (npm)
+- **Local storage:** SQLite via `better-sqlite3`, FTS5 full-text search, `sqlite-vec` for embeddings
+- **Embeddings:** all-MiniLM-L6-v2 via `@xenova/transformers` (384 dims, ~23MB)
+- **Remote backend:** Candengo Vector (BGE-M3, Qdrant, hybrid dense+sparse search)
+- **MCP:** `@modelcontextprotocol/sdk` (stdio transport)
+- **AI extraction:** `@anthropic-ai/claude-agent-sdk` (optional, for richer observations)
 
 ---
 
@@ -286,23 +338,41 @@ Engrm auto-registers in:
 
 **FSL-1.1-ALv2** (Functional Source License) — part of the [Fair Source](https://fair.io) movement.
 
-- Free to use, modify, and self-host
-- You cannot offer this as a competing hosted service
-- Each version converts to Apache 2.0 after 2 years
-- Sentinel is a separate proprietary product
+- ✅ Free to use, modify, and self-host
+- ❌ You cannot offer this as a competing hosted service
+- ✅ Each version converts to Apache 2.0 after 2 years
+- ⚠️ Sentinel is a separate proprietary product
 
 See [LICENSE](LICENSE) for full terms.
 
 ---
 
-## Project
+## Documentation
 
 - Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security: [SECURITY.md](SECURITY.md)
 - Roadmap: [ROADMAP.md](ROADMAP.md)
 
-Maintainers: run `node scripts/check-public-docs.mjs` to verify the repo only contains the approved public docs set at the root.
+**Maintainers:** run `node scripts/check-public-docs.mjs` to verify the repo only contains the approved public docs set at the root.
+
+---
+
+## Resources
+
+- [Documentation](https://engrm.dev/developers)
+- [Blog](https://engrm.dev/blog)
+- [Pricing](https://engrm.dev/pricing)
+- [Sentinel](https://engrm.dev/sentinel)
+
+## Community
+
+- [Twitter/X](https://twitter.com/engrm_dev)
+- [GitHub Issues](https://github.com/dr12hes/engrm/issues)
+
+---
+
+**Found this useful?** ⭐ Star this repo to help other developers discover Engrm.
 
 ---
 
