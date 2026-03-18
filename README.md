@@ -1,6 +1,6 @@
 # Engrm
 
-**Cross-device memory for AI coding agents.** Every session remembers what you learned yesterday — on any machine, for every team member.
+**Shared memory and delivery review for AI coding agents.** Engrm keeps context, decisions, and project state moving across your machines, your team, and the agents you switch between.
 
 For npm users, Engrm runs on Node.js 18+ and does not require Bun to be installed.
 
@@ -8,17 +8,18 @@ For npm users, Engrm runs on Node.js 18+ and does not require Bun to be installe
 npx engrm init
 ```
 
-Public beta. The current source of truth for agent capability differences is [AGENT_SUPPORT.md](AGENT_SUPPORT.md).
+Public beta. Engrm is built for Claude Code, Codex, OpenClaw skills, and other MCP-native coding workflows. The current source of truth for agent capability differences is [AGENT_SUPPORT.md](AGENT_SUPPORT.md).
 
 ---
 
 ## What It Does
 
-Your AI agent forgets everything between sessions. Engrm fixes that.
+Your AI agent forgets everything between sessions. Engrm fixes that, and helps you check whether the work really matched the brief.
 
-- **Captures automatically** — hooks into Claude Code, and into Codex where its public hook surface allows
+- **Works across agents** — Claude Code and Codex integrate directly, and OpenClaw can use Engrm through published skill bundles
 - **Remembers across devices** — fix a bug on your laptop, continue on your desktop with full context
 - **Shares with your team** — one developer's hard-won insight becomes everyone's knowledge
+- **Reviews delivery** — tie plans, decisions, and sessions together so you can see what actually shipped
 - **Works offline** — local SQLite is the source of truth; syncs when connected
 - **Guards your code** — Sentinel audits changes in real-time before they land
 
@@ -34,7 +35,7 @@ Visit [engrm.dev](https://engrm.dev) and create an account.
 npx engrm init
 ```
 
-This opens your browser for authentication, writes config to `~/.engrm/`, and registers Engrm in both Claude Code and Codex when those configs are available. Takes about 30 seconds.
+This opens your browser for authentication, writes config to `~/.engrm/`, and registers Engrm in Claude Code and Codex when those configs are available. OpenClaw support is provided through the packaged skills in [`openclaw/`](openclaw/). Takes about 30 seconds.
 
 **Alternative methods:**
 ```bash
@@ -54,7 +55,7 @@ That's it. Engrm works in the background:
 
 - **Session start** — injects relevant project memory into context
 - **While you work** — captures observations from tool use where the agent exposes that hook surface
-- **Session end** — generates a session digest, syncs to cloud, shows summary
+- **Session end** — generates a session digest, syncs to cloud, and turns recent work into a denser project brief
 
 ```
 ━━━ Engrm Session Summary ━━━
@@ -135,19 +136,21 @@ Codex session
 
 ### Agent Support
 
-| Capability | Claude Code | Codex |
-|---|---|---|
-| MCP server tools | ✓ | ✓ |
-| Session-start context injection | ✓ | ✓ |
-| Stop/session summary hook | ✓ | ✓ |
-| Per-tool automatic capture | ✓ | Partial via MCP/manual flows only |
-| Pre-write Sentinel hook | ✓ | Not yet exposed by Codex public hooks |
-| Pre-compact reinjection | ✓ | Not exposed |
-| ElicitationResult capture | ✓ | Not exposed |
+| Capability | Claude Code | Codex | OpenClaw |
+|---|---|---|---|
+| MCP server tools | ✓ | ✓ | Via skills / MCP |
+| Session-start context injection | ✓ | ✓ | Via skill-guided workflow |
+| Stop/session summary hook | ✓ | ✓ | Via skill-guided workflow |
+| Per-tool automatic capture | ✓ | Partial via MCP/manual flows only | Manual / skill-guided |
+| Pre-write Sentinel hook | ✓ | Not yet exposed by Codex public hooks | Not exposed |
+| Pre-compact reinjection | ✓ | Not exposed | Not exposed |
+| ElicitationResult capture | ✓ | Not exposed | Not exposed |
+
+OpenClaw support is packaged in [`openclaw/`](openclaw/) as `engrm-memory`, `engrm-delivery-review`, and `engrm-sentinel` skills for ClawHub-style distribution.
 
 ### MCP Tools
 
-The MCP server exposes tools that Claude can call directly:
+The MCP server exposes tools that supported agents can call directly:
 
 | Tool | Purpose |
 |------|---------|
