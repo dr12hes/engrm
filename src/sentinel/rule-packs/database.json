@@ -1,0 +1,16 @@
+{
+  "name": "database",
+  "description": "Database safety and query standards",
+  "observations": [
+    { "type": "standard", "title": "Always use parameterized queries — never string-concatenate SQL", "facts": ["SQL injection is the most common database vulnerability", "Use ? placeholders or named parameters", "Block: template literals or string concat in SQL with variables"] },
+    { "type": "standard", "title": "Wrap multi-step operations in transactions", "facts": ["Partial writes leave data inconsistent", "Use BEGIN/COMMIT/ROLLBACK", "Set appropriate isolation level"] },
+    { "type": "standard", "title": "Add indexes for columns used in WHERE, JOIN, and ORDER BY", "facts": ["Missing indexes cause full table scans", "Composite indexes for multi-column queries", "Don't over-index — each index slows writes"] },
+    { "type": "standard", "title": "Set NOT NULL constraints unless null has a specific meaning", "facts": ["NULL handling is error-prone (NULL != NULL, NULL + 1 = NULL)", "Use DEFAULT values where appropriate", "Document the meaning of NULL when used"] },
+    { "type": "standard", "title": "Use migrations for all schema changes — never manual DDL", "facts": ["Migrations are versioned, reviewable, and reversible", "Include both up and down migration", "Test migrations on a copy of production data"] },
+    { "type": "standard", "title": "Batch large INSERT/UPDATE/DELETE operations", "facts": ["Bulk operations are orders of magnitude faster than row-by-row", "Use INSERT INTO ... VALUES (...), (...), (...)", "For very large operations, batch in chunks of 1000-5000"] },
+    { "type": "standard", "title": "Never store plaintext passwords or sensitive tokens", "facts": ["Hash passwords with bcrypt/Argon2", "Encrypt sensitive data at rest", "Use separate encryption keys per tenant if multi-tenant"] },
+    { "type": "standard", "title": "Implement soft deletes for user-facing data", "facts": ["Use deleted_at timestamp", "Add to all SELECT queries: WHERE deleted_at IS NULL", "Provide hard-delete endpoint for compliance (GDPR)"] },
+    { "type": "standard", "title": "Set connection pool limits and query timeouts", "facts": ["Prevent connection exhaustion under load", "Set statement timeout (30s default)", "Monitor slow queries with logging"] },
+    { "type": "standard", "title": "Validate foreign key references before INSERT", "facts": ["Enable foreign key enforcement (PRAGMA foreign_keys = ON)", "Check that referenced records exist before inserting", "Use ON DELETE CASCADE or ON DELETE SET NULL appropriately"] }
+  ]
+}

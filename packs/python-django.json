@@ -1,0 +1,68 @@
+{
+  "name": "python-django",
+  "description": "Python and Django patterns, pitfalls, and best practices",
+  "version": "1.0.0",
+  "stacks": ["python", "django"],
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Use dataclasses or Pydantic for structured data",
+      "narrative": "Prefer @dataclass or Pydantic BaseModel over plain dicts for structured data. You get type hints, validation, and IDE support instead of stringly-typed key access.",
+      "concepts": ["python", "dataclass", "pydantic", "typing"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Mutable default arguments are shared across calls",
+      "narrative": "def f(items=[]): is a classic Python bug — the list is shared across all calls. Use def f(items=None): items = items or [] instead.",
+      "concepts": ["python", "mutable-default", "gotcha"]
+    },
+    {
+      "type": "pattern",
+      "title": "Django select_related and prefetch_related prevent N+1",
+      "narrative": "Always use .select_related() for ForeignKey and .prefetch_related() for ManyToMany/reverse FK when accessing related objects in loops. Without them, each access fires a separate query.",
+      "concepts": ["django", "orm", "n+1", "performance"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use Django F() expressions for atomic field updates",
+      "narrative": "Model.objects.filter(pk=id).update(count=F('count') + 1) is atomic and avoids race conditions. Direct Python arithmetic (obj.count += 1; obj.save()) is not atomic.",
+      "concepts": ["django", "orm", "f-expression", "concurrency"]
+    },
+    {
+      "type": "discovery",
+      "title": "Python match/case for structural pattern matching",
+      "narrative": "Python 3.10+ match/case supports destructuring dicts, objects, and sequences. match response.status_code: case 200: ... is cleaner than if/elif chains for multi-branch logic.",
+      "concepts": ["python", "match-case", "pattern-matching"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use context managers for resource cleanup",
+      "narrative": "Always use 'with' statements for files, DB connections, locks. Write custom context managers with @contextmanager for any acquire/release pattern.",
+      "concepts": ["python", "context-manager", "resource-management"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Django timezone-aware datetime handling",
+      "narrative": "Use django.utils.timezone.now() not datetime.now(). Naive datetimes cause comparison bugs and warnings. Set USE_TZ=True in settings.",
+      "concepts": ["django", "timezone", "datetime"]
+    },
+    {
+      "type": "pattern",
+      "title": "Type hints with Protocol for duck typing",
+      "narrative": "Use typing.Protocol for structural (duck) typing instead of ABC. Protocols don't require inheritance — any class with matching methods satisfies the protocol.",
+      "concepts": ["python", "protocol", "duck-typing", "typing"]
+    },
+    {
+      "type": "pattern",
+      "title": "Django signals considered harmful for critical logic",
+      "narrative": "Avoid Django signals (post_save, pre_delete) for critical business logic. They run silently, are hard to debug, and create implicit coupling. Call service functions explicitly.",
+      "concepts": ["django", "signals", "architecture"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use __slots__ for memory-efficient value objects",
+      "narrative": "Add __slots__ = ('x', 'y') to classes with many instances. Eliminates per-instance __dict__, reducing memory by 40-50%. Tradeoff: no dynamic attributes.",
+      "concepts": ["python", "slots", "memory", "optimization"]
+    }
+  ]
+}

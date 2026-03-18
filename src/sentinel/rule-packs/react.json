@@ -1,0 +1,16 @@
+{
+  "name": "react",
+  "description": "React component and hook standards",
+  "observations": [
+    { "type": "standard", "title": "Never use dangerouslySetInnerHTML with unsanitized data", "facts": ["XSS vector — attacker-controlled HTML executes in user's browser", "If needed, sanitize with DOMPurify first", "Block: dangerouslySetInnerHTML with user input or API data"] },
+    { "type": "standard", "title": "Include all dependencies in useEffect dependency arrays", "facts": ["Missing deps cause stale closure bugs", "Use eslint exhaustive-deps rule", "Use functional updates to avoid dependency on state"] },
+    { "type": "standard", "title": "Use stable keys for list items — never use array index for dynamic lists", "facts": ["Index keys cause bugs with reordering, deletion, insertion", "Use database IDs, UUIDs, or other stable identifiers", "Index keys are only safe for static, non-reorderable lists"] },
+    { "type": "standard", "title": "Return cleanup functions from useEffect for subscriptions and timers", "facts": ["Prevent memory leaks from setInterval, addEventListener, WebSocket", "Cleanup runs on unmount and before effect re-runs", "Use AbortController for fetch requests"] },
+    { "type": "standard", "title": "Never call hooks conditionally — always call in the same order", "facts": ["Hooks rely on call order for identity", "Don't put hooks inside if/else, loops, or after early returns", "Move conditions inside the hook instead"] },
+    { "type": "standard", "title": "Don't mutate state directly — always create new references", "facts": ["React detects changes by reference comparison", "Use spread: {...state, key: val} for objects", "Use map/filter/spread for arrays, never push/splice"] },
+    { "type": "standard", "title": "Use Error Boundaries at route level and around risky components", "facts": ["Unhandled render errors crash the entire app", "Error boundaries catch errors in render, lifecycle, constructors", "Don't catch event handler errors — use try/catch there"] },
+    { "type": "standard", "title": "Virtualize long lists — don't render 1000+ DOM nodes", "facts": ["Use react-window or react-virtuoso", "Only render visible rows", "Measure first — lists under 100 items rarely need this"] },
+    { "type": "standard", "title": "Handle loading, error, and empty states explicitly", "facts": ["Every data-fetching component needs all three states", "Use Suspense + ErrorBoundary for the pattern", "Show skeletons over spinners for better UX"] },
+    { "type": "standard", "title": "Use React.memo only after measuring — premature memoization adds overhead", "facts": ["React.memo has a cost (shallow comparison per render)", "Only useful when component re-renders often with same props", "Pair with useCallback/useMemo for prop stability"] }
+  ]
+}

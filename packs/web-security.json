@@ -1,0 +1,182 @@
+{
+  "name": "web-security",
+  "description": "Common web security patterns, vulnerabilities, and best practices",
+  "version": "1.0.0",
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Always validate and sanitize user input on the server side",
+      "narrative": "Client-side validation is a UX feature, not a security measure. All user input must be validated and sanitized server-side before use in queries, file operations, or rendering.",
+      "facts": ["Client-side validation can be bypassed trivially", "Server-side validation is the real security boundary", "Use allowlists over denylists when possible"],
+      "concepts": ["input-validation", "xss-prevention", "server-side-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use parameterized queries to prevent SQL injection",
+      "narrative": "Never concatenate user input into SQL strings. Use parameterized queries or prepared statements provided by your database library.",
+      "facts": ["SQL injection is consistently in OWASP Top 10", "Parameterized queries separate code from data", "ORMs generally handle this but raw queries need explicit parameterization"],
+      "concepts": ["sql-injection", "parameterized-queries", "prepared-statements"]
+    },
+    {
+      "type": "pattern",
+      "title": "Set Content-Security-Policy headers to mitigate XSS",
+      "narrative": "CSP headers instruct browsers to only execute scripts from trusted sources, dramatically reducing the attack surface for cross-site scripting.",
+      "facts": ["Start with a restrictive policy and loosen as needed", "Use nonces or hashes for inline scripts", "Report-only mode helps during rollout"],
+      "concepts": ["csp", "xss", "http-headers", "content-security-policy"]
+    },
+    {
+      "type": "pattern",
+      "title": "Store passwords using bcrypt, scrypt, or Argon2",
+      "narrative": "Never store passwords in plaintext or with fast hashing algorithms like MD5/SHA. Use purpose-built password hashing with salt and work factor.",
+      "facts": ["Argon2id is the current recommendation", "bcrypt with cost factor 12+ is still acceptable", "Always use unique salts per password", "Never use MD5 or SHA for passwords"],
+      "concepts": ["password-hashing", "bcrypt", "argon2", "authentication"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement CSRF protection for state-changing requests",
+      "narrative": "Cross-Site Request Forgery tricks authenticated users into making unwanted requests. Use anti-CSRF tokens, SameSite cookies, and verify Origin headers.",
+      "facts": ["SameSite=Lax cookies prevent most CSRF attacks", "CSRF tokens must be unique per session", "GET requests should never modify state"],
+      "concepts": ["csrf", "cookies", "session-security"]
+    },
+    {
+      "type": "discovery",
+      "title": "HttpOnly and Secure flags on session cookies prevent theft",
+      "narrative": "HttpOnly prevents JavaScript access to cookies (mitigating XSS cookie theft). Secure ensures cookies are only sent over HTTPS.",
+      "facts": ["HttpOnly blocks document.cookie access", "Secure flag requires HTTPS transport", "SameSite=Strict prevents cross-origin sending"],
+      "concepts": ["cookies", "session-management", "http-only", "secure-flag"]
+    },
+    {
+      "type": "pattern",
+      "title": "Rate limit authentication endpoints to prevent brute force",
+      "narrative": "Login, registration, and password reset endpoints must have rate limiting to prevent credential stuffing and brute force attacks.",
+      "facts": ["Use progressive delays (1s, 2s, 4s, 8s) or hard lockout after N attempts", "Rate limit by IP and by account independently", "Consider CAPTCHA after 3-5 failed attempts"],
+      "concepts": ["rate-limiting", "brute-force", "authentication", "account-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Validate file uploads: type, size, and content",
+      "narrative": "File uploads are a common attack vector. Validate MIME type, file extension, file size, and ideally scan content. Never trust the client-provided filename.",
+      "facts": ["Check magic bytes, not just extension", "Store uploads outside webroot", "Generate new filenames server-side", "Set maximum file size limits"],
+      "concepts": ["file-upload", "content-type", "path-traversal"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use HTTPS everywhere — no exceptions for internal services",
+      "narrative": "TLS encrypts data in transit. Internal services communicate over networks that can be compromised. Use TLS for all service-to-service communication.",
+      "facts": ["Let's Encrypt provides free certificates", "HSTS header prevents downgrade attacks", "Internal services should also use TLS"],
+      "concepts": ["https", "tls", "hsts", "encryption-in-transit"]
+    },
+    {
+      "type": "discovery",
+      "title": "Environment variables for secrets, never in code or config files",
+      "narrative": "API keys, database passwords, and tokens must come from environment variables or a secrets manager. Never commit them to version control.",
+      "facts": ["Use .env files locally (gitignored)", "Use secrets manager in production (AWS SM, Vault, etc.)", "Rotate secrets regularly", "Audit git history for accidentally committed secrets"],
+      "concepts": ["secrets-management", "environment-variables", "api-keys"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement proper CORS configuration",
+      "narrative": "Cross-Origin Resource Sharing must be configured to allow only trusted origins. Wildcards in CORS headers are dangerous for authenticated APIs.",
+      "facts": ["Never use Access-Control-Allow-Origin: * with credentials", "Whitelist specific origins", "Preflight requests (OPTIONS) must be handled correctly"],
+      "concepts": ["cors", "cross-origin", "api-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Escape output based on context: HTML, JS, URL, CSS",
+      "narrative": "Output encoding must match the context where data is rendered. HTML escaping doesn't protect against JavaScript injection in script tags.",
+      "facts": ["HTML context: escape < > & \" '", "JavaScript context: use JSON.stringify or \\xHH encoding", "URL context: use encodeURIComponent", "CSS context: use \\HH encoding"],
+      "concepts": ["output-encoding", "xss-prevention", "context-aware-escaping"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use helmet.js or equivalent for security headers in Node.js",
+      "narrative": "Security headers like X-Frame-Options, X-Content-Type-Options, and Strict-Transport-Security should be set on all responses. Helmet.js sets sensible defaults.",
+      "facts": ["X-Frame-Options: DENY prevents clickjacking", "X-Content-Type-Options: nosniff prevents MIME sniffing", "Referrer-Policy controls information leakage"],
+      "concepts": ["security-headers", "helmet", "node-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "JWT tokens: short expiry, secure storage, validate all claims",
+      "narrative": "JWTs are not session tokens. Use short expiry (15min), refresh tokens for renewal, validate iss/aud/exp claims, and never store in localStorage for sensitive apps.",
+      "facts": ["Short-lived access tokens (5-15 min)", "Refresh tokens in httpOnly cookies", "Validate algorithm to prevent 'none' attack", "Check token revocation for sensitive operations"],
+      "concepts": ["jwt", "authentication", "token-security", "session-management"]
+    },
+    {
+      "type": "discovery",
+      "title": "Dependency vulnerabilities: audit regularly with automated tools",
+      "narrative": "Third-party packages introduce supply chain risk. Run npm audit, Snyk, or Dependabot regularly. Pin versions and review changelogs before upgrading.",
+      "facts": ["Run npm audit or yarn audit in CI", "Use lock files for reproducible builds", "Review dependency tree for unnecessary transitive deps", "Consider using Socket.dev for supply chain analysis"],
+      "concepts": ["dependency-security", "npm-audit", "supply-chain", "vulnerability-scanning"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement proper error handling — never leak stack traces",
+      "narrative": "Production error responses should be generic. Stack traces, SQL errors, and internal paths help attackers understand your system.",
+      "facts": ["Return generic error messages to clients", "Log detailed errors server-side", "Different error handling for dev vs prod", "Never expose database error details"],
+      "concepts": ["error-handling", "information-disclosure", "production-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Authorization checks on every endpoint, not just the frontend",
+      "narrative": "Broken access control is OWASP #1. Every API endpoint must verify the user has permission for the requested resource. Frontend route guards are not security.",
+      "facts": ["Check authorization server-side on every request", "Use middleware for consistent enforcement", "IDOR: always verify resource ownership", "Principle of least privilege"],
+      "concepts": ["authorization", "access-control", "idor", "broken-access-control"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use Subresource Integrity (SRI) for CDN-loaded scripts",
+      "narrative": "SRI hashes ensure that scripts loaded from CDNs haven't been tampered with. If the hash doesn't match, the browser refuses to execute the script.",
+      "facts": ["Add integrity attribute to script and link tags", "Generate hashes with shasum or online tools", "Combine with crossorigin='anonymous'"],
+      "concepts": ["sri", "cdn-security", "supply-chain", "integrity"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Path traversal: normalize and validate file paths",
+      "narrative": "Attackers use ../ sequences to access files outside intended directories. Always normalize paths and verify they resolve within the expected base directory.",
+      "facts": ["Use path.resolve() then check startsWith(baseDir)", "Reject paths containing .. after normalization", "URL-encoded ../ (%2e%2e%2f) can bypass naive checks"],
+      "concepts": ["path-traversal", "directory-traversal", "file-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement request signing for API-to-API communication",
+      "narrative": "For service-to-service calls, use HMAC request signing or mutual TLS instead of static API keys. This prevents replay attacks and ensures message integrity.",
+      "facts": ["Include timestamp in signed payload to prevent replay", "HMAC-SHA256 is widely supported", "Mutual TLS provides both authentication and encryption"],
+      "concepts": ["request-signing", "hmac", "mutual-tls", "api-security"]
+    },
+    {
+      "type": "discovery",
+      "title": "Content-Type validation prevents polyglot file attacks",
+      "narrative": "Uploaded files can be valid in multiple formats simultaneously (polyglot). Validate Content-Type matches actual file content using magic bytes.",
+      "facts": ["A file can be both valid JPEG and valid HTML", "Check first few bytes (magic number) against claimed type", "Re-encode images server-side to strip embedded payloads"],
+      "concepts": ["polyglot-files", "content-type", "file-upload-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Log security events with structured data for incident response",
+      "narrative": "Authentication failures, authorization denials, input validation failures, and admin actions should be logged with structured data for security monitoring.",
+      "facts": ["Include: timestamp, user_id, IP, action, resource, outcome", "Never log passwords, tokens, or PII", "Use structured logging (JSON) for machine parsing", "Forward to SIEM for alerting"],
+      "concepts": ["security-logging", "audit-trail", "incident-response"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement account lockout with exponential backoff",
+      "narrative": "After repeated failed login attempts, temporarily lock the account. Use exponential backoff to make brute force infeasible while limiting impact on legitimate users.",
+      "facts": ["Lock after 5-10 failed attempts", "Exponential backoff: 1min, 5min, 15min, 1hr", "Notify user via email on lockout", "Track attempts per account AND per IP"],
+      "concepts": ["account-lockout", "brute-force-protection", "authentication"]
+    },
+    {
+      "type": "discovery",
+      "title": "Server-Side Request Forgery (SSRF) via user-supplied URLs",
+      "narrative": "When your server fetches URLs provided by users (webhooks, image URLs, etc.), attackers can target internal services. Validate and restrict allowed destinations.",
+      "facts": ["Block requests to private IP ranges (10.x, 172.16-31.x, 192.168.x)", "Use allowlists for permitted domains when possible", "DNS rebinding can bypass IP checks — resolve DNS before connecting", "Cloud metadata endpoints (169.254.169.254) are high-value targets"],
+      "concepts": ["ssrf", "url-validation", "internal-network", "cloud-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use nonces for inline scripts with CSP",
+      "narrative": "If you must use inline scripts, generate a random nonce per request and include it in both the CSP header and the script tag. Never use unsafe-inline.",
+      "facts": ["Nonce must be cryptographically random per request", "Add nonce to CSP: script-src 'nonce-abc123'", "Add to script tag: <script nonce='abc123'>", "unsafe-inline defeats the purpose of CSP"],
+      "concepts": ["csp-nonce", "inline-scripts", "xss-prevention"]
+    }
+  ]
+}

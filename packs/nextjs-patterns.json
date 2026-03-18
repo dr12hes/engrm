@@ -1,0 +1,68 @@
+{
+  "name": "nextjs-patterns",
+  "description": "Next.js App Router patterns, data fetching, and deployment tips",
+  "version": "1.0.0",
+  "stacks": ["nextjs", "react"],
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Default to Server Components — add 'use client' only when needed",
+      "narrative": "In the App Router, components are Server Components by default. Only add 'use client' for interactivity (hooks, event handlers, browser APIs). Keep the client boundary as low in the tree as possible.",
+      "concepts": ["nextjs", "server-components", "app-router"]
+    },
+    {
+      "type": "pattern",
+      "title": "Fetch data in Server Components, not useEffect",
+      "narrative": "Server Components can be async — fetch data directly with await. No loading spinners, no client-side waterfalls. The HTML arrives fully rendered.",
+      "concepts": ["nextjs", "data-fetching", "server-components"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Next.js caching can serve stale data in production",
+      "narrative": "Next.js aggressively caches fetch() results and route segments. Use revalidatePath/revalidateTag after mutations, or set { cache: 'no-store' } for real-time data.",
+      "concepts": ["nextjs", "caching", "revalidation", "stale-data"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use route groups (parentheses) for layout organization",
+      "narrative": "Folders wrapped in parentheses like (marketing) and (dashboard) create route groups — they organize code and share layouts without affecting the URL path.",
+      "concepts": ["nextjs", "route-groups", "app-router", "layouts"]
+    },
+    {
+      "type": "pattern",
+      "title": "Server Actions for form mutations",
+      "narrative": "Use 'use server' functions for form handling. They run on the server, can access the DB directly, and work without JavaScript. Pair with useFormState for loading/error states.",
+      "concepts": ["nextjs", "server-actions", "forms", "mutations"]
+    },
+    {
+      "type": "discovery",
+      "title": "Parallel routes (@slot) for complex layouts",
+      "narrative": "Parallel routes using @folder convention let you render multiple pages in the same layout simultaneously. Useful for dashboards with independent loading states.",
+      "concepts": ["nextjs", "parallel-routes", "layouts"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use loading.tsx for instant loading states",
+      "narrative": "Place a loading.tsx file in any route directory for automatic Suspense-wrapped loading UI. It shows immediately while the page component fetches data.",
+      "concepts": ["nextjs", "loading", "suspense", "ux"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Dynamic route params are always strings",
+      "narrative": "Route params like [id] are always strings, even if they look like numbers. Always parseInt() or validate before using as numeric IDs in database queries.",
+      "concepts": ["nextjs", "dynamic-routes", "params", "validation"]
+    },
+    {
+      "type": "pattern",
+      "title": "Middleware for auth, redirects, and headers",
+      "narrative": "middleware.ts runs at the edge before every request. Use it for auth checks, locale detection, and response headers. Keep it fast — no heavy computation or DB calls.",
+      "concepts": ["nextjs", "middleware", "auth", "edge"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use next/image for automatic image optimization",
+      "narrative": "The Image component automatically resizes, converts to WebP/AVIF, and lazy-loads images. Always specify width/height or use fill for responsive images to prevent layout shift.",
+      "concepts": ["nextjs", "image", "optimization", "performance"]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "name": "api-best-practices",
+  "description": "REST API design patterns, error handling, and operational best practices",
+  "version": "1.0.0",
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Use appropriate HTTP status codes — not everything is 200",
+      "narrative": "Status codes convey meaning to clients. 200 for success, 201 for created, 204 for no content, 400 for bad request, 401 for unauthorized, 403 for forbidden, 404 for not found, 409 for conflict, 422 for validation errors, 429 for rate limited, 500 for server error.",
+      "facts": ["201 Created for POST that creates a resource", "204 No Content for successful DELETE", "422 Unprocessable Entity for validation failures", "429 Too Many Requests with Retry-After header"],
+      "concepts": ["http-status-codes", "rest-api", "error-responses"]
+    },
+    {
+      "type": "pattern",
+      "title": "Version your API from day one — /v1/ prefix or header",
+      "narrative": "API versioning prevents breaking changes for existing clients. URL prefix (/v1/) is most common and easily cacheable. Header versioning is cleaner but harder to test.",
+      "facts": ["URL versioning: /v1/users, /v2/users", "Header versioning: Accept: application/vnd.api+json;version=1", "Never make breaking changes to an existing version", "Deprecate old versions with sunset headers"],
+      "concepts": ["api-versioning", "backwards-compatibility", "breaking-changes"]
+    },
+    {
+      "type": "pattern",
+      "title": "Consistent error response format across all endpoints",
+      "narrative": "Every error response should follow the same structure. Clients should be able to parse errors without knowing which endpoint returned them.",
+      "facts": ["Include: status, error code (machine-readable), message (human-readable)", "Optional: details array for field-level validation errors", "Example: {\"error\": {\"code\": \"INVALID_EMAIL\", \"message\": \"...\", \"details\": [...]}}", "Document all possible error codes"],
+      "concepts": ["error-format", "api-design", "error-codes"]
+    },
+    {
+      "type": "pattern",
+      "title": "Paginate list endpoints — never return unbounded results",
+      "narrative": "List endpoints must support pagination. Cursor-based pagination is more reliable than offset-based for real-time data.",
+      "facts": ["Cursor pagination: ?after=<cursor>&limit=20", "Offset pagination: ?page=2&per_page=20 (breaks with insertions)", "Return total count and next page cursor/link", "Default limit of 20-50, max limit of 100"],
+      "concepts": ["pagination", "cursor-pagination", "list-endpoints"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use plural nouns for resource endpoints — /users not /user",
+      "narrative": "RESTful URLs represent collections. Use plural nouns (/users, /orders) and let HTTP methods express the action (GET, POST, PUT, DELETE).",
+      "facts": ["GET /users — list users", "POST /users — create user", "GET /users/123 — get specific user", "Don't use verbs: /getUsers, /createUser is wrong"],
+      "concepts": ["rest-naming", "url-design", "resource-naming"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement idempotent operations — same request, same result",
+      "narrative": "GET, PUT, DELETE should be idempotent (multiple identical requests produce the same result). For POST, use Idempotency-Key headers to prevent duplicate creation.",
+      "facts": ["GET: naturally idempotent (read-only)", "PUT: replace entire resource, naturally idempotent", "DELETE: deleting twice should return 204/404, not error", "POST: use Idempotency-Key header for payment/order creation"],
+      "concepts": ["idempotency", "idempotency-key", "safe-retries"]
+    },
+    {
+      "type": "pattern",
+      "title": "Rate limit all endpoints — use token bucket or sliding window",
+      "narrative": "Rate limiting protects against abuse, DoS, and runaway clients. Return 429 with Retry-After header. Different limits for authenticated vs anonymous users.",
+      "facts": ["Token bucket: smooth, allows short bursts", "Sliding window: strict, predictable limits", "Return X-RateLimit-Limit, X-RateLimit-Remaining headers", "Higher limits for authenticated users"],
+      "concepts": ["rate-limiting", "throttling", "api-protection"]
+    },
+    {
+      "type": "pattern",
+      "title": "Validate all input at the boundary — use schema validation",
+      "narrative": "Validate request bodies, query parameters, and path parameters at the API boundary. Use schema validation libraries (Zod, Joi, JSON Schema) for consistent enforcement.",
+      "facts": ["Validate types, ranges, formats, required fields", "Return 422 with field-level error details", "Reject unknown fields to prevent mass assignment", "Schema doubles as documentation"],
+      "concepts": ["input-validation", "schema-validation", "zod", "api-security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use ETags and If-None-Match for HTTP caching",
+      "narrative": "ETags enable conditional requests. The server returns ETag headers; clients send If-None-Match on subsequent requests. Server returns 304 Not Modified if unchanged.",
+      "facts": ["ETag: hash or version of the response body", "Client sends If-None-Match: <etag> on next request", "Server returns 304 if unchanged (saves bandwidth)", "Also useful for optimistic concurrency (If-Match for PUT)"],
+      "concepts": ["etag", "http-caching", "conditional-requests", "304"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use PATCH for partial updates — PUT replaces the entire resource",
+      "narrative": "PUT semantics require sending the complete resource. PATCH updates only the fields provided. Use JSON Merge Patch (RFC 7396) for simple cases.",
+      "facts": ["PUT: client sends complete resource, server replaces it", "PATCH: client sends only changed fields", "JSON Merge Patch: {\"name\": \"new\"} updates only name", "Return the updated resource in the response"],
+      "concepts": ["patch", "partial-update", "put-vs-patch"]
+    },
+    {
+      "type": "pattern",
+      "title": "Structured logging with request ID for traceability",
+      "narrative": "Every request should get a unique ID (X-Request-Id). Log it with all related operations. This enables tracing a request across services.",
+      "facts": ["Generate UUID request ID in middleware", "Return it in response headers", "Include in all log entries for that request", "Propagate to downstream service calls"],
+      "concepts": ["request-id", "structured-logging", "tracing", "observability"]
+    },
+    {
+      "type": "pattern",
+      "title": "Health check endpoint: GET /health with dependency status",
+      "narrative": "Load balancers and monitoring need a health endpoint. Return 200 when healthy, 503 when degraded. Include dependency status (DB, cache, queues).",
+      "facts": ["GET /health — lightweight, no auth required", "Include: status, version, uptime, dependencies", "Check database connectivity, cache, external services", "Separate liveness (/healthz) from readiness (/readyz)"],
+      "concepts": ["health-check", "monitoring", "load-balancer", "kubernetes"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use bearer tokens in Authorization header — not query params",
+      "narrative": "Authentication tokens belong in the Authorization header (Bearer <token>). Query parameter tokens are logged in access logs and browser history.",
+      "facts": ["Authorization: Bearer <token>", "Query param tokens leak in logs, referrers, bookmarks", "API keys in X-Api-Key header for server-to-server", "Never send tokens in GET request body"],
+      "concepts": ["authentication", "bearer-token", "api-key", "security"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement request/response compression — gzip or brotli",
+      "narrative": "Compress API responses to reduce bandwidth. Most frameworks support this via middleware. Check Accept-Encoding header and set Content-Encoding.",
+      "facts": ["Brotli: better compression ratio, slower to compress", "Gzip: widely supported, fast enough for dynamic content", "Don't compress already-compressed formats (images, video)", "Set Vary: Accept-Encoding for proper caching"],
+      "concepts": ["compression", "gzip", "brotli", "performance"]
+    },
+    {
+      "type": "pattern",
+      "title": "Soft delete resources — don't hard delete by default",
+      "narrative": "Instead of DELETE removing data permanently, set a deleted_at timestamp. This allows recovery, audit trails, and referential integrity.",
+      "facts": ["Add deleted_at column (null = active)", "Filter deleted records in all queries by default", "Provide purge endpoint for permanent deletion (admin only)", "Cascade soft deletes to dependent resources"],
+      "concepts": ["soft-delete", "data-retention", "audit-trail"]
+    },
+    {
+      "type": "pattern",
+      "title": "Document APIs with OpenAPI/Swagger — generated from code",
+      "narrative": "API documentation must be accurate and up-to-date. Generate OpenAPI specs from code annotations or schema definitions. Serve interactive docs at /docs.",
+      "facts": ["OpenAPI 3.1 is the current standard", "Generate from code (not hand-written) to stay in sync", "Swagger UI or Redoc for interactive documentation", "Include request/response examples"],
+      "concepts": ["openapi", "swagger", "api-documentation"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use webhooks for async notifications — don't make clients poll",
+      "narrative": "For events that happen asynchronously (payment completed, build finished), push notifications via webhooks instead of requiring clients to poll.",
+      "facts": ["Sign webhook payloads with HMAC for verification", "Retry with exponential backoff on delivery failure", "Include event type and timestamp in payload", "Provide webhook testing/replay in dashboard"],
+      "concepts": ["webhooks", "async-events", "push-notifications"]
+    },
+    {
+      "type": "pattern",
+      "title": "Graceful degradation: circuit breaker for downstream services",
+      "narrative": "When a downstream service fails, don't let every request timeout. Use a circuit breaker pattern that fails fast after detecting failures, then periodically retries.",
+      "facts": ["Closed (normal) → Open (fast fail) → Half-Open (test)", "Track failure rate in sliding window", "Return cached/default response when circuit is open", "Libraries: opossum (Node.js), resilience4j (Java)"],
+      "concepts": ["circuit-breaker", "resilience", "graceful-degradation"]
+    },
+    {
+      "type": "discovery",
+      "title": "GraphQL vs REST: use GraphQL for complex, nested data needs",
+      "narrative": "GraphQL excels when clients need flexible queries over related data. REST is simpler for CRUD operations. Choose based on your data access patterns.",
+      "facts": ["GraphQL: single endpoint, client specifies needed fields", "REST: multiple endpoints, server decides response shape", "GraphQL N+1 problem: use DataLoader for batching", "REST is better for simple CRUD and caching"],
+      "concepts": ["graphql", "rest", "api-design", "data-fetching"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement request timeouts and connection limits",
+      "narrative": "Every outgoing HTTP call needs a timeout. Every server needs connection limits. Without these, slow clients or downstream services can exhaust resources.",
+      "facts": ["Set connect timeout (5s) and read timeout (30s) separately", "Limit concurrent connections per client", "Use keepalive connections for repeated calls to same host", "Set server-side request timeout (e.g., 30s) as safety net"],
+      "concepts": ["timeouts", "connection-limits", "resource-management"]
+    },
+    {
+      "type": "pattern",
+      "title": "Return created resource on POST with Location header",
+      "narrative": "POST endpoints that create resources should return 201 with the created resource in the body and a Location header pointing to the new resource URL.",
+      "facts": ["201 Created with body containing the new resource", "Location: /v1/users/123 header for the new resource URL", "Include server-generated fields (id, created_at)", "Saves client from making a follow-up GET"],
+      "concepts": ["post-response", "201-created", "location-header"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use correlation IDs across microservices for distributed tracing",
+      "narrative": "In microservice architectures, propagate a correlation ID from the entry point through all service calls. This enables end-to-end request tracing.",
+      "facts": ["Generate at API gateway or first service", "Propagate via X-Correlation-Id or traceparent header", "Include in all log entries across services", "Tools: OpenTelemetry, Jaeger, Zipkin"],
+      "concepts": ["correlation-id", "distributed-tracing", "microservices", "opentelemetry"]
+    },
+    {
+      "type": "pattern",
+      "title": "Handle N+1 queries in API endpoints — batch database calls",
+      "narrative": "When returning a list of resources with related data, load all relations in one query instead of one query per item. This is the most common API performance issue.",
+      "facts": ["Use JOIN or WHERE IN (...) for batch loading", "ORMs have eager loading: include/with/joinedload", "DataLoader pattern batches within a request cycle", "N+1 turns 1 query into 101 queries for 100 items"],
+      "concepts": ["n-plus-one", "batch-loading", "query-optimization", "orm"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use Content-Type negotiation — support JSON at minimum",
+      "narrative": "Always set Content-Type on responses. Check Accept header on requests to return the right format. Return 406 Not Acceptable if you can't serve the requested format.",
+      "facts": ["application/json is the default for REST APIs", "Check Accept header for content negotiation", "Return Content-Type: application/json on all JSON responses", "406 Not Acceptable if format is unsupported"],
+      "concepts": ["content-negotiation", "content-type", "accept-header"]
+    },
+    {
+      "type": "pattern",
+      "title": "Implement API key rotation without downtime",
+      "narrative": "Allow multiple active API keys per account. Clients generate a new key, update their config, then revoke the old key. Never force immediate key invalidation.",
+      "facts": ["Support multiple concurrent API keys", "Provide key creation and revocation endpoints", "Set expiry dates on keys for automatic rotation", "Log key usage to detect which keys are active"],
+      "concepts": ["api-key-rotation", "key-management", "zero-downtime"]
+    }
+  ]
+}

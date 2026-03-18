@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "engrm": {
+      "type": "stdio",
+      "command": "/Users/david/.bun/bin/bun",
+      "args": ["run", "src/server.ts"]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "security",
+  "description": "Core security standards for all projects",
+  "observations": [
+    { "type": "standard", "title": "Never hardcode secrets, API keys, or passwords in source code", "facts": ["Use environment variables or secrets managers", "Check for .env patterns, API key formats, private key headers", "Block: AWS keys (AKIA...), GitHub tokens (ghp_...), generic passwords"] },
+    { "type": "standard", "title": "Use parameterized queries — never concatenate user input into SQL", "facts": ["SQL injection is consistently OWASP #1", "Use prepared statements or ORM query builders", "Block: string concatenation in SQL queries with user input"] },
+    { "type": "standard", "title": "Sanitize all user input before rendering in HTML", "facts": ["Escape HTML entities: < > & \" '", "Use framework-provided escaping (React JSX, template engines)", "Block: innerHTML with unsanitized user data, dangerouslySetInnerHTML with raw input"] },
+    { "type": "standard", "title": "Never use eval() or Function() constructor with user input", "facts": ["eval() executes arbitrary code", "Same applies to new Function(), setTimeout with strings", "Block: eval(userInput), Function(userInput)"] },
+    { "type": "standard", "title": "Validate and sanitize file paths to prevent directory traversal", "facts": ["Normalize paths with path.resolve()", "Verify resolved path starts with expected base directory", "Block: direct use of user input in file operations without validation"] },
+    { "type": "standard", "title": "Use HTTPS for all external requests and API calls", "facts": ["Never use http:// for API endpoints in production code", "Verify TLS certificates (don't disable verification)", "Warn: http:// URLs (except localhost)"] },
+    { "type": "standard", "title": "Hash passwords with bcrypt, scrypt, or Argon2 — never MD5/SHA", "facts": ["Use purpose-built password hashing with salt", "Minimum cost factor: bcrypt 12, Argon2 recommended", "Block: MD5/SHA for password storage, plaintext password comparison"] },
+    { "type": "standard", "title": "Set HttpOnly, Secure, and SameSite flags on session cookies", "facts": ["HttpOnly prevents XSS cookie theft", "Secure requires HTTPS", "SameSite=Lax or Strict prevents CSRF"] },
+    { "type": "standard", "title": "Rate limit authentication endpoints", "facts": ["Prevent brute force and credential stuffing", "Use progressive delays or hard lockout after N attempts", "Apply rate limiting by IP and by account"] },
+    { "type": "standard", "title": "Never expose stack traces or internal errors to clients", "facts": ["Return generic error messages in production", "Log detailed errors server-side only", "Block: sending error.stack or raw exception messages in HTTP responses"] },
+    { "type": "standard", "title": "Validate Content-Type and file content for uploads", "facts": ["Check magic bytes, not just file extension", "Limit file size", "Store uploads outside webroot with generated filenames"] },
+    { "type": "standard", "title": "Use Content-Security-Policy headers", "facts": ["Restrict script sources to prevent XSS", "Avoid unsafe-inline and unsafe-eval", "Use nonces for necessary inline scripts"] },
+    { "type": "standard", "title": "Implement proper CORS configuration", "facts": ["Never use Access-Control-Allow-Origin: * with credentials", "Whitelist specific origins", "Validate Origin header on server side"] },
+    { "type": "standard", "title": "Validate JWT tokens: check algorithm, expiry, issuer, audience", "facts": ["Prevent 'none' algorithm attack", "Short-lived access tokens (5-15 min)", "Validate all claims before trusting payload"] },
+    { "type": "standard", "title": "Prevent Server-Side Request Forgery (SSRF)", "facts": ["Block requests to private IP ranges from user-supplied URLs", "Use allowlists for permitted domains", "Resolve DNS before connecting to prevent rebinding attacks"] }
+  ]
+}

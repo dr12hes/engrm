@@ -1,0 +1,182 @@
+{
+  "name": "react-gotchas",
+  "description": "Common React pitfalls, performance issues, and best practices",
+  "version": "1.0.0",
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Use key prop correctly — index keys cause bugs with reordering",
+      "narrative": "React uses keys to track list identity. Using array index as key causes incorrect component reuse when items are reordered, deleted, or inserted.",
+      "facts": ["Use stable unique IDs as keys (database IDs, UUIDs)", "Index keys are only safe for static lists that never change", "Missing keys cause React to warn and use index implicitly"],
+      "concepts": ["react-keys", "list-rendering", "reconciliation"]
+    },
+    {
+      "type": "bugfix",
+      "title": "useEffect cleanup: return a cleanup function to avoid memory leaks",
+      "narrative": "Effects that set up subscriptions, timers, or event listeners must return a cleanup function. Without it, listeners accumulate on re-renders.",
+      "facts": ["Return a function from useEffect for cleanup", "Cleanup runs before re-running the effect and on unmount", "Common sources: setInterval, addEventListener, WebSocket connections"],
+      "concepts": ["useEffect", "cleanup", "memory-leak", "subscriptions"]
+    },
+    {
+      "type": "pattern",
+      "title": "Avoid creating objects/arrays in render — causes unnecessary re-renders",
+      "narrative": "New object/array literals in JSX (style={{}}, options={[]}) create new references every render, defeating React.memo and causing child re-renders.",
+      "facts": ["Move constant objects outside the component", "Use useMemo for computed objects", "Use useCallback for function props", "React.memo compares props by reference"],
+      "concepts": ["referential-equality", "useMemo", "useCallback", "performance"]
+    },
+    {
+      "type": "bugfix",
+      "title": "State updates are batched — don't read state immediately after setState",
+      "narrative": "React batches state updates for performance. Reading state right after setState gives the old value. Use the callback form or useEffect to react to changes.",
+      "facts": ["setState is asynchronous in event handlers", "Use functional updates: setState(prev => prev + 1)", "useEffect with the state as dependency reacts to changes", "React 18 batches all updates, including in promises and timeouts"],
+      "concepts": ["state-batching", "setState", "async-state", "react-18"]
+    },
+    {
+      "type": "pattern",
+      "title": "Lift state up only as high as needed — avoid prop drilling",
+      "narrative": "State should live in the lowest common ancestor that needs it. For deeply nested access, use Context or a state management library instead of passing through many layers.",
+      "facts": ["Prop drilling through 2-3 levels is fine", "Beyond that, consider Context or state libraries", "Context re-renders all consumers — keep contexts focused", "Composition (passing children) often eliminates prop drilling"],
+      "concepts": ["state-management", "prop-drilling", "context", "component-composition"]
+    },
+    {
+      "type": "discovery",
+      "title": "React.StrictMode double-invokes effects to catch bugs",
+      "narrative": "In development, StrictMode intentionally runs effects twice to help find cleanup bugs. This is normal and doesn't happen in production.",
+      "facts": ["Effects run twice in dev with StrictMode", "This catches missing cleanup functions", "Does not happen in production builds", "Don't remove StrictMode to 'fix' double renders"],
+      "concepts": ["strict-mode", "development", "debugging"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use React.lazy and Suspense for code splitting",
+      "narrative": "Large bundles slow initial load. Split code at route boundaries using React.lazy() with Suspense fallback. This loads components on demand.",
+      "facts": ["React.lazy(() => import('./Component')) for dynamic import", "Wrap with <Suspense fallback={<Loading/>}>", "Split at route level first for biggest impact", "Avoid lazy for above-the-fold content"],
+      "concepts": ["code-splitting", "lazy-loading", "suspense", "performance"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Closures in useEffect capture stale state values",
+      "narrative": "Effects close over the state from the render they were created in. Without proper dependencies, they reference stale values.",
+      "facts": ["Always include used variables in the dependency array", "Use the eslint exhaustive-deps rule", "Functional updates (setCount(c => c + 1)) avoid stale closure", "Refs (useRef) provide a mutable escape hatch"],
+      "concepts": ["stale-closures", "useEffect-dependencies", "hooks-rules"]
+    },
+    {
+      "type": "pattern",
+      "title": "Error boundaries catch render errors — use them at route level",
+      "narrative": "Unhandled errors in render crash the entire app. Error boundaries (class components with componentDidCatch) prevent this by catching errors in their subtree.",
+      "facts": ["Error boundaries must be class components", "Catch errors in render, lifecycle, and constructors", "Don't catch errors in event handlers — use try/catch", "Place boundaries at route level and around risky components"],
+      "concepts": ["error-boundary", "error-handling", "resilience"]
+    },
+    {
+      "type": "pattern",
+      "title": "Avoid derived state — compute during render instead",
+      "narrative": "Storing values derived from props/state in separate state causes sync bugs. Compute derived values during render or use useMemo for expensive computations.",
+      "facts": ["Derived state = state computed from other state/props", "Compute it inline or with useMemo", "getDerivedStateFromProps is almost always wrong", "Filtering/sorting lists is a common case — useMemo, don't store"],
+      "concepts": ["derived-state", "useMemo", "anti-pattern"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Don't mutate state directly — always create new references",
+      "narrative": "React detects changes by reference comparison. Mutating objects/arrays in state (push, splice, obj.key = val) won't trigger re-renders.",
+      "facts": ["Use spread: setState({...state, key: val})", "For arrays: [...arr, newItem], arr.filter(), arr.map()", "Use structuredClone() for deep copies", "Libraries like Immer make immutable updates easier"],
+      "concepts": ["immutability", "state-updates", "reference-equality"]
+    },
+    {
+      "type": "pattern",
+      "title": "useId for unique IDs — don't use Math.random in render",
+      "narrative": "Components needing unique IDs (for label-input associations, ARIA) should use React.useId() which is stable across server/client rendering.",
+      "facts": ["useId generates deterministic IDs safe for SSR", "Math.random() causes hydration mismatches", "useId works with multiple IDs: id + '-name', id + '-email'"],
+      "concepts": ["useId", "accessibility", "ssr-hydration"]
+    },
+    {
+      "type": "pattern",
+      "title": "Debounce search inputs — don't fire API calls on every keystroke",
+      "narrative": "Text inputs connected to search should debounce the API call. Use a custom hook or useDeferredValue to avoid flooding the server.",
+      "facts": ["Debounce with 200-300ms delay for search", "useDeferredValue is React 18's built-in approach", "AbortController cancels in-flight requests", "Show stale results while loading new ones"],
+      "concepts": ["debounce", "search", "useDeferredValue", "performance"]
+    },
+    {
+      "type": "discovery",
+      "title": "React DevTools Profiler identifies unnecessary re-renders",
+      "narrative": "The Profiler in React DevTools shows which components re-render and why. Use it to find performance bottlenecks instead of premature optimization.",
+      "facts": ["Enable 'Highlight updates' to see re-renders visually", "Profiler shows render time and commit info", "Check 'Why did this render?' with the option enabled", "Optimize only measured bottlenecks"],
+      "concepts": ["react-devtools", "profiling", "performance-debugging"]
+    },
+    {
+      "type": "pattern",
+      "title": "Controlled vs uncontrolled inputs: pick one and be consistent",
+      "narrative": "Mixing controlled (value + onChange) and uncontrolled (defaultValue + ref) patterns on the same input causes React warnings and bugs.",
+      "facts": ["Controlled: value={state} + onChange handler", "Uncontrolled: defaultValue + useRef to read on submit", "Switching from uncontrolled to controlled is a warning", "Forms with many fields: consider react-hook-form (uncontrolled)"],
+      "concepts": ["controlled-components", "forms", "useRef"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use React.memo strategically — not on every component",
+      "narrative": "React.memo prevents re-renders when props haven't changed. But it has a cost (shallow comparison) and is only worthwhile for components that re-render often with same props.",
+      "facts": ["Measure before memoizing", "Useless if parent always passes new object/function props", "Pair with useCallback/useMemo for prop stability", "List items and expensive renders benefit most"],
+      "concepts": ["react-memo", "memoization", "performance-optimization"]
+    },
+    {
+      "type": "bugfix",
+      "title": "useEffect with empty deps runs once — watch for missing dependencies",
+      "narrative": "useEffect(() => {...}, []) runs only on mount. If the effect uses props or state, those values will be stale forever. Add them to the dependency array.",
+      "facts": ["Empty array = run once on mount", "Missing deps = stale values (subtle bug)", "ESLint exhaustive-deps rule catches this", "If you truly want run-once, ensure no external deps are used"],
+      "concepts": ["useEffect", "dependency-array", "stale-closures"]
+    },
+    {
+      "type": "pattern",
+      "title": "Prefer composition over configuration for flexible components",
+      "narrative": "Instead of adding more and more props to configure a component, compose smaller components. Slots (children, render props) are more flexible than config objects.",
+      "facts": ["Composition: <Card><CardHeader/><CardBody/></Card>", "Configuration: <Card title='...' body='...' footer='...'/>", "Composition scales better and avoids prop explosion", "React children pattern is the simplest form of composition"],
+      "concepts": ["composition", "component-design", "render-props", "children"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Conditional hooks violate Rules of Hooks — always call in same order",
+      "narrative": "Hooks must be called in the same order every render. Putting hooks inside if/else, loops, or after early returns causes React to lose track of state.",
+      "facts": ["Hooks rely on call order for identity", "Move conditions inside the hook instead", "eslint-plugin-react-hooks enforces this", "Custom hooks must also follow this rule"],
+      "concepts": ["rules-of-hooks", "conditional-hooks", "hook-order"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use AbortController to cancel fetch requests on unmount",
+      "narrative": "Fetch requests that complete after a component unmounts cause 'setState on unmounted component' warnings. Use AbortController in the cleanup function.",
+      "facts": ["Create AbortController in effect, pass signal to fetch", "Abort in cleanup: return () => controller.abort()", "Aborted fetch throws AbortError — catch and ignore it", "Works with axios via cancelToken too"],
+      "concepts": ["fetch", "abort-controller", "cleanup", "useEffect"]
+    },
+    {
+      "type": "pattern",
+      "title": "Server Components (RSC) run on the server — no state, no effects",
+      "narrative": "React Server Components execute at build/request time on the server. They can't use useState, useEffect, or browser APIs. Use 'use client' directive for interactive components.",
+      "facts": ["Server Components are the default in Next.js App Router", "Add 'use client' at top of file for client components", "Server Components can async/await directly", "Pass server data as props to client components"],
+      "concepts": ["server-components", "rsc", "nextjs", "use-client"]
+    },
+    {
+      "type": "pattern",
+      "title": "Virtualize long lists — don't render 1000+ items in DOM",
+      "narrative": "Rendering thousands of DOM nodes kills performance. Use react-window or react-virtuoso to only render visible items.",
+      "facts": ["Virtual lists render only visible rows", "react-window is lightweight (6kb)", "react-virtuoso handles variable heights", "Measure first — small lists (<100 items) don't need virtualization"],
+      "concepts": ["virtualization", "performance", "react-window", "long-lists"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use useReducer for complex state logic with multiple sub-values",
+      "narrative": "When state has multiple related values or complex update logic, useReducer provides clearer state transitions than multiple useState calls.",
+      "facts": ["useReducer is better for related state values", "Actions describe what happened, reducer decides how state changes", "Easier to test — reducer is a pure function", "Combine with useContext for app-level state"],
+      "concepts": ["useReducer", "state-management", "complex-state"]
+    },
+    {
+      "type": "discovery",
+      "title": "React 19: use() hook for promises and context",
+      "narrative": "React 19 introduces the use() hook which can read promises (with Suspense) and context values. It can be called conditionally, unlike other hooks.",
+      "facts": ["use(promise) suspends until promise resolves", "use(context) replaces useContext(context)", "Can be called inside if/else (exception to hook rules)", "Works with server components and client components"],
+      "concepts": ["react-19", "use-hook", "suspense", "context"]
+    },
+    {
+      "type": "pattern",
+      "title": "Handle loading, error, and empty states explicitly",
+      "narrative": "Every data-fetching component needs three states: loading (skeleton/spinner), error (retry/message), and empty (helpful message/CTA). Don't just handle the happy path.",
+      "facts": ["Skeletons are better UX than spinners for content", "Show retry button on error", "Empty state should guide user to action", "Consider using Suspense + ErrorBoundary for this pattern"],
+      "concepts": ["loading-states", "error-states", "empty-states", "ux"]
+    }
+  ]
+}

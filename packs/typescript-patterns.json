@@ -1,0 +1,67 @@
+{
+  "name": "typescript-patterns",
+  "description": "Common TypeScript patterns, gotchas, and best practices",
+  "stacks": ["typescript"],
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Use 'satisfies' for type-safe config objects",
+      "narrative": "The 'satisfies' operator validates a value matches a type without widening it. Prefer `const config = { ... } satisfies Config` over `const config: Config = { ... }` to preserve literal types.",
+      "concepts": ["typescript", "satisfies", "type-safety"]
+    },
+    {
+      "type": "pattern",
+      "title": "Discriminated unions over optional properties",
+      "narrative": "Use a shared literal 'kind' or 'type' field to discriminate union variants. This enables exhaustive switch/case checking and eliminates impossible states that optional properties allow.",
+      "concepts": ["typescript", "discriminated-union", "type-safety"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use 'as const' for literal type inference",
+      "narrative": "Apply 'as const' to object/array literals when you need TypeScript to infer exact string/number literal types instead of widened string/number types.",
+      "concepts": ["typescript", "const-assertion", "literal-types"]
+    },
+    {
+      "type": "discovery",
+      "title": "Template literal types for string patterns",
+      "narrative": "TypeScript supports template literal types like `type Route = \\`/api/${string}\\`` to constrain string shapes at the type level. Useful for API paths, CSS values, and event names.",
+      "concepts": ["typescript", "template-literal-types"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Avoid 'any' leaking through generic defaults",
+      "narrative": "Generic functions with `<T = any>` silently disable type checking for callers who don't provide the type parameter. Use `<T = unknown>` or `<T extends Base>` instead.",
+      "concepts": ["typescript", "generics", "any-leak"]
+    },
+    {
+      "type": "pattern",
+      "title": "Branded types for domain identifiers",
+      "narrative": "Prevent mixing up IDs like userId and orderId by creating branded types: `type UserId = string & { __brand: 'UserId' }`. Create helper functions to construct them.",
+      "concepts": ["typescript", "branded-types", "domain-modeling"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use 'unknown' over 'any' for safe catch blocks",
+      "narrative": "In catch blocks, use `catch (err: unknown)` and narrow with `err instanceof Error` before accessing .message. This prevents runtime crashes from non-Error throws.",
+      "concepts": ["typescript", "error-handling", "unknown"]
+    },
+    {
+      "type": "pattern",
+      "title": "Record<string, T> vs Map<string, T>",
+      "narrative": "Use Record for static key sets known at compile time. Use Map when keys are dynamic, when you need size/iteration order guarantees, or when non-string keys are needed.",
+      "concepts": ["typescript", "record", "map", "data-structures"]
+    },
+    {
+      "type": "discovery",
+      "title": "Infer return types from implementation",
+      "narrative": "For internal functions, let TypeScript infer the return type from the implementation. Only add explicit return types at module boundaries (exports) or when the inference is too wide.",
+      "concepts": ["typescript", "return-types", "type-inference"]
+    },
+    {
+      "type": "pattern",
+      "title": "Zod schemas as single source of truth",
+      "narrative": "Define Zod schemas first, then derive TypeScript types with z.infer<typeof schema>. This gives you both runtime validation and compile-time types from a single definition.",
+      "concepts": ["typescript", "zod", "validation", "schema"]
+    }
+  ]
+}

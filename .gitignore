@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
+settings.json
+
+# Local agent scratch / internal planning docs should never be committed
+CLAUDE.md
+*.plan.md
+*.strategy.md
+*.scratch.md
+notes/
+scratch/
+tmp/

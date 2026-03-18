@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engrm — AI Memory for Developers</title>
+    <meta name="description" content="Cross-device, team-shared memory for AI coding agents. Every discovery, decision, and bugfix — captured automatically, available everywhere.">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Engrm — AI Memory for Developers">
+    <meta property="og:description" content="Cross-device, team-shared memory for AI coding agents. Every discovery, decision, and bugfix — captured automatically, available everywhere.">
+    <meta property="og:url" content="https://engrm.dev">
+    <meta property="og:site_name" content="Candengo">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Engrm — AI Memory for Developers">
+    <meta name="twitter:description" content="Cross-device, team-shared memory for AI coding agents. Every discovery, decision, and bugfix — captured automatically, available everywhere.">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Engrm",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "description": "Cross-device, team-shared memory for AI coding agents. Captures observations from AI-assisted coding sessions and syncs them via Candengo Vector.",
+        "offers": [
+            {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD",
+                "name": "Free"
+            },
+            {
+                "@type": "Offer",
+                "price": "12",
+                "priceCurrency": "USD",
+                "name": "Pro",
+                "billingIncrement": "P1M"
+            },
+            {
+                "@type": "Offer",
+                "price": "8",
+                "priceCurrency": "USD",
+                "name": "Team",
+                "billingIncrement": "P1M"
+            }
+        ],
+        "provider": {
+            "@type": "Organization",
+            "name": "Candengo",
+            "url": "https://candengo.com"
+        }
+    }
+    </script>
+
+    <style>
+        :root {
+            --primary: #00d4ff;
+            --secondary: #7b2cbf;
+            --accent: #f59e0b;
+            --emerald: #10b981;
+            --bg-dark: #06060e;
+            --bg-mid: #0c0c1e;
+            --bg-card: rgba(255,255,255,0.025);
+            --text: #ffffff;
+            --text-muted: rgba(255,255,255,0.55);
+            --text-secondary: rgba(255,255,255,0.75);
+            --border: rgba(255,255,255,0.07);
+            --glow: rgba(0, 212, 255, 0.25);
+            --glow-purple: rgba(123, 44, 191, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Grid overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Sparkle/shimmer animation on logo text */
+        @keyframes sparkle {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        @keyframes gradient-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 0;
+            background: rgba(6, 6, 14, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(
+                90deg,
+                var(--primary) 0%,
+                var(--secondary) 20%,
+                #fff 40%,
+                #fff 45%,
+                var(--secondary) 55%,
+                var(--primary) 100%
+            );
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: sparkle 4s linear infinite;
+        }
+
+        .logo-product {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 500;
+            padding-left: 10px;
+            border-left: 1px solid var(--border);
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover,
+        nav a.active {
+            color: var(--text);
+        }
+
+        nav a.active {
+            color: var(--primary);
+        }
+
+        .nav-cta {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            color: #fff !important;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .nav-cta:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--glow);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s, transform 0.2s;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--text);
+            transform: translateY(-2px);
+        }
+
+        /* Section headers */
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 60px;
+        }
+
+        .section-header h2 {
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--text), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        /* Gradient text utility */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ================== HERO ================== */
+        .hero {
+            padding: 160px 0 80px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(ellipse, var(--glow-purple) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--emerald);
+            margin-bottom: 32px;
+        }
+
+        .hero-badge .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--emerald);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        .hero h1 {
+            font-size: 72px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 .line1 {
+            display: block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h1 .line2 {
+            display: block;
+            font-weight: 300;
+            color: var(--text-muted);
+            -webkit-text-fill-color: var(--text-muted);
+        }
+
+        .hero-sub {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 650px;
+            margin: 0 auto 16px;
+            line-height: 1.7;
+        }
+
+        .hero-detail {
+            font-size: 15px;
+            color: var(--text-muted);
+            max-width: 620px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 64px;
+            flex-wrap: wrap;
+        }
+
+        .metrics-bar {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ================== PIPELINE ================== */
+        .pipeline {
+            padding: 100px 0;
+        }
+
+        .pipeline-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .pipeline-steps::before {
+            content: '';
+            position: absolute;
+            left: 32px;
+            top: 32px;
+            bottom: 32px;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+            opacity: 0.3;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            padding: 24px 0;
+            position: relative;
+        }
+
+        .step-number {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-content h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .step-content p {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* ================== FEATURES ================== */
+        .features {
+            padding: 100px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 212, 255, 0.08);
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        /* ================== MOAT ================== */
+        .moat {
+            padding: 100px 0;
+        }
+
+        .moat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        .moat-text h2 {
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--text), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .moat-text > p {
+            font-size: 17px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            line-height: 1.7;
+        }
+
+        .moat-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .moat-list li {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .moat-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        .moat-list li strong {
+            color: var(--text);
+        }
+
+        /* Code block with macOS chrome */
+        .code-window {
+            background: var(--bg-mid);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-titlebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .code-dot.red { background: #ff5f57; }
+        .code-dot.yellow { background: #febc2e; }
+        .code-dot.green { background: #28c840; }
+
+        .code-titlebar span {
+            margin-left: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .code-body {
+            padding: 20px 24px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        .code-body .comment {
+            color: var(--text-muted);
+        }
+
+        .code-body .command {
+            color: var(--primary);
+        }
+
+        .code-body .output {
+            color: var(--emerald);
+        }
+
+        /* ================== PRICING ================== */
+        .pricing {
+            padding: 100px 0;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 32px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 212, 255, 0.08);
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 0 40px var(--glow);
+            position: relative;
+        }
+
+        .pricing-card.featured::before {
+            content: 'Most Popular';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 16px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .pricing-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .pricing-price {
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pricing-price span {
+            font-size: 16px;
+            font-weight: 500;
+            -webkit-text-fill-color: var(--text-muted);
+        }
+
+        .pricing-period {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+
+        .pricing-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex: 1;
+            text-align: left;
+        }
+
+        .pricing-features li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .pricing-features li::before {
+            content: '\2713';
+            position: absolute;
+            left: 0;
+            color: var(--emerald);
+            font-weight: 700;
+        }
+
+        .pricing-card .btn-primary,
+        .pricing-card .btn-secondary {
+            width: 100%;
+            justify-content: center;
+            padding: 12px 24px;
+        }
+
+        /* ================== CTA ================== */
+        .cta-section {
+            padding: 100px 0;
+        }
+
+        .cta-card {
+            position: relative;
+            border-radius: 24px;
+            padding: 80px 40px;
+            text-align: center;
+            overflow: hidden;
+            background: var(--bg-mid);
+            border: 1px solid var(--border);
+        }
+
+        .cta-card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 26px;
+            background: conic-gradient(from 0deg, var(--primary), var(--secondary), var(--accent), var(--emerald), var(--primary));
+            z-index: -1;
+            animation: gradient-rotate 6s linear infinite;
+        }
+
+        .cta-card::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border-radius: 22px;
+            background: var(--bg-mid);
+            z-index: -1;
+        }
+
+        .cta-card h2 {
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-card p {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+
+        .cta-card .btn-primary {
+            margin-bottom: 16px;
+        }
+
+        .cta-card .cta-note {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 0;
+        }
+
+        /* ================== FOOTER ================== */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        footer .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .footer-logo {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .footer-copy {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .footer-links a {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text);
+        }
+
+        /* ================== RESPONSIVE ================== */
+        @media (max-width: 900px) {
+            .hero h1 {
+                font-size: 48px;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pricing-card:last-child {
+                grid-column: 1 / -1;
+                max-width: 400px;
+                margin: 0 auto;
+                width: 100%;
+            }
+
+            .moat-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .metrics-bar {
+                gap: 32px;
+            }
+
+            nav {
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero-sub {
+                font-size: 17px;
+            }
+
+            .section-header h2 {
+                font-size: 28px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+
+            .pricing-card:last-child {
+                max-width: none;
+            }
+
+            .hero-ctas {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .metrics-bar {
+                gap: 24px;
+            }
+
+            .metric {
+                min-width: 100px;
+            }
+
+            nav a:not(.nav-cta) {
+                display: none;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            nav.open a {
+                display: block;
+            }
+
+            .pipeline-steps::before {
+                left: 24px;
+            }
+
+            .step-number {
+                width: 48px;
+                height: 48px;
+                font-size: 22px;
+                border-radius: 12px;
+            }
+
+            .cta-card {
+                padding: 48px 24px;
+            }
+
+            .cta-card h2 {
+                font-size: 28px;
+            }
+
+            .moat-text h2 {
+                font-size: 28px;
+            }
+
+            footer .container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .footer-left {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <a href="/mem" class="logo">
+                <div class="logo-icon">M</div>
+                <span class="logo-text">Candengo</span>
+                <span class="logo-product">Mem</span>
+            </a>
+            <nav>
+                <a href="/">Vector</a>
+                <a href="/mem" class="active">Mem</a>
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="/portal/signup" class="nav-cta">Sign Up</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">
+                <span class="pulse-dot"></span>
+                AI Memory for Developers
+            </div>
+
+            <h1>
+                <span class="line1">Your AI Remembers.</span>
+                <span class="line2">Across Every Session.</span>
+            </h1>
+
+            <p class="hero-sub">Cross-device, team-shared memory for AI coding agents. Every discovery, decision, and bugfix &mdash; captured automatically, available everywhere.</p>
+
+            <p class="hero-detail">Engrm integrates with Claude Code, Codex CLI, Cursor, Windsurf, and any MCP-compatible agent. Your entire team shares context &mdash; no more repeating yourself to your AI.</p>
+
+            <div class="hero-ctas">
+                <a href="/portal/signup" class="btn-primary">Get Started Free &rarr;</a>
+                <a href="https://github.com/candengo/engrm" class="btn-secondary">View on GitHub</a>
+            </div>
+
+            <div class="metrics-bar">
+                <div class="metric">
+                    <div class="metric-value">&lt; 5ms</div>
+                    <div class="metric-label">Local Search</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">Any</div>
+                    <div class="metric-label">MCP Agent</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">10K</div>
+                    <div class="metric-label">Free Observations</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">&infin;</div>
+                    <div class="metric-label">Offline-First</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="pipeline">
+        <div class="container">
+            <div class="section-header">
+                <h2>How It Works</h2>
+                <p>From install to shared team memory in five steps. No config files, no boilerplate.</p>
+            </div>
+
+            <div class="pipeline-steps">
+                <div class="pipeline-step">
+                    <div class="step-number">&#x1F50C;</div>
+                    <div class="step-content">
+                        <h3>Connect</h3>
+                        <p>Install the MCP server, connect to your agent in one command. Zero config, instant setup.</p>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="step-number">&#x1F4A1;</div>
+                    <div class="step-content">
+                        <h3>Capture</h3>
+                        <p>Observations captured automatically via hooks &mdash; bugfixes, decisions, patterns, and architectural insights.</p>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="step-number">&#x1F9E0;</div>
+                    <div class="step-content">
+                        <h3>Remember</h3>
+                        <p>Smart context injection at session start with token-budgeted, tiered delivery. The most relevant knowledge first.</p>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="step-number">&#x1F504;</div>
+                    <div class="step-content">
+                        <h3>Sync</h3>
+                        <p>Offline-first SQLite syncs to Candengo Vector for cross-device, cross-team access. Never miss a beat.</p>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="step-number">&#x1F50D;</div>
+                    <div class="step-content">
+                        <h3>Search</h3>
+                        <p>Hybrid local FTS5 + remote vector search with intelligent reranking. Find anything in milliseconds.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Built for Real Developer Workflows</h2>
+                <p>Every feature designed around how teams actually build software with AI.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F50C;</span>
+                    <h3>Zero-Config Setup</h3>
+                    <p><code>npx engrm init</code> opens your browser, authenticates, and configures everything. Working memory in under 2 minutes.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F9E0;</span>
+                    <h3>Smart Context Injection</h3>
+                    <p>Token-budgeted context with facts-first formatting. Top observations get detail, rest get titles. 50% denser than narrative prose.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F504;</span>
+                    <h3>Offline-First Sync</h3>
+                    <p>SQLite is always available. Sync outbox queues for Candengo Vector when online. Never lose work to connectivity issues.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F465;</span>
+                    <h3>Team Shared Memory</h3>
+                    <p>Your whole team's discoveries in one namespace. Debug a production issue? Everyone's AI knows about it next session.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F512;</span>
+                    <h3>Secret Scrubbing</h3>
+                    <p>API keys, passwords, connection strings &mdash; automatically scrubbed before storage. Custom patterns for org-specific secrets.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F916;</span>
+                    <h3>Multi-Agent Support</h3>
+                    <p>Works with Claude Code, Codex CLI, Cursor, Windsurf, Cline, and any MCP-compatible agent. Same memory, any tool.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F4CA;</span>
+                    <h3>Quality Scoring</h3>
+                    <p>Not all observations are equal. Quality scoring (0&ndash;1) surfaces the most valuable knowledge and filters noise automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F4CC;</span>
+                    <h3>Knowledge Lifecycle</h3>
+                    <p>Active &rarr; Aging &rarr; Archived &rarr; Compacted. Pinned observations never age. Digests summarize old sessions into concise knowledge.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">&#x1F517;</span>
+                    <h3>Knowledge Supersession</h3>
+                    <p>When understanding evolves, new observations supersede old ones. No stale knowledge polluting your context.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MOAT Section -->
+    <section class="moat">
+        <div class="container">
+            <div class="moat-grid">
+                <div class="moat-text">
+                    <h2>The Unfair Advantage</h2>
+                    <p>Most AI memory tools are single-user, single-agent, single-machine. Engrm is none of those.</p>
+
+                    <ul class="moat-list">
+                        <li><strong>Cross-device sync</strong> &mdash; Your laptop and desktop share the same memory via Candengo Vector</li>
+                        <li><strong>Team intelligence</strong> &mdash; When a teammate discovers a gotcha, every AI on the team knows about it</li>
+                        <li><strong>Multi-agent</strong> &mdash; Switch between Claude Code and Codex CLI? Your memory follows you</li>
+                        <li><strong>Offline-first</strong> &mdash; SQLite works without internet. Sync catches up when you're back online</li>
+                        <li><strong>Quality over quantity</strong> &mdash; Smart scoring, dedup, and compaction keep signal high and noise low</li>
+                        <li><strong>Enterprise-ready</strong> &mdash; Secret scrubbing, sensitivity levels, self-hosted option, team admin</li>
+                    </ul>
+                </div>
+
+                <div class="code-window">
+                    <div class="code-titlebar">
+                        <div class="code-dot red"></div>
+                        <div class="code-dot yellow"></div>
+                        <div class="code-dot green"></div>
+                        <span>terminal</span>
+                    </div>
+                    <div class="code-body">
+                        <div class="comment"># Install in one command</div>
+                        <div class="command">$ npx engrm init</div>
+                        <br>
+                        <div class="comment"># Your AI now remembers everything</div>
+                        <div class="comment"># Session 1: "Fixed the auth bug in user.ts"</div>
+                        <div class="comment"># Session 2: "I see you fixed an auth bug yesterday..."</div>
+                        <br>
+                        <div class="comment"># Works across machines</div>
+                        <div class="command">$ ssh dev-server</div>
+                        <div class="comment"># Same memory, same context</div>
+                        <br>
+                        <div class="comment"># Works across agents</div>
+                        <div class="command">$ claude</div>
+                        <div class="output">&#10003; 12 observations loaded from Engrm</div>
+                        <div class="command">$ codex</div>
+                        <div class="output">&#10003; 12 observations loaded from Engrm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>Simple, Transparent Pricing</h2>
+                <p>Start free. Scale as your team grows.</p>
+            </div>
+
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-name">Free</div>
+                    <div class="pricing-price">$0</div>
+                    <div class="pricing-period">Free forever</div>
+                    <ul class="pricing-features">
+                        <li>10,000 observations</li>
+                        <li>1 user</li>
+                        <li>Local + cloud sync</li>
+                        <li>All MCP agents</li>
+                        <li>Community support</li>
+                    </ul>
+                    <a href="/portal/signup" class="btn-secondary">Get Started</a>
+                </div>
+
+                <div class="pricing-card featured">
+                    <div class="pricing-name">Pro</div>
+                    <div class="pricing-price">$12<span>/mo</span></div>
+                    <div class="pricing-period">Per user, billed monthly</div>
+                    <ul class="pricing-features">
+                        <li>100,000 observations</li>
+                        <li>1 user</li>
+                        <li>Priority sync</li>
+                        <li>Advanced analytics</li>
+                        <li>Email support</li>
+                    </ul>
+                    <a href="/portal/signup" class="btn-primary">Start Free Trial</a>
+                </div>
+
+                <div class="pricing-card">
+                    <div class="pricing-name">Team</div>
+                    <div class="pricing-price">$8<span>/user/mo</span></div>
+                    <div class="pricing-period">Billed monthly</div>
+                    <ul class="pricing-features">
+                        <li>Unlimited observations</li>
+                        <li>Shared team namespace</li>
+                        <li>Admin dashboard</li>
+                        <li>SSO / SAML</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <a href="/portal/signup" class="btn-primary">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-card">
+                <h2>Give Your AI a Memory</h2>
+                <p>Set up in 2 minutes. Free tier, no credit card required.</p>
+                <a href="/portal/signup" class="btn-primary">Get Started Free &rarr;</a>
+                <p class="cta-note">Works with Claude Code, Codex CLI, Cursor, Windsurf, and more</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-left">
+                <a href="/" class="footer-logo">Candengo</a>
+                <span class="footer-copy">&copy; 2025 Candengo. All rights reserved.</span>
+            </div>
+            <div class="footer-links">
+                <a href="/">Vector</a>
+                <a href="/mem">Mem</a>
+                <a href="https://github.com/candengo/engrm">GitHub</a>
+                <a href="mailto:sales@candengo.com">Contact Sales</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

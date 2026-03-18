@@ -1,0 +1,68 @@
+{
+  "name": "node-security",
+  "description": "Node.js and JavaScript security patterns and common vulnerabilities",
+  "version": "1.0.0",
+  "stacks": ["javascript", "bun", "typescript"],
+  "observations": [
+    {
+      "type": "pattern",
+      "title": "Always validate and sanitize user input at boundaries",
+      "narrative": "Never trust input from HTTP requests, WebSocket messages, or CLI arguments. Use Zod, Joi, or similar to validate shape and types before processing.",
+      "concepts": ["security", "input-validation", "xss", "injection"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Prototype pollution via object spread and Object.assign",
+      "narrative": "Merging user-controlled objects with Object.assign or spread can overwrite __proto__. Use Object.create(null) for lookup objects, or validate keys before merging.",
+      "concepts": ["security", "prototype-pollution", "javascript"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use parameterized queries — never interpolate SQL",
+      "narrative": "Template literals in SQL queries enable SQL injection. Always use parameterized queries: db.query('SELECT * FROM users WHERE id = ?', [id]).",
+      "concepts": ["security", "sql-injection", "database", "parameterized"]
+    },
+    {
+      "type": "pattern",
+      "title": "Store secrets in environment variables, never in code",
+      "narrative": "API keys, database passwords, and tokens must come from env vars or a secret manager. Add .env to .gitignore. Use dotenv or platform-native secret injection.",
+      "concepts": ["security", "secrets", "environment-variables"]
+    },
+    {
+      "type": "pattern",
+      "title": "Set security headers: CSP, HSTS, X-Frame-Options",
+      "narrative": "Configure Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, and X-Frame-Options on all HTTP responses. Use helmet middleware in Express.",
+      "concepts": ["security", "headers", "csp", "hsts"]
+    },
+    {
+      "type": "bugfix",
+      "title": "SSRF risk from user-supplied URLs in server fetch",
+      "narrative": "If your server fetches URLs from user input, attackers can reach internal services (169.254.169.254, localhost). Validate URLs against an allowlist of domains and block private IP ranges.",
+      "concepts": ["security", "ssrf", "fetch", "url-validation"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use bcrypt or argon2 for password hashing",
+      "narrative": "Never store passwords with SHA-256 or MD5 — they're too fast. Use bcrypt (cost factor 10+) or argon2id. These are deliberately slow and resistant to GPU attacks.",
+      "concepts": ["security", "passwords", "hashing", "bcrypt"]
+    },
+    {
+      "type": "pattern",
+      "title": "Rate limit authentication endpoints",
+      "narrative": "Apply strict rate limiting (e.g., 5 attempts per minute per IP) to login, registration, and password reset endpoints. Use sliding window counters, not simple token buckets.",
+      "concepts": ["security", "rate-limiting", "brute-force", "authentication"]
+    },
+    {
+      "type": "bugfix",
+      "title": "Path traversal in file operations",
+      "narrative": "User-controlled file paths like '../../../etc/passwd' can escape intended directories. Always resolve paths with path.resolve() and verify the result starts with your allowed directory.",
+      "concepts": ["security", "path-traversal", "file-access"]
+    },
+    {
+      "type": "pattern",
+      "title": "Use crypto.timingSafeEqual for secret comparison",
+      "narrative": "Comparing secrets with === is vulnerable to timing attacks. Use crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)) for constant-time comparison of tokens and signatures.",
+      "concepts": ["security", "timing-attack", "crypto", "comparison"]
+    }
+  ]
+}

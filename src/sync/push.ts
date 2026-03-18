@@ -1,0 +1,236 @@
+/**
+ * Push engine: flush sync outbox to Candengo Vector.
+ *
+ * Reads pending entries from the outbox, builds Vector documents,
+ * and pushes them via the REST client. Supports batch operations.
+ */
+
+import type { MemDatabase, ObservationRow, SessionSummaryRow } from "../storage/sqlite.js";
+import type { Config } from "../config.js";
+import {
+  getPendingEntries,
+  markSyncing,
+  markSynced,
+  markFailed,
+} from "../storage/outbox.js";
+import { VectorClient, type VectorDocument } from "./client.js";
+import { buildSourceId } from "./auth.js";
+
+export interface PushResult {
+  pushed: number;
+  failed: number;
+  skipped: number;
+}
+
+/**
+ * Build a Candengo Vector document from a local observation.
+ */
+export function buildVectorDocument(
+  obs: ObservationRow,
+  config: Config,
+  project: { canonical_id: string; name: string }
+): VectorDocument {
+  // Compose content: title + narrative + facts
+  const parts = [obs.title];
+  if (obs.narrative) parts.push(obs.narrative);
+  if (obs.facts) {
+    try {
+      const facts = JSON.parse(obs.facts) as string[];
+      if (Array.isArray(facts) && facts.length > 0) {
+        parts.push("Facts:\n" + facts.map((f) => `- ${f}`).join("\n"));
+      }
+    } catch {
+      // Not valid JSON — use as-is
+      parts.push(obs.facts);
+    }
+  }
+
+  return {
+    site_id: config.site_id,
+    namespace: config.namespace,
+    source_type: obs.type,
+    source_id: buildSourceId(config, obs.id),
+    content: parts.join("\n\n"),
+    metadata: {
+      project_canonical: project.canonical_id,
+      project_name: project.name,
+      user_id: obs.user_id,
+      device_id: obs.device_id,
+      device_name: require("node:os").hostname(),
+      agent: obs.agent,
+      title: obs.title,
+      narrative: obs.narrative,
+      type: obs.type,
+      quality: obs.quality,
+      facts: obs.facts ? JSON.parse(obs.facts) : [],
+      concepts: obs.concepts ? JSON.parse(obs.concepts) : [],
+      files_read: obs.files_read ? JSON.parse(obs.files_read) : [],
+      files_modified: obs.files_modified
+        ? JSON.parse(obs.files_modified)
+        : [],
+      session_id: obs.session_id,
+      created_at_epoch: obs.created_at_epoch,
+      created_at: obs.created_at,
+      sensitivity: obs.sensitivity,
+      local_id: obs.id,
+    },
+  };
+}
+
+/**
+ * Build a Candengo Vector document from a session summary.
+ */
+export function buildSummaryVectorDocument(
+  summary: SessionSummaryRow,
+  config: Config,
+  project: { canonical_id: string; name: string }
+): VectorDocument {
+  const parts: string[] = [];
+  if (summary.request) parts.push(`Request: ${summary.request}`);
+  if (summary.learned) parts.push(`Learned: ${summary.learned}`);
+  if (summary.completed) parts.push(`Completed: ${summary.completed}`);
+
+  return {
+    site_id: config.site_id,
+    namespace: config.namespace,
+    source_type: "summary",
+    source_id: buildSourceId(config, summary.id, "summary"),
+    content: parts.join("\n\n"),
+    metadata: {
+      project_canonical: project.canonical_id,
+      project_name: project.name,
+      user_id: summary.user_id,
+      session_id: summary.session_id,
+      created_at_epoch: summary.created_at_epoch,
+      local_id: summary.id,
+    },
+  };
+}
+
+/**
+ * Push pending outbox entries to Candengo Vector.
+ */
+export async function pushOutbox(
+  db: MemDatabase,
+  client: VectorClient,
+  config: Config,
+  batchSize: number = 50
+): Promise<PushResult> {
+  const entries = getPendingEntries(db, batchSize);
+
+  let pushed = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  // Collect documents for batch ingest
+  const batch: { entryId: number; doc: VectorDocument }[] = [];
+
+  for (const entry of entries) {
+    if (entry.record_type === "summary") {
+      const summary = db.getSessionSummary(
+        // record_id is the summary row id — look it up
+        (() => {
+          const row = db.db
+            .query<{ session_id: string }, [number]>(
+              "SELECT session_id FROM session_summaries WHERE id = ?"
+            )
+            .get(entry.record_id);
+          return row?.session_id ?? "";
+        })()
+      );
+
+      if (!summary || !summary.project_id) {
+        markSynced(db, entry.id);
+        skipped++;
+        continue;
+      }
+
+      const project = db.getProjectById(summary.project_id);
+      if (!project) {
+        markSynced(db, entry.id);
+        skipped++;
+        continue;
+      }
+
+      markSyncing(db, entry.id);
+      const doc = buildSummaryVectorDocument(summary, config, {
+        canonical_id: project.canonical_id,
+        name: project.name,
+      });
+      batch.push({ entryId: entry.id, doc });
+      continue;
+    }
+
+    if (entry.record_type !== "observation") {
+      skipped++;
+      continue;
+    }
+
+    const obs = db.getObservationById(entry.record_id);
+    if (!obs) {
+      // Observation was deleted
+      markSynced(db, entry.id);
+      skipped++;
+      continue;
+    }
+
+    // Don't sync secret observations
+    if (obs.sensitivity === "secret") {
+      markSynced(db, entry.id);
+      skipped++;
+      continue;
+    }
+
+    // Don't sync archived/purged observations (they get removed separately)
+    if (obs.lifecycle === "archived" || obs.lifecycle === "purged") {
+      markSynced(db, entry.id);
+      skipped++;
+      continue;
+    }
+
+    const project = db.getProjectById(obs.project_id);
+    if (!project) {
+      markSynced(db, entry.id);
+      skipped++;
+      continue;
+    }
+
+    markSyncing(db, entry.id);
+
+    const doc = buildVectorDocument(obs, config, {
+      canonical_id: project.canonical_id,
+      name: project.name,
+    });
+
+    batch.push({ entryId: entry.id, doc });
+  }
+
+  if (batch.length === 0) return { pushed, failed, skipped };
+
+  // Try batch ingest first
+  try {
+    await client.batchIngest(batch.map((b) => b.doc));
+    for (const { entryId } of batch) {
+      markSynced(db, entryId);
+      pushed++;
+    }
+  } catch {
+    // Batch failed — fall back to individual ingest
+    for (const { entryId, doc } of batch) {
+      try {
+        await client.ingest(doc);
+        markSynced(db, entryId);
+        pushed++;
+      } catch (err) {
+        markFailed(
+          db,
+          entryId,
+          err instanceof Error ? err.message : String(err)
+        );
+        failed++;
+      }
+    }
+  }
+
+  return { pushed, failed, skipped };
+}

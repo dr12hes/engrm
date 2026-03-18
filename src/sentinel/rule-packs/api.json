@@ -1,0 +1,16 @@
+{
+  "name": "api",
+  "description": "REST API design and safety standards",
+  "observations": [
+    { "type": "standard", "title": "Validate all request input at the API boundary", "facts": ["Use schema validation (Zod, Joi, JSON Schema)", "Reject unknown fields to prevent mass assignment", "Return 422 with field-level error details"] },
+    { "type": "standard", "title": "Always paginate list endpoints — never return unbounded results", "facts": ["Default limit 20-50, max 100", "Use cursor-based pagination for real-time data", "Return total count and next cursor"] },
+    { "type": "standard", "title": "Use consistent error response format across all endpoints", "facts": ["Include: status, error code (machine-readable), message (human-readable)", "Optional: details array for validation errors", "Document all possible error codes"] },
+    { "type": "standard", "title": "Rate limit all API endpoints", "facts": ["Return 429 with Retry-After header when exceeded", "Use X-RateLimit-Limit and X-RateLimit-Remaining headers", "Different limits for authenticated vs anonymous"] },
+    { "type": "standard", "title": "POST/PUT/PATCH must validate Content-Type header", "facts": ["Reject requests without proper Content-Type", "Accept: application/json for JSON APIs", "Return 415 Unsupported Media Type for wrong types"] },
+    { "type": "standard", "title": "Implement idempotency for POST endpoints that create resources", "facts": ["Use Idempotency-Key header", "Prevent duplicate creation on retry", "Critical for payment and order endpoints"] },
+    { "type": "standard", "title": "Set request size limits to prevent abuse", "facts": ["Limit request body size (e.g., 1MB default)", "Set separate limits for file uploads", "Return 413 Payload Too Large when exceeded"] },
+    { "type": "standard", "title": "Include request ID in every response for traceability", "facts": ["Generate UUID in middleware", "Return as X-Request-Id header", "Include in all log entries for the request"] },
+    { "type": "standard", "title": "Implement request timeouts on all outgoing calls", "facts": ["Set connect timeout (5s) and read timeout (30s)", "Use AbortController for fetch calls", "Circuit breaker for frequently failing dependencies"] },
+    { "type": "standard", "title": "Soft delete resources — preserve data for audit and recovery", "facts": ["Use deleted_at timestamp instead of hard DELETE", "Filter soft-deleted records in all queries", "Provide purge endpoint for permanent deletion (admin only)"] }
+  ]
+}
