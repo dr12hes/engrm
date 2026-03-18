@@ -16,6 +16,7 @@ import {
   buildSessionContext,
   formatContextForInjection,
 } from "../src/context/inject.js";
+import type { InjectedContext } from "../src/context/inject.js";
 import { detectStacksFromProject } from "../src/telemetry/stack-detect.js";
 import { computeAndSaveFingerprint } from "../src/telemetry/config-fingerprint.js";
 import { recommendPacks } from "../src/packs/recommender.js";
@@ -113,6 +114,7 @@ async function main(): Promise<void> {
         securityFindings: context.securityFindings?.length ?? 0,
         unreadMessages: msgCount,
         synced: syncedCount,
+        context,
       });
 
       // Pack recommendations appended to context
@@ -167,6 +169,7 @@ interface SplashData {
   securityFindings: number;
   unreadMessages: number;
   synced: number;
+  context: InjectedContext;
 }
 
 function formatSplashScreen(data: SplashData): string {
@@ -210,9 +213,284 @@ function formatSplashScreen(data: SplashData): string {
   // Dashboard link
   lines.push("");
   lines.push(`  ${c.dim}Dashboard: https://engrm.dev/dashboard${c.reset}`);
+
+  const brief = formatVisibleStartupBrief(data.context);
+  if (brief.length > 0) {
+    lines.push("");
+    lines.push(`  ${c.bold}Startup brief${c.reset}`);
+    for (const line of brief) {
+      lines.push(`  ${line}`);
+    }
+  }
+
   lines.push("");
 
   return lines.join("\n");
+}
+
+function formatVisibleStartupBrief(context: InjectedContext): string[] {
+  const lines: string[] = [];
+  const latest = pickBestSummary(context);
+  const observationFallbacks = buildObservationFallbacks(context);
+
+  if (latest) {
+    const sections: Array<[string, string | null, number]> = [
+      ["Request", chooseRequest(latest.request, observationFallbacks.request), 1],
+      ["Investigated", chooseSection(latest.investigated, observationFallbacks.investigated, "Investigated"), 2],
+      ["Learned", latest.learned, 2],
+      ["Completed", chooseSection(latest.completed, observationFallbacks.completed, "Completed"), 2],
+      ["Next Steps", latest.next_steps, 2],
+    ];
+
+    for (const [label, value, maxItems] of sections) {
+      const formatted = toSplashLines(value, maxItems ?? 2);
+      if (formatted.length > 0) {
+        lines.push(`${c.cyan}${label}:${c.reset}`);
+        for (const item of formatted) {
+          lines.push(`  ${item}`);
+        }
+      }
+    }
+  }
+
+  const stale = pickRelevantStaleDecision(context, latest);
+  if (stale) {
+    lines.push(
+      `${c.yellow}Watch:${c.reset} ${truncateInline(
+        `Decision still looks unfinished: ${stale.title}`,
+        170
+      )}`
+    );
+  }
+
+  if (lines.length === 0 && context.observations.length > 0) {
+    const top = context.observations
+      .filter((obs) => !looksLikeFileOperationTitle(obs.title))
+      .slice(0, 2);
+    for (const obs of top) {
+      lines.push(
+        `${c.cyan}${capitalize(obs.type)}:${c.reset} ${truncateInline(obs.title, 170)}`
+      );
+    }
+  }
+
+  return lines.slice(0, 10);
+}
+
+function toSplashLines(value: string | null, maxItems: number): string[] {
+  if (!value) return [];
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map((line) => dedupeFragments(line))
+    .filter(Boolean)
+    .sort((a, b) => scoreSplashLine(b) - scoreSplashLine(a))
+    .slice(0, maxItems)
+    .map((line) => `- ${truncateInline(line, 140)}`);
+  return dedupeFragmentsInLines(lines);
+}
+
+function pickBestSummary(context: InjectedContext) {
+  const summaries = context.summaries || [];
+  if (!summaries.length) return null;
+  return [...summaries].sort((a, b) => scoreSummary(b) - scoreSummary(a))[0] ?? null;
+}
+
+function scoreSummary(summary: NonNullable<InjectedContext["summaries"]>[number]): number {
+  let score = 0;
+  if (summary.request) score += 3;
+  if (summary.investigated) score += 4;
+  if (summary.learned) score += 5;
+  if (summary.completed) score += 5;
+  if (summary.next_steps) score += 4;
+  score += Math.min(4, sectionItemCount(summary.completed) + sectionItemCount(summary.learned));
+  return score;
+}
+
+function sectionItemCount(value: string | null): number {
+  if (!value) return 0;
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean).length;
+}
+
+function dedupeFragments(text: string): string {
+  const parts = text
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const part of parts) {
+    const normalized = part.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    deduped.push(part);
+  }
+  return deduped.join("; ");
+}
+
+function dedupeFragmentsInLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const line of lines) {
+    const normalized = line.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    deduped.push(line);
+  }
+  return deduped;
+}
+
+function chooseRequest(primary: string | null, fallback: string | null): string | null {
+  if (primary && !looksLikeFileOperationTitle(primary)) return primary;
+  return fallback;
+}
+
+function chooseSection(
+  primary: string | null,
+  fallback: string | null,
+  label: "Investigated" | "Completed"
+): string | null {
+  if (!primary) return fallback;
+  if (label === "Completed" && isWeakCompletedSection(primary)) return fallback || primary;
+  if (label === "Investigated" && sectionItemCount(primary) === 0) return fallback;
+  return primary;
+}
+
+function isWeakCompletedSection(value: string): boolean {
+  const items = value
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+    .filter(Boolean);
+  if (!items.length) return true;
+  const weakCount = items.filter((item) => looksLikeFileOperationTitle(item)).length;
+  return weakCount === items.length;
+}
+
+function looksLikeFileOperationTitle(value: string): boolean {
+  return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
+    value.trim()
+  );
+}
+
+function scoreSplashLine(value: string): number {
+  let score = 0;
+  if (!looksLikeFileOperationTitle(value)) score += 2;
+  if (/[:;]/.test(value)) score += 1;
+  if (value.length > 30) score += 0.5;
+  return score;
+}
+
+function buildObservationFallbacks(context: InjectedContext): {
+  request: string | null;
+  investigated: string | null;
+  completed: string | null;
+} {
+  const request = context.observations.find((obs) => !looksLikeFileOperationTitle(obs.title))?.title ?? null;
+
+  const investigated = collectObservationTitles(
+    context,
+    (obs) => obs.type === "discovery",
+    2
+  );
+
+  const completed = collectObservationTitles(
+    context,
+    (obs) =>
+      ["feature", "refactor", "change", "digest"].includes(obs.type) &&
+      !looksLikeFileOperationTitle(obs.title),
+    2
+  );
+
+  return {
+    request,
+    investigated,
+    completed,
+  };
+}
+
+function collectObservationTitles(
+  context: InjectedContext,
+  predicate: (obs: InjectedContext["observations"][number]) => boolean,
+  limit: number
+): string | null {
+  const seen = new Set<string>();
+  const picked: string[] = [];
+  for (const obs of context.observations) {
+    if (!predicate(obs)) continue;
+    const normalized = obs.title.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    picked.push(`- ${obs.title}`);
+    if (picked.length >= limit) break;
+  }
+  return picked.length ? picked.join("\n") : null;
+}
+
+function pickRelevantStaleDecision(
+  context: InjectedContext,
+  summary: NonNullable<InjectedContext["summaries"]>[number] | null
+) {
+  const stale = context.staleDecisions || [];
+  if (!stale.length) return null;
+  const summaryText = [
+    summary?.request,
+    summary?.investigated,
+    summary?.learned,
+    summary?.completed,
+    summary?.next_steps,
+  ].filter(Boolean).join(" ");
+
+  let best: typeof stale[number] | null = null;
+  let bestScore = 0;
+  for (const item of stale) {
+    if ((item.days_ago ?? 999) > 21) continue;
+    const overlap = keywordOverlap(item.title || "", summaryText);
+    const similarity = item.best_match_similarity ?? 0;
+    const score = overlap * 4 + similarity;
+    if (score > bestScore && overlap > 0) {
+      best = item;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function keywordOverlap(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const stop = new Set([
+    "the", "and", "for", "with", "from", "into", "this", "that", "was", "were",
+    "have", "has", "had", "but", "not", "you", "your", "our", "their", "about",
+    "added", "fixed", "created", "updated", "modified", "changed", "investigate",
+    "next", "steps", "decision", "still", "looks", "unfinished"
+  ]);
+  const wordsA = new Set(
+    a.toLowerCase().match(/[a-z0-9_+-]{4,}/g)?.filter((w) => !stop.has(w)) || []
+  );
+  const wordsB = new Set(
+    b.toLowerCase().match(/[a-z0-9_+-]{4,}/g)?.filter((w) => !stop.has(w)) || []
+  );
+  if (!wordsA.size || !wordsB.size) return 0;
+  let overlap = 0;
+  for (const word of wordsA) {
+    if (wordsB.has(word)) overlap++;
+  }
+  return overlap / Math.max(1, Math.min(wordsA.size, wordsB.size));
+}
+
+function truncateInline(text: string, maxLen: number): string {
+  const compact = text.replace(/\s+/g, " ").trim();
+  if (compact.length <= maxLen) return compact;
+  return `${compact.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
+function capitalize(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 runHook("session-start", main);

@@ -1,0 +1,37 @@
+{
+  "id": "engrm",
+  "name": "Engrm",
+  "description": "Persistent project memory, startup briefs, and delivery review for OpenClaw.",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "description": "Enable the Engrm plugin",
+        "default": true
+      },
+      "autoStartupBrief": {
+        "type": "boolean",
+        "description": "Inject a short Engrm project brief before prompt build",
+        "default": true
+      },
+      "autoSessionDigest": {
+        "type": "boolean",
+        "description": "Save a digest and session summary after successful agent runs",
+        "default": true
+      },
+      "baseUrl": {
+        "type": "string",
+        "description": "Engrm base URL for browser connect and provisioning",
+        "default": "https://engrm.dev"
+      },
+      "maxRelevantObservations": {
+        "type": "number",
+        "description": "Maximum relevant observations to inject into the startup brief",
+        "default": 4
+      }
+    }
+  }
+}

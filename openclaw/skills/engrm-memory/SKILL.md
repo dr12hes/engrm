@@ -8,6 +8,27 @@ description: Use Engrm memory deliberately before coding, during coding, and whe
 Use this skill when the user is working on an existing codebase and continuity
 matters more than a cold start.
 
+## Before you start
+
+Use Engrm only if it is already connected and available in the current
+environment.
+
+If Engrm is not available, say that Engrm memory is not connected on this
+machine and continue without inventing fallback commands or fake setup steps.
+
+## Command guardrails
+
+Do not invent Engrm CLI commands like:
+
+- `engrm search`
+- `engrm save`
+- `engrm timeline`
+
+Those are not normal Engrm CLI commands.
+
+Memory search, timeline, save, recent activity, and stats are Engrm
+tool/workflow capabilities, not generic shell commands.
+
 ## What this skill is for
 
 - Pull relevant prior knowledge into the current session.

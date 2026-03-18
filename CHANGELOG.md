@@ -4,6 +4,18 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.5
+
+### Changed
+
+- Claude `SessionStart` startup brief now picks the richest recent session summary, deduplicates repeated clauses, and suppresses irrelevant stale-decision warnings
+
+## 0.4.4
+
+### Changed
+
+- Claude `SessionStart` splash now shows a visible startup brief with `Learned`, `Completed`, `Next Steps`, and a `Watch` line instead of only the thin status banner
+
 ## 0.4.3
 
 ### Added

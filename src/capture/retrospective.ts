@@ -61,13 +61,10 @@ function extractInvestigated(observations: ObservationRow[]): string | null {
   const discoveries = observations.filter((o) => o.type === "discovery");
   if (discoveries.length === 0) return null;
 
-  return discoveries
-    .slice(0, 5)
-    .map((o) => {
-      const facts = extractTopFacts(o, 2);
-      return facts ? `- ${o.title}\n${facts}` : `- ${o.title}`;
-    })
-    .join("\n");
+  return formatObservationGroup(discoveries, {
+    limit: 4,
+    factsPerItem: 2,
+  });
 }
 
 /**
@@ -79,13 +76,10 @@ function extractLearned(observations: ObservationRow[]): string | null {
   const learned = observations.filter((o) => learnTypes.has(o.type));
   if (learned.length === 0) return null;
 
-  return learned
-    .slice(0, 5)
-    .map((o) => {
-      const facts = extractTopFacts(o, 2);
-      return facts ? `- ${o.title}\n${facts}` : `- ${o.title}`;
-    })
-    .join("\n");
+  return formatObservationGroup(learned, {
+    limit: 4,
+    factsPerItem: 2,
+  });
 }
 
 /**
@@ -96,18 +90,17 @@ function extractCompleted(observations: ObservationRow[]): string | null {
   const completed = observations.filter((o) => completeTypes.has(o.type));
   if (completed.length === 0) return null;
 
-  // For completed items, include file context when available
-  return completed
-    .slice(0, 5)
-    .map((o) => {
-      const files = o.files_modified ? parseJsonArray(o.files_modified) : [];
-      const fileCtx =
-        files.length > 0
-          ? ` (${files.slice(0, 2).map((f) => f.split("/").pop()).join(", ")})`
-          : "";
-      return `- ${o.title}${fileCtx}`;
-    })
-    .join("\n");
+  const prioritized = dedupeObservationsByTitle(completed)
+    .sort((a, b) => scoreCompletedObservation(b) - scoreCompletedObservation(a))
+    .slice(0, 4);
+
+  const lines = prioritized.map((o) => {
+    const title = normalizeCompletedTitle(o.title, o.files_modified);
+    const facts = extractTopFacts(o, 1);
+    return facts ? `- ${title}\n${facts}` : `- ${title}`;
+  });
+
+  return dedupeBulletLines(lines).join("\n");
 }
 
 /**
@@ -136,15 +129,89 @@ function extractNextSteps(observations: ObservationRow[]): string | null {
     .join("\n");
 }
 
+function formatObservationGroup(
+  observations: ObservationRow[],
+  options: { limit: number; factsPerItem: number }
+): string | null {
+  const lines = dedupeObservationsByTitle(observations)
+    .slice(0, options.limit)
+    .map((o) => {
+      const facts = extractTopFacts(o, options.factsPerItem);
+      return facts ? `- ${o.title}\n${facts}` : `- ${o.title}`;
+    });
+  const deduped = dedupeBulletLines(lines);
+  return deduped.length ? deduped.join("\n") : null;
+}
+
+function dedupeBulletLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const line of lines) {
+    const normalized = line
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    deduped.push(line);
+  }
+  return deduped;
+}
+
+function dedupeObservationsByTitle(observations: ObservationRow[]): ObservationRow[] {
+  const seen = new Set<string>();
+  const deduped: ObservationRow[] = [];
+  for (const obs of observations) {
+    const normalized = normalizeObservationKey(obs.title);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    deduped.push(obs);
+  }
+  return deduped;
+}
+
+function scoreCompletedObservation(obs: ObservationRow): number {
+  let score = obs.quality || 0;
+  if (obs.type === "feature") score += 0.5;
+  if (obs.type === "refactor") score += 0.2;
+  if (hasMeaningfulFacts(obs)) score += 0.4;
+  if (looksLikeFileOperation(obs.title)) score -= 0.6;
+  if (obs.narrative && obs.narrative.length > 80) score += 0.2;
+  return score;
+}
+
+function hasMeaningfulFacts(obs: ObservationRow): boolean {
+  return parseJsonArray(obs.facts).some((fact) => fact.trim().length > 20);
+}
+
+function looksLikeFileOperation(title: string): boolean {
+  return /^(modified|updated|edited|touched|changed)\s+[A-Za-z0-9_.\-\/]+$/i.test(title.trim());
+}
+
+function normalizeCompletedTitle(title: string, filesModified: string | null): string {
+  const trimmed = title.trim();
+  if (!trimmed) return "Completed work";
+  if (!looksLikeFileOperation(trimmed)) return trimmed;
+
+  const files = parseJsonArray(filesModified);
+  const filename = files[0]?.split("/").pop();
+  if (filename) {
+    return `Updated implementation in ${filename}`;
+  }
+  return trimmed;
+}
+
 /**
  * Extract top N facts from an observation's JSON facts array.
  * Returns indented bullet points or null.
  */
 function extractTopFacts(obs: ObservationRow, n: number): string | null {
-  const facts = parseJsonArray(obs.facts);
+  const facts = parseJsonArray(obs.facts)
+    .filter((fact) => isUsefulFact(fact, obs.title))
+    .slice(0, n);
   if (facts.length === 0) return null;
   return facts
-    .slice(0, n)
     .map((f) => `    ${f}`)
     .join("\n");
 }
@@ -163,4 +230,27 @@ function parseJsonArray(json: string | null): string[] {
     // Not valid JSON
   }
   return [];
+}
+
+function isUsefulFact(fact: string, title: string): boolean {
+  const cleaned = fact.trim();
+  if (!cleaned) return false;
+
+  const normalizedFact = normalizeObservationKey(cleaned);
+  const normalizedTitle = normalizeObservationKey(title);
+  if (normalizedFact && normalizedFact === normalizedTitle) return false;
+
+  if (/^[A-Za-z0-9_.\-\/]+\.[A-Za-z0-9]+$/.test(cleaned)) return false;
+  if (/^\(?[A-Za-z0-9_.\-\/]+\.[A-Za-z0-9]+\)?$/.test(cleaned)) return false;
+
+  return cleaned.length > 16 || /[:;]/.test(cleaned);
+}
+
+function normalizeObservationKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\b(modified|updated|edited|touched|changed)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

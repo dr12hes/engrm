@@ -8,6 +8,22 @@ description: Use Engrm packs and Sentinel context to surface likely mistakes, ri
 Use this skill when code is entering a risky area and the goal is to prevent
 mistakes, not just remember past work.
 
+## Before you start
+
+Use Engrm only if it is already connected and available in the current
+environment.
+
+If Engrm is not available, say that Engrm Sentinel context is not connected on
+this machine and continue without inventing setup steps or shell commands.
+
+## Command guardrails
+
+Do not invent Engrm shell commands like `engrm search`, `engrm save`, or
+`engrm timeline`.
+
+Treat Sentinel guidance as Engrm workflow knowledge, not as an excuse to guess
+at extra CLI syntax.
+
 ## What this skill is for
 
 - Surface risky patterns before they turn into bugs or security issues.

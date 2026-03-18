@@ -8,6 +8,22 @@ description: Use Engrm to compare what was asked, what was promised, and what ev
 Use this skill when the user wants to know whether the agent really delivered
 what it claimed, or when a session may have drifted from the original brief.
 
+## Before you start
+
+Use Engrm only if it is already connected and available in the current
+environment.
+
+If Engrm is not available, say that Delivery Review cannot use Engrm on this
+machine yet and continue without inventing setup or shell instructions.
+
+## Command guardrails
+
+Do not invent Engrm CLI commands such as `engrm search`, `engrm save`, or
+`engrm timeline`.
+
+Use Delivery Review as an Engrm workflow and memory discipline, not as a made-up
+shell command surface.
+
 ## What this skill is for
 
 - Compare the brief, plan, and decisions against the session outcome.

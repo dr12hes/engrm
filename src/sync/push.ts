@@ -87,8 +87,10 @@ export function buildSummaryVectorDocument(
 ): VectorDocument {
   const parts: string[] = [];
   if (summary.request) parts.push(`Request: ${summary.request}`);
+  if (summary.investigated) parts.push(`Investigated: ${summary.investigated}`);
   if (summary.learned) parts.push(`Learned: ${summary.learned}`);
   if (summary.completed) parts.push(`Completed: ${summary.completed}`);
+  if (summary.next_steps) parts.push(`Next Steps: ${summary.next_steps}`);
 
   return {
     site_id: config.site_id,
@@ -101,6 +103,11 @@ export function buildSummaryVectorDocument(
       project_name: project.name,
       user_id: summary.user_id,
       session_id: summary.session_id,
+      request: summary.request,
+      investigated: summary.investigated,
+      learned: summary.learned,
+      completed: summary.completed,
+      next_steps: summary.next_steps,
       created_at_epoch: summary.created_at_epoch,
       local_id: summary.id,
     },

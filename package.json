@@ -1,6 +1,6 @@
 {
   "name": "engrm",
-  "version": "0.4.3",
+  "version": "0.4.5",
   "description": "Cross-device, team-shared memory layer for AI coding agents",
   "type": "module",
   "main": "dist/server.js",

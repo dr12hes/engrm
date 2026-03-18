@@ -1,0 +1,38 @@
+{
+  "name": "@dr12hes/openclaw-engrm",
+  "version": "0.1.0",
+  "description": "Native Engrm shared memory plugin for OpenClaw",
+  "type": "module",
+  "main": "./index.js",
+  "files": [
+    "index.js",
+    "openclaw.plugin.json",
+    "README.md"
+  ],
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "memory",
+    "engrm",
+    "ai-agents",
+    "shared-memory"
+  ],
+  "homepage": "https://engrm.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dr12hes/engrm.git",
+    "directory": "openclaw/plugin/engrm-openclaw"
+  },
+  "bugs": {
+    "url": "https://github.com/dr12hes/engrm/issues"
+  },
+  "license": "FSL-1.1-ALv2",
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2"
+  }
+}

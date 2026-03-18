@@ -77,6 +77,29 @@ describe("extractRetrospective", () => {
     expect(result!.completed).toContain("Cleaned up router");
   });
 
+  test("dedupes repetitive completed file operations and keeps meaningful facts", () => {
+    const obs = [
+      makeObs({
+        id: 1,
+        type: "change",
+        title: "Modified mem_insights.py",
+        files_modified: JSON.stringify(["app/services/mem_insights.py"]),
+        facts: JSON.stringify(["Introduced per-project insights function for multi-level analysis"]),
+      }),
+      makeObs({
+        id: 2,
+        type: "change",
+        title: "Modified mem_insights.py (mem_insights.py)",
+        files_modified: JSON.stringify(["app/services/mem_insights.py"]),
+        facts: JSON.stringify(["mem_insights.py"]),
+      }),
+    ];
+    const result = extractRetrospective(obs, "sess-001", 1, "david");
+    expect(result!.completed).toContain("Updated implementation in mem_insights.py");
+    expect(result!.completed).toContain("Introduced per-project insights function for multi-level analysis");
+    expect(result!.completed!.match(/Updated implementation in mem_insights\.py/g)?.length).toBe(1);
+  });
+
   test("extracts next steps from late bugfix errors", () => {
     const obs = [
       makeObs({ id: 1, type: "change", title: "Step 1" }),
