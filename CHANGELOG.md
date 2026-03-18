@@ -4,6 +4,16 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.6
+
+### Added
+
+- MCP Registry packaging metadata via `mcpName` and `server.json`
+
+### Changed
+
+- npm package description now leads with shared memory across devices, sessions, and coding agents
+- prepared Engrm for official MCP Registry publishing
 ## 0.4.5
 
 ### Changed
