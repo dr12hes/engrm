@@ -8,20 +8,19 @@ This file tracks where Engrm is already published, where it is submitted, and wh
 - npm CLI: `engrm`
 - npm OpenClaw plugin: `engrm-openclaw-plugin`
 - OpenClaw install command: `openclaw plugins install engrm-openclaw-plugin`
+- ClawHub skills:
+  - `engrm-memory`
+  - `engrm-delivery-review`
+  - `engrm-sentinel`
 
 ## Submitted / Pending Review
 
 - OpenClaw community plugins page
   - PR: `https://github.com/clawmax/openclaw-docs-i18n/pull/1`
   - Positioning: shared memory across devices, sessions, and agents
-
-## Ready To Publish Next
-
-- ClawHub skills
-  - `engrm-memory`
-  - `engrm-delivery-review`
-  - `engrm-sentinel`
-  - Publish path: `clawhub publish <path>`
+- ToolSDK MCP registry
+  - PR: `https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/208`
+  - Positioning: shared memory across devices, sessions, and coding systems
 
 ## Best Next Registry Targets
 
