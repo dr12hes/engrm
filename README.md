@@ -80,7 +80,7 @@ Engrm Status
   User:        david
   Email:       david@example.com
   Device:      macbook-a1b2c3d4
-  Plan:        Pro ($15/mo)
+  Plan:        Pro (£9.99/mo)
   Candengo:    https://www.candengo.com
   MCP server:  registered
   Codex MCP:   registered
@@ -217,9 +217,9 @@ Observations age gracefully: **active** (30 days, full weight) → **aging** (0.
 
 | | Free | Vibe | Pro | Team |
 |---|---|---|---|---|
-| **Price** | $0 | $9/mo | $15/mo | £19/seat/mo |
-| **Observations** | 5,000 | 25,000 | Unlimited | Unlimited |
-| **Devices** | 1 | 3 | Unlimited | Unlimited |
+| **Price** | £0 | £5.99/mo | £9.99/mo | £12.99/seat/mo |
+| **Observations** | 5,000 | 25,000 | 100,000 | Unlimited |
+| **Devices** | 2 | 3 | 5 | Unlimited |
 | **Cloud sync** | ✓ | ✓ | ✓ | ✓ |
 | **Sentinel** | — | Advisory (50/day) | Advisory (200/day) | Blocking (unlimited) |
 | **Retention** | 30 days | 90 days | 1 year | Unlimited |
