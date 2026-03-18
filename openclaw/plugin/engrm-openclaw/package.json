@@ -1,6 +1,6 @@
 {
-  "name": "@dr12hes/openclaw-engrm",
-  "version": "0.1.0",
+  "name": "engrm-openclaw-plugin",
+  "version": "0.1.2",
   "description": "Native Engrm shared memory plugin for OpenClaw",
   "type": "module",
   "main": "./index.js",

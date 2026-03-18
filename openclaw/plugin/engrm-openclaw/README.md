@@ -24,10 +24,26 @@ Engrm gives OpenClaw shared memory across devices, sessions, and agents. The sam
 ## Install
 
 ```bash
-openclaw plugins install @dr12hes/openclaw-engrm
+openclaw plugins install engrm-openclaw-plugin
 ```
 
 Then restart OpenClaw or the OpenClaw gateway.
+
+## Update
+
+If the plugin is already installed, update it in place instead of reinstalling:
+
+```bash
+openclaw plugins update engrm
+```
+
+To update all npm-installed plugins at once:
+
+```bash
+openclaw plugins update --all
+```
+
+OpenClaw tracks npm-installed plugins and updates them cleanly once the first install has happened.
 
 ## Connect
 

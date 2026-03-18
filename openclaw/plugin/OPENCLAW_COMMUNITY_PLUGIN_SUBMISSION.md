@@ -5,13 +5,13 @@ Plugin name: `Engrm`
 NPM package:
 
 ```text
-@dr12hes/openclaw-engrm
+engrm-openclaw-plugin
 ```
 
 Install command:
 
 ```bash
-openclaw plugins install @dr12hes/openclaw-engrm
+openclaw plugins install engrm-openclaw-plugin
 ```
 
 GitHub repo:
@@ -41,5 +41,11 @@ Engrm gives OpenClaw shared memory across devices, sessions, and agents. It inje
 Suggested install / setup notes:
 
 ```text
-Install with `openclaw plugins install @dr12hes/openclaw-engrm`, restart OpenClaw, then run `/engrm connect` in chat to link the machine to your Engrm account.
+Install with `openclaw plugins install engrm-openclaw-plugin`, restart OpenClaw, then run `/engrm connect` in chat to link the machine to your Engrm account.
+```
+
+Suggested update note:
+
+```text
+Once installed, users can update in place with `openclaw plugins update engrm` instead of reinstalling.
 ```
