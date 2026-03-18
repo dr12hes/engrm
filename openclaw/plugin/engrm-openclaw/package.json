@@ -1,7 +1,7 @@
 {
   "name": "engrm-openclaw-plugin",
   "version": "0.1.2",
-  "description": "Native Engrm shared memory plugin for OpenClaw",
+  "description": "Shared memory for OpenClaw across devices, sessions, and agents",
   "type": "module",
   "main": "./index.js",
   "files": [

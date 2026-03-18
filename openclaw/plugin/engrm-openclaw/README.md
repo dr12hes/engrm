@@ -2,10 +2,11 @@
 
 Native OpenClaw integration for [Engrm](https://engrm.dev).
 
-Engrm gives OpenClaw shared memory across devices, sessions, and agents. The same memory layer can be reused across OpenClaw, Claude Code, and Codex.
+Engrm gives OpenClaw shared memory across devices, sessions, and agents. The same memory layer follows you across OpenClaw, Claude Code, and Codex, so work can continue on another machine or in another coding system without starting cold.
 
 ## What It Does
 
+- keeps one shared memory layer across OpenClaw, Claude Code, Codex, and multiple machines
 - injects a compact Engrm startup brief before prompt build
 - exposes real Engrm tools inside OpenClaw
 - adds a native `/engrm` command with `connect`, `status`, and `disconnect`

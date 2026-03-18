@@ -29,13 +29,13 @@ openclaw/plugin/engrm-openclaw
 Short description:
 
 ```text
-Shared memory for OpenClaw with startup briefs, session digests, delivery review, and continuity across OpenClaw, Claude Code, and Codex.
+Shared memory for OpenClaw across devices, sessions, and agents, with continuity across OpenClaw, Claude Code, and Codex.
 ```
 
 Suggested listing copy:
 
 ```text
-Engrm gives OpenClaw shared memory across devices, sessions, and agents. It injects a startup brief before prompt build, saves structured session memory after successful runs, and supports Delivery Review so work can be compared against the brief later.
+Engrm gives OpenClaw shared memory across devices, sessions, and agents, so work can continue on another machine or in another coding system without starting cold. It injects a startup brief before prompt build and saves structured session memory after successful runs.
 ```
 
 Suggested install / setup notes:
