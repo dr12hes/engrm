@@ -4,6 +4,21 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.7
+
+### Added
+
+- structured fact derivation during observation capture so useful facts are saved even when the agent does not provide them explicitly
+- session value signals and session insights for decisions, lessons, discoveries, completed work, next steps, and delivery-review readiness
+
+### Changed
+
+- startup briefs and local context injection now prioritize higher-value memory objects over generic digest/blob entries
+- local search now boosts exact title and fact matches and returns richer top-hit previews
+- retrospective extraction produces stronger `Request`, `Learned`, `Completed`, and `Next Steps` sections with less file-operation noise
+- sync summary payloads now include richer section items and value-signal metadata for downstream dashboard use
+- `engrm status` and `memory_stats` now surface recent lessons, completed work, next steps, and summary coverage instead of only raw counts
+
 ## 0.4.6
 
 ### Added

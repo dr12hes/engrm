@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mergeResults } from "./search.js";
 import type { FtsMatchRow, VecMatchRow } from "../storage/sqlite.js";
+import { computeSearchRank } from "../intelligence/observation-priority.js";
 
 describe("mergeResults (RRF)", () => {
   test("merges FTS-only results", () => {
@@ -65,5 +66,83 @@ describe("mergeResults (RRF)", () => {
   test("handles empty inputs", () => {
     const merged = mergeResults([], [], 10);
     expect(merged.length).toBe(0);
+  });
+});
+
+describe("computeSearchRank", () => {
+  const NOW = Math.floor(Date.now() / 1000);
+
+  test("rewards exact title matches", () => {
+    const exact = {
+      id: 1,
+      project_id: 1,
+      source_session_id: null,
+      type: "change",
+      title: "OAuth token refresh fix",
+      narrative: null,
+      facts: null,
+      concepts: null,
+      files_modified: null,
+      quality: 0.5,
+      sensitivity: "team",
+      lifecycle: "active",
+      superseded_by: null,
+      supersedes: null,
+      user_id: "david",
+      device_id: "laptop",
+      created_at: "2026-03-19T10:00:00Z",
+      created_at_epoch: NOW - 3600,
+      updated_at: "2026-03-19T10:00:00Z",
+      embedding_id: null,
+    } as any;
+
+    const vague = {
+      ...exact,
+      id: 2,
+      title: "Updated auth flow",
+    } as any;
+
+    expect(computeSearchRank(exact, 0.02, "OAuth token refresh", NOW)).toBeGreaterThan(
+      computeSearchRank(vague, 0.02, "OAuth token refresh", NOW)
+    );
+  });
+
+  test("prefers structured memory objects when retrieval score is similar", () => {
+    const base = {
+      id: 1,
+      project_id: 1,
+      source_session_id: null,
+      title: "API auth notes",
+      narrative: "Captured findings about auth decisions",
+      facts: "[\"Bearer token expires after 15 minutes\"]",
+      concepts: null,
+      files_modified: null,
+      quality: 0.6,
+      sensitivity: "team",
+      lifecycle: "active",
+      superseded_by: null,
+      supersedes: null,
+      user_id: "david",
+      device_id: "laptop",
+      created_at: "2026-03-19T10:00:00Z",
+      created_at_epoch: NOW - 86400,
+      updated_at: "2026-03-19T10:00:00Z",
+      embedding_id: null,
+    };
+
+    const decision = {
+      ...base,
+      type: "decision",
+    } as any;
+
+    const change = {
+      ...base,
+      id: 2,
+      type: "change",
+    } as any;
+
+    expect(computeSearchRank(decision, 0.02, "auth token", NOW)).toBeGreaterThan(
+      computeSearchRank(change, 0.02, "auth token", NOW)
+    );
   });
 });

@@ -261,14 +261,31 @@ server.tool(
       };
     }
 
-    // Format as compact table
-    const header = "| ID | Type | Q | Title | Created |";
-    const separator = "|---|---|---|---|---|";
+    const includeProjectColumn = result.observations.some((obs) => obs.project_name);
+    const header = includeProjectColumn
+      ? "| ID | Type | Q | Title | Project | Created |"
+      : "| ID | Type | Q | Title | Created |";
+    const separator = includeProjectColumn
+      ? "|---|---|---|---|---|---|"
+      : "|---|---|---|---|---|";
     const rows = result.observations.map((obs) => {
       const qualityDots = qualityIndicator(obs.quality);
       const date = obs.created_at.split("T")[0];
+      if (includeProjectColumn) {
+        return `| ${obs.id} | ${obs.type} | ${qualityDots} | ${obs.title} | ${obs.project_name ?? "-"} | ${date} |`;
+      }
       return `| ${obs.id} | ${obs.type} | ${qualityDots} | ${obs.title} | ${date} |`;
     });
+
+    const previews = result.observations
+      .slice(0, Math.min(3, result.observations.length))
+      .map((obs) => {
+        const preview = formatFactPreview(obs.facts, obs.narrative);
+        const projectSuffix = obs.project_name ? ` [${obs.project_name}]` : "";
+        return preview
+          ? `- #${obs.id} [${obs.type}] ${obs.title}${projectSuffix}: ${preview}`
+          : `- #${obs.id} [${obs.type}] ${obs.title}${projectSuffix}`;
+      });
 
     const projectLine = result.project
       ? `Project: ${result.project}\n`
@@ -278,7 +295,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: `${projectLine}Found ${result.total} result(s):\n\n${header}\n${separator}\n${rows.join("\n")}`,
+          text: `${projectLine}Found ${result.total} result(s):\n\n${header}\n${separator}\n${rows.join("\n")}\n\nTop context:\n${previews.join("\n")}`,
         },
       ],
     };
@@ -563,6 +580,18 @@ server.tool(
     const packs = stats.installed_packs.length > 0
       ? stats.installed_packs.join(", ")
       : "(none)";
+    const recentRequests = stats.recent_requests.length > 0
+      ? stats.recent_requests.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
+    const recentLessons = stats.recent_lessons.length > 0
+      ? stats.recent_lessons.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
+    const recentCompleted = stats.recent_completed.length > 0
+      ? stats.recent_completed.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
+    const nextSteps = stats.next_steps.length > 0
+      ? stats.next_steps.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
 
     return {
       content: [
@@ -572,8 +601,13 @@ server.tool(
             `Active observations: ${stats.active_observations}\n` +
             `Messages: ${stats.messages}\n` +
             `Session summaries: ${stats.session_summaries}\n` +
+            `Summary coverage: learned ${stats.summaries_with_learned}, completed ${stats.summaries_with_completed}, next steps ${stats.summaries_with_next_steps}\n` +
             `Installed packs: ${packs}\n` +
-            `Outbox: pending ${stats.outbox.pending ?? 0}, failed ${stats.outbox.failed ?? 0}, synced ${stats.outbox.synced ?? 0}`,
+            `Outbox: pending ${stats.outbox.pending ?? 0}, failed ${stats.outbox.failed ?? 0}, synced ${stats.outbox.synced ?? 0}\n\n` +
+            `Recent requests:\n${recentRequests}\n\n` +
+            `Recent lessons:\n${recentLessons}\n\n` +
+            `Recent completed:\n${recentCompleted}\n\n` +
+            `Next steps:\n${nextSteps}`,
         },
       ],
     };
@@ -714,6 +748,31 @@ server.tool(
 function qualityIndicator(quality: number): string {
   const filled = Math.round(quality * 5);
   return "●".repeat(filled) + "○".repeat(5 - filled);
+}
+
+function formatFactPreview(factsRaw: string | null, narrative: string | null): string | null {
+  if (factsRaw) {
+    try {
+      const parsed = JSON.parse(factsRaw);
+      if (Array.isArray(parsed)) {
+        const facts = parsed
+          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .slice(0, 2);
+        if (facts.length > 0) {
+          return facts.join("; ");
+        }
+      }
+    } catch {
+      const trimmedFacts = factsRaw.trim();
+      if (trimmedFacts.length > 0) {
+        return trimmedFacts.length > 160 ? `${trimmedFacts.slice(0, 157)}...` : trimmedFacts;
+      }
+    }
+  }
+
+  if (!narrative) return null;
+  const trimmed = narrative.trim().replace(/\s+/g, " ");
+  return trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
 }
 
 // --- Start ---

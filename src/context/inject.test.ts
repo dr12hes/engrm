@@ -9,6 +9,8 @@ import {
   estimateTokens,
   parseFacts,
   computeBlendedScore,
+  computeObservationPriority,
+  observationTypeBoost,
 } from "./inject.js";
 
 let db: MemDatabase;
@@ -684,6 +686,61 @@ describe("computeBlendedScore", () => {
     // Created "in the future" — shouldn't produce score > 1
     const score = computeBlendedScore(1.0, NOW + 10 * ONE_DAY, NOW);
     expect(score).toBeLessThanOrEqual(1.0);
+  });
+});
+
+describe("observationTypeBoost", () => {
+  test("prefers higher-value memory object types", () => {
+    expect(observationTypeBoost("decision")).toBeGreaterThan(observationTypeBoost("change"));
+    expect(observationTypeBoost("pattern")).toBeGreaterThan(observationTypeBoost("digest"));
+    expect(observationTypeBoost("bugfix")).toBeGreaterThan(observationTypeBoost("refactor"));
+  });
+
+  test("unknown types get no boost", () => {
+    expect(observationTypeBoost("unknown")).toBe(0);
+  });
+});
+
+describe("computeObservationPriority", () => {
+  const NOW = Math.floor(Date.now() / 1000);
+
+  test("structured decision outranks generic change with same age and quality", () => {
+    const base = {
+      id: 1,
+      project_id: 1,
+      source_session_id: null,
+      narrative: null,
+      facts: null,
+      concepts: null,
+      quality: 0.6,
+      sensitivity: "team",
+      lifecycle: "active",
+      superseded_by: null,
+      supersedes: null,
+      user_id: "david",
+      device_id: "laptop",
+      created_at: "2026-03-19T09:00:00Z",
+      created_at_epoch: NOW - 86400,
+      updated_at: "2026-03-19T09:00:00Z",
+      embedding_id: null,
+    };
+
+    const decision = {
+      ...base,
+      type: "decision",
+      title: "Prefer project-scoped memory objects",
+    } as any;
+
+    const change = {
+      ...base,
+      id: 2,
+      type: "change",
+      title: "Updated files",
+    } as any;
+
+    expect(computeObservationPriority(decision, NOW)).toBeGreaterThan(
+      computeObservationPriority(change, NOW)
+    );
   });
 });
 

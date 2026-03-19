@@ -265,6 +265,7 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
 
   if (lines.length === 0 && context.observations.length > 0) {
     const top = context.observations
+      .filter((obs) => obs.type !== "digest")
       .filter((obs) => !looksLikeFileOperationTitle(obs.title))
       .slice(0, 2);
     for (const obs of top) {
@@ -284,6 +285,7 @@ function toSplashLines(value: string | null, maxItems: number): string[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map((line) => stripInlineSectionLabel(line))
     .map((line) => dedupeFragments(line))
     .filter(Boolean)
     .sort((a, b) => scoreSplashLine(b) - scoreSplashLine(a))
@@ -337,7 +339,10 @@ function dedupeFragmentsInLines(lines: string[]): string[] {
   const seen = new Set<string>();
   const deduped: string[] = [];
   for (const line of lines) {
-    const normalized = line.toLowerCase().replace(/\s+/g, " ").trim();
+    const normalized = stripInlineSectionLabel(line)
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
     deduped.push(line);
@@ -401,7 +406,7 @@ function buildObservationFallbacks(context: InjectedContext): {
   const completed = collectObservationTitles(
     context,
     (obs) =>
-      ["feature", "refactor", "change", "digest"].includes(obs.type) &&
+      ["feature", "refactor", "change"].includes(obs.type) &&
       !looksLikeFileOperationTitle(obs.title),
     2
   );
@@ -422,13 +427,22 @@ function collectObservationTitles(
   const picked: string[] = [];
   for (const obs of context.observations) {
     if (!predicate(obs)) continue;
-    const normalized = obs.title.toLowerCase().replace(/\s+/g, " ").trim();
+    const normalized = stripInlineSectionLabel(obs.title)
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
-    picked.push(`- ${obs.title}`);
+    picked.push(`- ${stripInlineSectionLabel(obs.title)}`);
     if (picked.length >= limit) break;
   }
   return picked.length ? picked.join("\n") : null;
+}
+
+function stripInlineSectionLabel(value: string): string {
+  return value
+    .replace(/^(request|investigated|learned|completed|next steps|digest|summary):\s*/i, "")
+    .trim();
 }
 
 function pickRelevantStaleDecision(

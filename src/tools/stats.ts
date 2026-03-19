@@ -7,11 +7,31 @@
 
 import type { MemDatabase } from "../storage/sqlite.js";
 import { getOutboxStats } from "../storage/outbox.js";
+import { computeSessionValueSignals } from "../intelligence/value-signals.js";
+import { computeSessionInsights } from "../intelligence/session-insights.js";
 
 export interface MemoryStatsResult {
   active_observations: number;
   messages: number;
   session_summaries: number;
+  decisions: number;
+  lessons: number;
+  discoveries: number;
+  features: number;
+  refactors: number;
+  repeated_patterns: number;
+  security_findings: number;
+  critical_security_findings: number;
+  delivery_review_ready: boolean;
+  vibe_guardian_active: boolean;
+  summaries_with_learned: number;
+  summaries_with_completed: number;
+  summaries_with_next_steps: number;
+  total_summary_sections_present: number;
+  recent_requests: string[];
+  recent_lessons: string[];
+  recent_completed: string[];
+  next_steps: string[];
   installed_packs: string[];
   outbox: Record<string, number>;
 }
@@ -29,10 +49,43 @@ export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
     .query<{ count: number }, []>("SELECT COUNT(*) as count FROM session_summaries")
     .get()?.count ?? 0;
 
+  const observations = db.db
+    .query<any, []>(
+      `SELECT * FROM observations
+       WHERE lifecycle IN ('active', 'aging', 'pinned') AND superseded_by IS NULL`
+    )
+    .all();
+  const securityFindings = db.db
+    .query<any, []>("SELECT * FROM security_findings ORDER BY created_at_epoch DESC LIMIT 500")
+    .all();
+  const summaries = db.db
+    .query<any, []>("SELECT * FROM session_summaries ORDER BY created_at_epoch DESC LIMIT 50")
+    .all();
+  const signals = computeSessionValueSignals(observations, securityFindings);
+  const insights = computeSessionInsights(summaries, observations);
+
   return {
     active_observations: activeObservations,
     messages,
     session_summaries: sessionSummaries,
+    decisions: signals.decisions_count,
+    lessons: signals.lessons_count,
+    discoveries: signals.discoveries_count,
+    features: signals.features_count,
+    refactors: signals.refactors_count,
+    repeated_patterns: signals.repeated_patterns_count,
+    security_findings: signals.security_findings_count,
+    critical_security_findings: signals.critical_security_findings_count,
+    delivery_review_ready: signals.delivery_review_ready,
+    vibe_guardian_active: signals.vibe_guardian_active,
+    summaries_with_learned: insights.summaries_with_learned,
+    summaries_with_completed: insights.summaries_with_completed,
+    summaries_with_next_steps: insights.summaries_with_next_steps,
+    total_summary_sections_present: insights.total_summary_sections_present,
+    recent_requests: insights.recent_requests,
+    recent_lessons: insights.recent_lessons,
+    recent_completed: insights.recent_completed,
+    next_steps: insights.next_steps,
     installed_packs: db.getInstalledPacks(),
     outbox: getOutboxStats(db),
   };

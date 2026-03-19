@@ -9,6 +9,8 @@
 import type { MemDatabase } from "../storage/sqlite.js";
 import type { Config } from "../config.js";
 import { detectStacks } from "./stack-detect.js";
+import { computeSessionValueSignals } from "../intelligence/value-signals.js";
+import { computeSessionInsights } from "../intelligence/session-insights.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -36,6 +38,21 @@ export interface TelemetryBeacon {
   recall_hits: number;
   search_count: number;
   search_results_total: number;
+  // Session value signals
+  decisions_count: number;
+  lessons_count: number;
+  discoveries_count: number;
+  features_count: number;
+  refactors_count: number;
+  repeated_patterns_count: number;
+  security_findings_count: number;
+  critical_security_findings_count: number;
+  delivery_review_ready: boolean;
+  vibe_guardian_active: boolean;
+  summaries_with_learned: number;
+  summaries_with_completed: number;
+  summaries_with_next_steps: number;
+  total_summary_sections_present: number;
   // Config fingerprint (optional — missing on old clients)
   config_hash?: string;
   config_changed?: boolean;
@@ -91,6 +108,23 @@ export function buildBeacon(
   for (const obs of observations) {
     byType[obs.type] = (byType[obs.type] ?? 0) + 1;
   }
+
+  let securityFindings = [];
+  try {
+    if (session.project_id) {
+      securityFindings = db
+        .getSecurityFindings(session.project_id, { limit: 200 })
+        .filter((f) => f.session_id === sessionId);
+    }
+  } catch {
+    securityFindings = [];
+  }
+
+  const valueSignals = computeSessionValueSignals(observations, securityFindings);
+  const summaries = session.project_id
+    ? db.getRecentSummaries(session.project_id, 20).filter((summary) => summary.session_id === sessionId)
+    : [];
+  const sessionInsights = computeSessionInsights(summaries, observations);
 
   // Collect file paths for stack detection
   const filePaths: string[] = [];
@@ -154,7 +188,7 @@ export function buildBeacon(
     observer_events: observerEvents,
     observer_observations: observerObservations,
     observer_skips: observerSkips,
-    sentinel_used: false,
+    sentinel_used: valueSignals.security_findings_count > 0,
     risk_score: riskScore,
     stacks_detected: stacks,
     client_version: "0.4.0",
@@ -165,6 +199,20 @@ export function buildBeacon(
     recall_hits: metrics?.recallHits ?? 0,
     search_count: metrics?.searchCount ?? 0,
     search_results_total: metrics?.searchResultsTotal ?? 0,
+    decisions_count: valueSignals.decisions_count,
+    lessons_count: valueSignals.lessons_count,
+    discoveries_count: valueSignals.discoveries_count,
+    features_count: valueSignals.features_count,
+    refactors_count: valueSignals.refactors_count,
+    repeated_patterns_count: valueSignals.repeated_patterns_count,
+    security_findings_count: valueSignals.security_findings_count,
+    critical_security_findings_count: valueSignals.critical_security_findings_count,
+    delivery_review_ready: valueSignals.delivery_review_ready,
+    vibe_guardian_active: valueSignals.vibe_guardian_active,
+    summaries_with_learned: sessionInsights.summaries_with_learned,
+    summaries_with_completed: sessionInsights.summaries_with_completed,
+    summaries_with_next_steps: sessionInsights.summaries_with_next_steps,
+    total_summary_sections_present: sessionInsights.total_summary_sections_present,
     // Config fingerprint
     config_hash: configHash,
     config_changed: configChanged,

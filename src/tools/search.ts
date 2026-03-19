@@ -13,6 +13,7 @@ import type {
   VecMatchRow,
 } from "../storage/sqlite.js";
 import { embedText } from "../embeddings/embedder.js";
+import { computeSearchRank } from "../intelligence/observation-priority.js";
 
 export interface SearchInput {
   query: string;
@@ -116,10 +117,12 @@ export async function searchObservations(
     }
   }
 
-  // Apply lifecycle weighting
+  const nowEpoch = Math.floor(Date.now() / 1000);
+
+  // Apply retrieval + memory-object ranking so search prefers
+  // reusable decisions/patterns/fixes over generic change noise.
   const entries: SearchResultEntry[] = active.map((obs) => {
     const baseScore = scoreMap.get(obs.id) ?? 0;
-    const lifecycleWeight = obs.lifecycle === "aging" ? 0.7 : 1.0;
 
     return {
       id: obs.id,
@@ -132,7 +135,7 @@ export async function searchObservations(
       quality: obs.quality,
       lifecycle: obs.lifecycle,
       created_at: obs.created_at,
-      rank: baseScore * lifecycleWeight,
+      rank: computeSearchRank(obs, baseScore, query, nowEpoch),
       // Label cross-project results with source project
       ...(!projectScoped
         ? { project_name: projectNameCache.get(obs.project_id) }

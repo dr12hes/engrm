@@ -8,6 +8,7 @@
 
 import type { ObservationRow } from "../storage/sqlite.js";
 import type { InsertSessionSummary } from "../storage/sqlite.js";
+import { computeObservationPriority } from "../intelligence/observation-priority.js";
 
 /**
  * Extract a retrospective summary from a session's observations.
@@ -48,8 +49,15 @@ export function extractRetrospective(
  * Derive the session request from the first observation's context.
  */
 function extractRequest(observations: ObservationRow[]): string | null {
+  const requestCandidate = observations.find((obs) =>
+    ["decision", "feature", "change", "bugfix", "discovery"].includes(obs.type) &&
+    obs.title.trim().length > 0 &&
+    !looksLikeFileOperation(obs.title)
+  );
+  if (requestCandidate) return requestCandidate.title;
+
   const first = observations[0];
-  if (!first) return null;
+  if (!first || !first.title.trim()) return null;
   return first.title;
 }
 
@@ -58,7 +66,9 @@ function extractRequest(observations: ObservationRow[]): string | null {
  * Includes facts when available for richer context.
  */
 function extractInvestigated(observations: ObservationRow[]): string | null {
-  const discoveries = observations.filter((o) => o.type === "discovery");
+  const discoveries = observations
+    .filter((o) => o.type === "discovery")
+    .sort((a, b) => scoreNarrativeObservation(b) - scoreNarrativeObservation(a));
   if (discoveries.length === 0) return null;
 
   return formatObservationGroup(discoveries, {
@@ -73,7 +83,9 @@ function extractInvestigated(observations: ObservationRow[]): string | null {
  */
 function extractLearned(observations: ObservationRow[]): string | null {
   const learnTypes = new Set(["bugfix", "decision", "pattern"]);
-  const learned = observations.filter((o) => learnTypes.has(o.type));
+  const learned = observations
+    .filter((o) => learnTypes.has(o.type))
+    .sort((a, b) => scoreNarrativeObservation(b) - scoreNarrativeObservation(a));
   if (learned.length === 0) return null;
 
   return formatObservationGroup(learned, {
@@ -111,7 +123,7 @@ function extractCompleted(observations: ObservationRow[]): string | null {
 function extractNextSteps(observations: ObservationRow[]): string | null {
   if (observations.length < 2) return null;
 
-  const lastQuarterStart = Math.floor(observations.length * 0.75);
+  const lastQuarterStart = Math.max(0, Math.min(observations.length - 1, observations.length - 3, Math.floor(observations.length * 0.75)));
   const lastQuarter = observations.slice(lastQuarterStart);
 
   const unresolved = lastQuarter.filter(
@@ -121,12 +133,20 @@ function extractNextSteps(observations: ObservationRow[]): string | null {
       /error|fail|exception/i.test(o.narrative)
   );
 
-  if (unresolved.length === 0) return null;
+  const explicitDecisions = lastQuarter
+    .filter((o) => o.type === "decision")
+    .sort((a, b) => scoreNarrativeObservation(b) - scoreNarrativeObservation(a))
+    .slice(0, 2)
+    .map((o) => `- Follow through: ${o.title}`);
 
-  return unresolved
+  if (unresolved.length === 0 && explicitDecisions.length === 0) return null;
+
+  const lines = unresolved
     .map((o) => `- Investigate: ${o.title}`)
     .slice(0, 3)
-    .join("\n");
+    .concat(explicitDecisions);
+
+  return dedupeBulletLines(lines).join("\n");
 }
 
 function formatObservationGroup(
@@ -134,6 +154,7 @@ function formatObservationGroup(
   options: { limit: number; factsPerItem: number }
 ): string | null {
   const lines = dedupeObservationsByTitle(observations)
+    .sort((a, b) => scoreNarrativeObservation(b) - scoreNarrativeObservation(a))
     .slice(0, options.limit)
     .map((o) => {
       const facts = extractTopFacts(o, options.factsPerItem);
@@ -172,12 +193,19 @@ function dedupeObservationsByTitle(observations: ObservationRow[]): ObservationR
 }
 
 function scoreCompletedObservation(obs: ObservationRow): number {
-  let score = obs.quality || 0;
+  let score = scoreNarrativeObservation(obs);
   if (obs.type === "feature") score += 0.5;
   if (obs.type === "refactor") score += 0.2;
-  if (hasMeaningfulFacts(obs)) score += 0.4;
   if (looksLikeFileOperation(obs.title)) score -= 0.6;
+  return score;
+}
+
+function scoreNarrativeObservation(obs: ObservationRow): number {
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  let score = computeObservationPriority(obs, nowEpoch);
+  if (hasMeaningfulFacts(obs)) score += 0.4;
   if (obs.narrative && obs.narrative.length > 80) score += 0.2;
+  if (looksLikeFileOperation(obs.title)) score -= 0.25;
   return score;
 }
 

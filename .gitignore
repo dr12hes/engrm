@@ -15,3 +15,5 @@ CLAUDE.md
 notes/
 scratch/
 tmp/
+.mcpregistry_github_token
+.mcpregistry_registry_token

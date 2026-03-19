@@ -43,6 +43,15 @@ describe("extractRetrospective", () => {
     expect(result!.request).toBe("Fix auth bug");
   });
 
+  test("request prefers meaningful work over file-operation boilerplate", () => {
+    const obs = [
+      makeObs({ id: 1, type: "change", title: "Modified auth.ts" }),
+      makeObs({ id: 2, type: "decision", title: "Add token rotation support" }),
+    ];
+    const result = extractRetrospective(obs, "sess-001", 1, "david");
+    expect(result!.request).toBe("Add token rotation support");
+  });
+
   test("groups discoveries into investigated", () => {
     const obs = [
       makeObs({ id: 1, type: "discovery", title: "Found memory leak" }),
@@ -63,6 +72,26 @@ describe("extractRetrospective", () => {
     expect(result!.learned).toContain("Fixed timeout");
     expect(result!.learned).toContain("Use retry logic");
     expect(result!.learned).toContain("Exponential backoff");
+  });
+
+  test("learned prefers richer observations with useful facts", () => {
+    const obs = [
+      makeObs({
+        id: 1,
+        type: "bugfix",
+        title: "Fixed timeout",
+        facts: JSON.stringify(["Retries were skipped when the cached auth header was stale"]),
+      }),
+      makeObs({
+        id: 2,
+        type: "bugfix",
+        title: "Updated timeout.ts",
+        facts: JSON.stringify(["timeout.ts"]),
+      }),
+    ];
+    const result = extractRetrospective(obs, "sess-001", 1, "david");
+    expect(result!.learned).toContain("Fixed timeout");
+    expect(result!.learned).toContain("Retries were skipped when the cached auth header was stale");
   });
 
   test("groups change/feature/refactor into completed", () => {
@@ -114,6 +143,18 @@ describe("extractRetrospective", () => {
     ];
     const result = extractRetrospective(obs, "sess-001", 1, "david");
     expect(result!.next_steps).toContain("Investigate: Build failure");
+  });
+
+  test("includes late-session decisions as follow-through next steps", () => {
+    const obs = [
+      makeObs({ id: 1, type: "change", title: "Started auth rewrite" }),
+      makeObs({ id: 2, type: "feature", title: "Added token parser" }),
+      makeObs({ id: 3, type: "decision", title: "Ship refresh-token rotation in the next pass" }),
+      makeObs({ id: 4, type: "decision", title: "Add admin audit trail after auth hardening" }),
+    ];
+    const result = extractRetrospective(obs, "sess-001", 1, "david");
+    expect(result!.next_steps).toContain("Follow through: Ship refresh-token rotation in the next pass");
+    expect(result!.next_steps).toContain("Follow through: Add admin audit trail after auth hardening");
   });
 
   test("sets session metadata correctly", () => {

@@ -210,6 +210,24 @@ describe("saveObservation", () => {
     expect(JSON.parse(obs!.concepts!)).toEqual(["database", "postgresql"]);
   });
 
+  test("derives structured facts when none are provided", async () => {
+    const result = await saveObservation(db, config, {
+      type: "bugfix",
+      title: "Fix authentication token refresh",
+      narrative:
+        "Token refresh was failing after expiry because the retry path skipped the new credentials. Added a guard to rebuild the auth header before retrying.",
+      files_modified: ["/tmp/project/src/auth.ts", "/tmp/project/src/http/client.ts"],
+      cwd: "/tmp/project",
+    });
+    expect(result.success).toBe(true);
+
+    const obs = db.getObservationById(result.observation_id!);
+    const facts = JSON.parse(obs!.facts!);
+    expect(facts).toContain("Fix authentication token refresh");
+    expect(facts.some((fact: string) => fact.includes("Token refresh was failing after expiry"))).toBe(true);
+    expect(facts.some((fact: string) => fact.includes("Touched src/auth.ts, src/http/client.ts"))).toBe(true);
+  });
+
   test("saves with session_id", async () => {
     const result = await saveObservation(db, config, {
       type: "bugfix",

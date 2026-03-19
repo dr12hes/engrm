@@ -15,6 +15,7 @@ import {
 } from "../storage/outbox.js";
 import { VectorClient, type VectorDocument } from "./client.js";
 import { buildSourceId } from "./auth.js";
+import { computeSessionValueSignals } from "../intelligence/value-signals.js";
 
 export interface PushResult {
   pushed: number;
@@ -83,7 +84,8 @@ export function buildVectorDocument(
 export function buildSummaryVectorDocument(
   summary: SessionSummaryRow,
   config: Config,
-  project: { canonical_id: string; name: string }
+  project: { canonical_id: string; name: string },
+  observations: ObservationRow[] = []
 ): VectorDocument {
   const parts: string[] = [];
   if (summary.request) parts.push(`Request: ${summary.request}`);
@@ -91,6 +93,8 @@ export function buildSummaryVectorDocument(
   if (summary.learned) parts.push(`Learned: ${summary.learned}`);
   if (summary.completed) parts.push(`Completed: ${summary.completed}`);
   if (summary.next_steps) parts.push(`Next Steps: ${summary.next_steps}`);
+
+  const valueSignals = computeSessionValueSignals(observations, []);
 
   return {
     site_id: config.site_id,
@@ -108,6 +112,19 @@ export function buildSummaryVectorDocument(
       learned: summary.learned,
       completed: summary.completed,
       next_steps: summary.next_steps,
+      summary_sections_present: countPresentSections(summary),
+      investigated_items: extractSectionItems(summary.investigated),
+      learned_items: extractSectionItems(summary.learned),
+      completed_items: extractSectionItems(summary.completed),
+      next_step_items: extractSectionItems(summary.next_steps),
+      decisions_count: valueSignals.decisions_count,
+      lessons_count: valueSignals.lessons_count,
+      discoveries_count: valueSignals.discoveries_count,
+      features_count: valueSignals.features_count,
+      refactors_count: valueSignals.refactors_count,
+      repeated_patterns_count: valueSignals.repeated_patterns_count,
+      delivery_review_ready: valueSignals.delivery_review_ready,
+      vibe_guardian_active: valueSignals.vibe_guardian_active,
       created_at_epoch: summary.created_at_epoch,
       local_id: summary.id,
     },
@@ -160,10 +177,11 @@ export async function pushOutbox(
       }
 
       markSyncing(db, entry.id);
+      const summaryObservations = db.getObservationsBySession(summary.session_id);
       const doc = buildSummaryVectorDocument(summary, config, {
         canonical_id: project.canonical_id,
         name: project.name,
-      });
+      }, summaryObservations);
       batch.push({ entryId: entry.id, doc });
       continue;
     }
@@ -240,4 +258,25 @@ export async function pushOutbox(
   }
 
   return { pushed, failed, skipped };
+}
+
+function countPresentSections(summary: SessionSummaryRow): number {
+  return [
+    summary.request,
+    summary.investigated,
+    summary.learned,
+    summary.completed,
+    summary.next_steps,
+  ].filter((value) => Boolean(value && value.trim())).length;
+}
+
+function extractSectionItems(section: string | null): string[] {
+  if (!section) return [];
+  return section
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 4);
 }

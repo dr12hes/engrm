@@ -60,6 +60,11 @@ describe("getMemoryStats", () => {
     expect(stats.active_observations).toBe(2);
     expect(stats.messages).toBe(1);
     expect(stats.session_summaries).toBe(1);
+    expect(stats.summaries_with_learned).toBe(1);
+    expect(stats.summaries_with_completed).toBe(1);
+    expect(stats.recent_requests).toEqual(["Fix auth flow"]);
+    expect(stats.recent_lessons).toContain("Refresh token path was skipped");
+    expect(stats.recent_completed).toContain("Added refresh before retry");
     expect(stats.installed_packs).toContain("typescript-patterns");
     expect(stats.outbox.pending).toBe(1);
   });

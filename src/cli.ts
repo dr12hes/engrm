@@ -27,6 +27,7 @@ import {
 } from "./config.js";
 import { MemDatabase } from "./storage/sqlite.js";
 import { getOutboxStats } from "./storage/outbox.js";
+import { computeSessionValueSignals } from "./intelligence/value-signals.js";
 import { getSchemaVersion, LATEST_SCHEMA_VERSION } from "./storage/migrations.js";
 import {
   provision,
@@ -641,6 +642,42 @@ function handleStatus(): void {
         )
         .get()?.count ?? 0;
       console.log(`    Sessions:      ${summaryCount} summarised`);
+
+      // Value signals
+      try {
+        const activeObservations = db.db
+          .query<any, []>(
+            `SELECT * FROM observations
+             WHERE lifecycle IN ('active', 'aging', 'pinned') AND superseded_by IS NULL`
+          )
+          .all();
+        const securityFindings = db.db
+          .query<any, []>(
+            `SELECT * FROM security_findings
+             ORDER BY created_at_epoch DESC
+             LIMIT 500`
+          )
+          .all();
+        const signals = computeSessionValueSignals(activeObservations, securityFindings);
+        const signalParts = [
+          `lessons: ${signals.lessons_count}`,
+          `decisions: ${signals.decisions_count}`,
+          `discoveries: ${signals.discoveries_count}`,
+          `features: ${signals.features_count}`,
+        ];
+        if (signals.repeated_patterns_count > 0) {
+          signalParts.push(`patterns: ${signals.repeated_patterns_count}`);
+        }
+        console.log(`    Value:         ${signalParts.join(", ")}`);
+        if (signals.security_findings_count > 0 || signals.delivery_review_ready) {
+          console.log(
+            `    Review/Safety: ${signals.delivery_review_ready ? "delivery-ready" : "not ready"}, ` +
+              `${signals.security_findings_count} finding${signals.security_findings_count === 1 ? "" : "s"}`
+          );
+        }
+      } catch {
+        // value signals are optional on older schemas
+      }
 
       // Last session
       try {

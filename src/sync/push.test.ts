@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MemDatabase } from "../storage/sqlite.js";
 import type { Config } from "../config.js";
-import { buildVectorDocument } from "./push.js";
+import { buildSummaryVectorDocument, buildVectorDocument } from "./push.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -113,5 +113,72 @@ describe("buildVectorDocument", () => {
       "src/main.ts",
       "src/utils.ts",
     ]);
+  });
+});
+
+describe("buildSummaryVectorDocument", () => {
+  test("includes structured summary items and value signals", () => {
+    const summary = db.insertSessionSummary({
+      session_id: "sess-123",
+      project_id: projectId,
+      user_id: "david",
+      request: "Improve local memory ranking",
+      investigated: "- Traced low-value digests in startup brief",
+      learned: "- Decisions and patterns should outrank generic changes",
+      completed: "- Added shared observation priority model",
+      next_steps: "- Follow through: wire richer summaries into sync",
+    });
+
+    const observations = [
+      db.insertObservation({
+        session_id: "sess-123",
+        project_id: projectId,
+        type: "decision",
+        title: "Prefer higher-value memory objects",
+        quality: 0.8,
+        user_id: "david",
+        device_id: "laptop-abc",
+      }),
+      db.insertObservation({
+        session_id: "sess-123",
+        project_id: projectId,
+        type: "feature",
+        title: "Added richer search previews",
+        quality: 0.7,
+        user_id: "david",
+        device_id: "laptop-abc",
+      }),
+      db.insertObservation({
+        session_id: "sess-123",
+        project_id: projectId,
+        type: "pattern",
+        title: "Digest-heavy sessions hide useful lessons",
+        quality: 0.7,
+        user_id: "david",
+        device_id: "laptop-abc",
+      }),
+    ];
+
+    const doc = buildSummaryVectorDocument(summary, makeConfig(), {
+      canonical_id: "github.com/test/repo",
+      name: "repo",
+    }, observations);
+
+    expect(doc.source_type).toBe("summary");
+    expect(doc.content).toContain("Request: Improve local memory ranking");
+    expect(doc.metadata.summary_sections_present).toBe(5);
+    expect(doc.metadata.learned_items).toEqual([
+      "Decisions and patterns should outrank generic changes",
+    ]);
+    expect(doc.metadata.completed_items).toEqual([
+      "Added shared observation priority model",
+    ]);
+    expect(doc.metadata.next_step_items).toEqual([
+      "Follow through: wire richer summaries into sync",
+    ]);
+    expect(doc.metadata.decisions_count).toBe(1);
+    expect(doc.metadata.features_count).toBe(1);
+    expect(doc.metadata.repeated_patterns_count).toBe(1);
+    expect(doc.metadata.delivery_review_ready).toBe(true);
   });
 });

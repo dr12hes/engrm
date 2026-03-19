@@ -17,6 +17,11 @@ import { detectProject } from "../storage/projects.js";
 import type { MemDatabase, ObservationRow, SessionSummaryRow, SecurityFindingRow } from "../storage/sqlite.js";
 import { findStaleDecisions, findStaleDecisionsGlobal } from "../intelligence/followthrough.js";
 import type { StaleDecision } from "../intelligence/followthrough.js";
+import {
+  computeBlendedScore,
+  computeObservationPriority,
+  observationTypeBoost,
+} from "../intelligence/observation-priority.js";
 
 export interface ContextOptions {
   /** Max tokens for context injection (default: 3000) */
@@ -69,23 +74,7 @@ export interface ContextObservation {
   source_project?: string;
 }
 
-/** Decay window for recency scoring (30 days in seconds). */
-const RECENCY_WINDOW_SECONDS = 30 * 86400;
-
-/**
- * Compute a blended relevance score combining quality and recency.
- * Quality contributes 60%, recency 40%. Both are 0-1 normalised.
- * Recency decays linearly over 30 days to 0.
- */
-export function computeBlendedScore(
-  quality: number,
-  createdAtEpoch: number,
-  nowEpoch: number
-): number {
-  const age = nowEpoch - createdAtEpoch;
-  const recencyNorm = Math.max(0, Math.min(1, 1 - age / RECENCY_WINDOW_SECONDS));
-  return quality * 0.6 + recencyNorm * 0.4;
-}
+export { computeBlendedScore, computeObservationPriority, observationTypeBoost } from "../intelligence/observation-priority.js";
 
 /**
  * Estimate token count from text.
@@ -271,10 +260,8 @@ export function buildSessionContext(
   // Digests get a boost so they surface as "lessons from previous sessions"
   const nowEpoch = Math.floor(Date.now() / 1000);
   const sorted = [...deduped].sort((a, b) => {
-    const boostA = a.type === "digest" ? 0.15 : 0;
-    const boostB = b.type === "digest" ? 0.15 : 0;
-    const scoreA = computeBlendedScore(a.quality, a.created_at_epoch, nowEpoch) + boostA;
-    const scoreB = computeBlendedScore(b.quality, b.created_at_epoch, nowEpoch) + boostB;
+    const scoreA = computeObservationPriority(a, nowEpoch);
+    const scoreB = computeObservationPriority(b, nowEpoch);
     return scoreB - scoreA; // descending
   });
 

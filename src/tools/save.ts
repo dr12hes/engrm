@@ -10,6 +10,7 @@ import type { Config } from "../config.js";
 import { scrubSecrets, containsSecrets } from "../capture/scrubber.js";
 import { scoreQuality, meetsQualityThreshold } from "../capture/quality.js";
 import { findDuplicate, type DedupCandidate } from "../capture/dedup.js";
+import { buildStructuredFacts } from "../capture/facts.js";
 import { detectProject } from "../storage/projects.js";
 import type { MemDatabase, ObservationRow } from "../storage/sqlite.js";
 import { composeEmbeddingText, embedText } from "../embeddings/embedder.js";
@@ -103,12 +104,6 @@ export async function saveObservation(
       : input.narrative
     : null;
 
-  const factsJson = input.facts
-    ? config.scrubbing.enabled
-      ? scrubSecrets(JSON.stringify(input.facts), customPatterns)
-      : JSON.stringify(input.facts)
-    : null;
-
   const conceptsJson = input.concepts
     ? JSON.stringify(input.concepts)
     : null;
@@ -120,6 +115,20 @@ export async function saveObservation(
 
   const filesModified = input.files_modified
     ? input.files_modified.map((f) => toRelativePath(f, cwd))
+    : null;
+
+  const structuredFacts = buildStructuredFacts({
+    type: input.type,
+    title: input.title,
+    narrative: input.narrative,
+    facts: input.facts,
+    filesModified,
+  });
+
+  const factsJson = structuredFacts.length > 0
+    ? config.scrubbing.enabled
+      ? scrubSecrets(JSON.stringify(structuredFacts), customPatterns)
+      : JSON.stringify(structuredFacts)
     : null;
 
   const filesReadJson = filesRead ? JSON.stringify(filesRead) : null;
