@@ -29,6 +29,7 @@ import { getProjectRelatedWork } from "./tools/project-related-work.js";
 import { reclassifyProjectMemory } from "./tools/reclassify-project-memory.js";
 import { getActivityFeed } from "./tools/activity-feed.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
+import { getCaptureQuality } from "./tools/capture-quality.js";
 import { getSessionContext } from "./tools/session-context.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
@@ -912,6 +913,45 @@ server.tool(
             `Latest PostToolUse hook: ${formatEpoch(result.latest_post_tool_hook_epoch)}\n` +
             `Last PostToolUse parse: ${result.latest_post_tool_parse_status ?? "unknown"}\n` +
             `Last PostToolUse tool: ${result.latest_post_tool_name ?? "unknown"}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: capture_quality
+server.tool(
+  "capture_quality",
+  "Show workspace-wide capture richness, checkpoints, and provenance across projects",
+  {
+    limit: z.number().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getCaptureQuality(db, {
+      limit: params.limit,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const provenanceLines = result.provenance_summary.length > 0
+      ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
+      : "- (none)";
+    const projectLines = result.top_projects.length > 0
+      ? result.top_projects.map((project) =>
+          `- ${project.name} [${project.raw_capture_state}] obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count} checkpoints=${project.assistant_checkpoint_count}`
+        ).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Workspace totals: projects=${result.totals.projects}, observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}, checkpoints=${result.totals.assistant_checkpoints}\n\n` +
+            `Session capture states: rich=${result.session_states.rich}, partial=${result.session_states.partial}, summary-only=${result.session_states.summary_only}, legacy=${result.session_states.legacy}\n\n` +
+            `Projects with raw capture: ${result.projects_with_raw_capture}\n\n` +
+            `Observation provenance:\n${provenanceLines}\n\n` +
+            `Top projects:\n${projectLines}`,
         },
       ],
     };
