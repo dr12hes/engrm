@@ -114,9 +114,13 @@ describe("MemDatabase — observations", () => {
       user_id: "david",
       device_id: "laptop-abc",
       agent: "claude-code",
+      source_tool: "Edit",
+      source_prompt_number: 3,
     });
     expect(obs.narrative).toBe("We chose PG for its JSON support");
     expect(obs.sensitivity).toBe("personal");
+    expect(obs.source_tool).toBe("Edit");
+    expect(obs.source_prompt_number).toBe(3);
   });
 
   test("getObservationById returns observation", () => {

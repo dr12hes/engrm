@@ -44,6 +44,8 @@ export interface SaveObservationInput {
   session_id?: string;
   cwd?: string;
   agent?: string;
+  source_tool?: string;
+  source_prompt_number?: number;
 }
 
 export interface SaveObservationResult {
@@ -196,6 +198,10 @@ export async function saveObservation(
   }
 
   // Insert observation
+  const sourcePromptNumber =
+    input.source_prompt_number
+    ?? (input.session_id ? db.getLatestSessionPromptNumber(input.session_id) : null);
+
   const obs = db.insertObservation({
     session_id: input.session_id ?? null,
     project_id: project.id,
@@ -212,6 +218,8 @@ export async function saveObservation(
     user_id: config.user_id,
     device_id: config.device_id,
     agent: input.agent ?? "claude-code",
+    source_tool: input.source_tool ?? null,
+    source_prompt_number: sourcePromptNumber,
   });
 
   // Add to sync outbox

@@ -51,6 +51,8 @@ describe("getSessionStory", () => {
       quality: 0.8,
       user_id: "david",
       device_id: "laptop",
+      source_tool: "Edit",
+      source_prompt_number: 1,
     });
     db.insertSessionSummary({
       session_id: "sess-1",
@@ -77,5 +79,6 @@ describe("getSessionStory", () => {
     expect(story.latest_request).toBe("Fix auth flow");
     expect(story.recent_outcomes).toContain("Fixed auth redirect");
     expect(story.hot_files).toEqual([{ path: "src/auth.ts", count: 1 }]);
+    expect(story.provenance_summary).toEqual([{ tool: "Edit", count: 1 }]);
   });
 });

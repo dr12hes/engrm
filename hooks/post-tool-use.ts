@@ -172,6 +172,7 @@ async function main(): Promise<void> {
           files_modified: extracted.files_modified,
           session_id: event.session_id,
           cwd: event.cwd,
+          source_tool: event.tool_name,
         });
         incrementObserverSaveCount(event.session_id);
       }

@@ -66,12 +66,18 @@ function toToolEvent(tool: ToolEventRow): ActivityFeedEvent {
 }
 
 function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
+  const detailBits: string[] = [];
+  if (obs.source_tool) detailBits.push(`via ${obs.source_tool}`);
+  if (typeof obs.source_prompt_number === "number") {
+    detailBits.push(`#${obs.source_prompt_number}`);
+  }
   return {
     kind: "observation",
     created_at_epoch: obs.created_at_epoch,
     session_id: obs.session_id,
     id: obs.id,
     title: obs.title,
+    detail: detailBits.length > 0 ? detailBits.join(" · ") : undefined,
     observation_type: obs.type,
   };
 }

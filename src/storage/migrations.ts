@@ -387,6 +387,18 @@ const MIGRATIONS: Migration[] = [
         ON tool_events(created_at_epoch DESC, id DESC);
     `,
   },
+  {
+    version: 11,
+    description: "Add observation provenance from tool and prompt chronology",
+    sql: `
+      ALTER TABLE observations ADD COLUMN source_tool TEXT;
+      ALTER TABLE observations ADD COLUMN source_prompt_number INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_observations_source_tool
+        ON observations(source_tool, created_at_epoch DESC);
+      CREATE INDEX IF NOT EXISTS idx_observations_source_prompt
+        ON observations(session_id, source_prompt_number DESC);
+    `,
+  },
 ];
 
 /**
@@ -449,6 +461,7 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
   if (tableExists(db, "packs_installed")) version = Math.max(version, 7);
   if (tableExists(db, "user_prompts")) version = Math.max(version, 9);
   if (tableExists(db, "tool_events")) version = Math.max(version, 10);
+  if (columnExists(db, "observations", "source_tool")) version = Math.max(version, 11);
 
   return version;
 }

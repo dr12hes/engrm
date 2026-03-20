@@ -353,6 +353,43 @@ describe("saveObservation", () => {
     rmSync(targetRepo, { recursive: true, force: true });
   });
 
+  test("inherits latest session prompt number and source tool provenance", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+    db.upsertSession("sess-provenance", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-provenance",
+      project_id: project.id,
+      prompt: "Fix auth flow",
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.insertUserPrompt({
+      session_id: "sess-provenance",
+      project_id: project.id,
+      prompt: "Add callback host validation",
+      user_id: "david",
+      device_id: "laptop",
+    });
+
+    const result = await saveObservation(db, config, {
+      type: "bugfix",
+      title: "Fixed callback host validation",
+      narrative: "Prevented callback host mismatch during auth flow.",
+      session_id: "sess-provenance",
+      cwd: "/tmp/repo",
+      source_tool: "Edit",
+    });
+
+    expect(result.success).toBe(true);
+    const obs = db.getObservationById(result.observation_id!);
+    expect(obs?.source_tool).toBe("Edit");
+    expect(obs?.source_prompt_number).toBe(2);
+  });
+
   test("saves plugin memory with stable provenance tags", async () => {
     const result = await savePluginMemory(db, config, {
       plugin_id: "engrm.git-diff",

@@ -1294,7 +1294,12 @@ server.tool(
       : "- (none)";
 
     const observationLines = result.observations.length > 0
-      ? result.observations.slice(-15).map((obs) => `- #${obs.id} [${obs.type}] ${obs.title}`).join("\n")
+      ? result.observations.slice(-15).map((obs) => {
+          const provenance: string[] = [];
+          if (obs.source_tool) provenance.push(`via ${obs.source_tool}`);
+          if (typeof obs.source_prompt_number === "number") provenance.push(`#${obs.source_prompt_number}`);
+          return `- #${obs.id} [${obs.type}] ${obs.title}${provenance.length ? ` (${provenance.join(" · ")})` : ""}`;
+        }).join("\n")
       : "- (none)";
 
     const metrics = result.metrics
@@ -1302,6 +1307,9 @@ server.tool(
       : "metrics unavailable";
     const captureGaps = result.capture_gaps.length > 0
       ? result.capture_gaps.map((gap) => `- ${gap}`).join("\n")
+      : "- none";
+    const provenanceSummary = result.provenance_summary.length > 0
+      ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
       : "- none";
 
     return {
@@ -1316,6 +1324,7 @@ server.tool(
             `Summary:\n${summaryLines}\n\n` +
             `Prompts:\n${promptLines}\n\n` +
             `Tools:\n${toolLines}\n\n` +
+            `Provenance:\n${provenanceSummary}\n\n` +
             `Capture gaps:\n${captureGaps}\n\n` +
             `Observations:\n${observationLines}`,
         },

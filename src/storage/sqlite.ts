@@ -147,6 +147,8 @@ export interface ObservationRow {
   compacted_into: number | null;
   superseded_by: number | null;
   remote_source_id: string | null;
+  source_tool: string | null;
+  source_prompt_number: number | null;
 }
 
 export interface SessionRow {
@@ -255,6 +257,8 @@ export interface InsertObservation {
   user_id: string;
   device_id: string;
   agent?: string;
+  source_tool?: string | null;
+  source_prompt_number?: number | null;
   created_at?: string;
   created_at_epoch?: number;
 }
@@ -428,8 +432,9 @@ export class MemDatabase {
         `INSERT INTO observations (
           session_id, project_id, type, title, narrative, facts, concepts,
           files_read, files_modified, quality, lifecycle, sensitivity,
-          user_id, device_id, agent, created_at, created_at_epoch
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          user_id, device_id, agent, source_tool, source_prompt_number,
+          created_at, created_at_epoch
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         obs.session_id ?? null,
@@ -447,6 +452,8 @@ export class MemDatabase {
         obs.user_id,
         obs.device_id,
         obs.agent ?? "claude-code",
+        obs.source_tool ?? null,
+        obs.source_prompt_number ?? null,
         createdAt,
         now
       );
@@ -935,6 +942,18 @@ export class MemDatabase {
          LIMIT ?`
       )
       .all(sessionId, limit);
+  }
+
+  getLatestSessionPromptNumber(sessionId: string): number | null {
+    const row = this.db
+      .query<{ prompt_number: number }, [string]>(
+        `SELECT prompt_number FROM user_prompts
+         WHERE session_id = ?
+         ORDER BY prompt_number DESC
+         LIMIT 1`
+      )
+      .get(sessionId);
+    return row?.prompt_number ?? null;
   }
 
   // --- Tool events ---

@@ -60,6 +60,8 @@ describe("getActivityFeed", () => {
       quality: 0.9,
       user_id: "david",
       device_id: "laptop",
+      source_tool: "Edit",
+      source_prompt_number: 1,
     });
 
     const result = getActivityFeed(db, {
@@ -76,6 +78,9 @@ describe("getActivityFeed", () => {
     expect(result.events.some((event) => event.kind === "prompt")).toBe(true);
     expect(result.events.some((event) => event.kind === "tool")).toBe(true);
     expect(result.events.some((event) => event.kind === "observation")).toBe(true);
+    const obsEvent = result.events.find((event) => event.kind === "observation");
+    expect(obsEvent?.detail).toContain("via Edit");
+    expect(obsEvent?.detail).toContain("#1");
   });
 
   test("supports session-specific chronology", () => {

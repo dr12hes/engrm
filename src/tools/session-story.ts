@@ -28,6 +28,7 @@ export interface SessionStoryResult {
   latest_request: string | null;
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
+  provenance_summary: Array<{ tool: string; count: number }>;
 }
 
 export function getSessionStory(
@@ -71,6 +72,7 @@ export function getSessionStory(
     latest_request: latestRequest,
     recent_outcomes: collectRecentOutcomes(observations),
     hot_files: collectHotFiles(observations),
+    provenance_summary: collectProvenanceSummary(observations),
   };
 }
 
@@ -150,4 +152,16 @@ function looksLikeFileOperationTitle(value: string): boolean {
   return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
     value.trim()
   );
+}
+
+function collectProvenanceSummary(observations: ObservationRow[]): Array<{ tool: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const obs of observations) {
+    if (!obs.source_tool) continue;
+    counts.set(obs.source_tool, (counts.get(obs.source_tool) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([tool, count]) => ({ tool, count }))
+    .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
+    .slice(0, 6);
 }
