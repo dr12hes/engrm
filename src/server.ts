@@ -839,6 +839,9 @@ server.tool(
     const provenanceLines = result.provenance_summary.length > 0
       ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
       : "- (none)";
+    const checkpointTypeLines = result.assistant_checkpoint_types.length > 0
+      ? result.assistant_checkpoint_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
+      : "- (none)";
     const topTypes = result.top_types.length > 0
       ? result.top_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
       : "- (none)";
@@ -859,6 +862,7 @@ server.tool(
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             `Top types:\n${topTypes}\n\n` +
+            `Assistant checkpoint types:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
             `Recent sessions:\n${sessionLines}\n\n` +
             `Recent requests:\n${requestLines}\n\n` +
@@ -936,6 +940,9 @@ server.tool(
     const provenanceLines = result.provenance_summary.length > 0
       ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
       : "- (none)";
+    const checkpointTypeLines = result.assistant_checkpoint_types.length > 0
+      ? result.assistant_checkpoint_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
+      : "- (none)";
     const projectLines = result.top_projects.length > 0
       ? result.top_projects.map((project) =>
           `- ${project.name} [${project.raw_capture_state}] obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count} checkpoints=${project.assistant_checkpoint_count}`
@@ -950,6 +957,7 @@ server.tool(
             `Workspace totals: projects=${result.totals.projects}, observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}, checkpoints=${result.totals.assistant_checkpoints}\n\n` +
             `Session capture states: rich=${result.session_states.rich}, partial=${result.session_states.partial}, summary-only=${result.session_states.summary_only}, legacy=${result.session_states.legacy}\n\n` +
             `Projects with raw capture: ${result.projects_with_raw_capture}\n\n` +
+            `Assistant checkpoints by type:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
             `Top projects:\n${projectLines}`,
         },

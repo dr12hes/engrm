@@ -393,6 +393,11 @@ function extractAssistantCheckpoint(message: string): {
   const compact = message.replace(/\r/g, "").trim();
   if (compact.length < 180) return null;
 
+  const normalizedLines = compact
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
   const bulletLines = compact
     .split("\n")
     .map((line) => line.trim())
@@ -413,12 +418,29 @@ function extractAssistantCheckpoint(message: string): {
   if (!title) return null;
 
   const lowered = compact.toLowerCase();
+  const headingText = normalizedLines
+    .filter((line) => /^[A-Za-z][A-Za-z /_-]{2,}:$/.test(line))
+    .join(" ")
+    .toLowerCase();
+  const hasNextSteps = normalizedLines.some((line) => /^Next Steps?:/i.test(line));
+  const deploymentSignals =
+    /\bdeploy|deployment|ansible|rolled out|released to staging|pushed commit|shipped to staging|launched\b/.test(lowered) ||
+    /\bdeployment\b/.test(headingText);
+  const decisionSignals =
+    /\bdecid|recommend|strategy|pricing|trade.?off|agreed|approach|direction\b/.test(lowered) ||
+    /\bdecision\b/.test(headingText);
+  const featureSignals =
+    /\bimplemented|introduced|exposed|added|built|created|enabled|wired\b/.test(lowered) ||
+    /\bfeature\b/.test(headingText);
+
   const type =
-    /\bdecid|recommend|strategy|pricing|plan\b/.test(lowered)
+    decisionSignals && !deploymentSignals
       ? "decision"
-      : /\bshipped|deployed|launched|released|implemented|added\b/.test(lowered)
+      : deploymentSignals || featureSignals
         ? "feature"
-        : "change";
+        : hasNextSteps
+          ? "decision"
+          : "change";
 
   const facts = bulletLines.filter((line) => line !== title);
   const narrative = substantiveLines.slice(0, 6).join("\n");

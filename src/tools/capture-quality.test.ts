@@ -99,6 +99,9 @@ describe("getCaptureQuality", () => {
       { tool: "Edit", count: 1 },
       { tool: "assistant-stop", count: 1 },
     ]);
+    expect(result.assistant_checkpoint_types).toEqual([
+      { type: "change", count: 1 },
+    ]);
     expect(result.top_projects[0]?.raw_capture_state).toBe("rich");
   });
 });

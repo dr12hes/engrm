@@ -31,6 +31,7 @@ export interface CaptureQualityResult {
   };
   projects_with_raw_capture: number;
   provenance_summary: Array<{ tool: string; count: number }>;
+  assistant_checkpoint_types: Array<{ type: string; count: number }>;
   top_projects: Array<{
     name: string;
     canonical_id: string;
@@ -82,6 +83,20 @@ export function getCaptureQuality(
           : "summary-only",
   }));
 
+  const checkpointTypeRows = db.db
+    .query<{ type: string; count: number }, (string | number)[]>(
+      `SELECT type, COUNT(*) as count
+       FROM observations
+       WHERE source_tool = 'assistant-stop'
+         AND lifecycle IN ('active', 'aging', 'pinned')
+         AND superseded_by IS NULL
+         ${input.user_id ? " AND (sensitivity != 'personal' OR user_id = ?)" : ""}
+       GROUP BY type
+       ORDER BY count DESC, type ASC
+       LIMIT 8`
+    )
+    .all(...(input.user_id ? [input.user_id] : []));
+
   return {
     totals: {
       projects: workspace.projects.length,
@@ -94,6 +109,10 @@ export function getCaptureQuality(
     session_states: sessionStates,
     projects_with_raw_capture: workspace.projects_with_raw_capture,
     provenance_summary: workspace.provenance_summary,
+    assistant_checkpoint_types: checkpointTypeRows.map((row) => ({
+      type: row.type,
+      count: row.count,
+    })),
     top_projects: topProjects,
   };
 }
