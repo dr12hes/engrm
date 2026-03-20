@@ -29,6 +29,8 @@ export interface MemoryConsoleResult {
   observations: ReturnType<typeof getRecentActivity>["observations"];
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
+  provenance_summary: Array<{ tool: string; count: number }>;
+  assistant_checkpoint_count?: number;
   top_types: Array<{ type: string; count: number }>;
   estimated_read_tokens?: number;
   suggested_tools: string[];
@@ -84,6 +86,8 @@ export function getMemoryConsole(
     capture_summary: projectIndex?.capture_summary,
     recent_outcomes: projectIndex?.recent_outcomes ?? [],
     hot_files: projectIndex?.hot_files ?? [],
+    provenance_summary: projectIndex?.provenance_summary ?? [],
+    assistant_checkpoint_count: projectIndex?.assistant_checkpoint_count,
     top_types: projectIndex?.top_types ?? [],
     estimated_read_tokens: projectIndex?.estimated_read_tokens,
     suggested_tools: projectIndex?.suggested_tools ?? buildFallbackSuggestedTools(sessions.length, requests.length, tools.length, observations.length),

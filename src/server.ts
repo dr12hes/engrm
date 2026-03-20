@@ -828,7 +828,18 @@ server.tool(
       : "- (none)";
 
     const observationLines = result.observations.length > 0
-      ? result.observations.map((obs) => `- #${obs.id} [${obs.type}] ${obs.title}`).join("\n")
+      ? result.observations.map((obs) => {
+          const provenance: string[] = [];
+          if (obs.source_tool) provenance.push(`via ${obs.source_tool}`);
+          if (typeof obs.source_prompt_number === "number") provenance.push(`#${obs.source_prompt_number}`);
+          return `- #${obs.id} [${obs.type}] ${obs.title}${provenance.length ? ` (${provenance.join(" · ")})` : ""}`;
+        }).join("\n")
+      : "- (none)";
+    const provenanceLines = result.provenance_summary.length > 0
+      ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
+      : "- (none)";
+    const topTypes = result.top_types.length > 0
+      ? result.top_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
       : "- (none)";
 
     const projectLine = result.project ? `Project: ${result.project}\n\n` : "";
@@ -843,6 +854,11 @@ server.tool(
           text:
             `${projectLine}` +
             `${captureLine}` +
+            `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
+            `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
+            `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Top types:\n${topTypes}\n\n` +
+            `Observation provenance:\n${provenanceLines}\n\n` +
             `Recent sessions:\n${sessionLines}\n\n` +
             `Recent requests:\n${requestLines}\n\n` +
             `Recent tools:\n${toolLines}\n\n` +
@@ -1021,6 +1037,12 @@ server.tool(
     const hotFiles = result.hot_files.length > 0
       ? result.hot_files.map((file) => `- ${file.path} (${file.count})`).join("\n")
       : "- (none)";
+    const provenance = result.provenance_summary.length > 0
+      ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
+      : "- (none)";
+    const topTypes = result.top_types.length > 0
+      ? result.top_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
+      : "- (none)";
 
     const topTitles = result.top_titles.length > 0
       ? result.top_titles.map((item) => `- #${item.id} [${item.type}] ${item.title}`).join("\n")
@@ -1036,9 +1058,14 @@ server.tool(
             `Recent requests captured: ${result.recent_requests_count}\n` +
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
             `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
+            `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
+            `Estimated read cost: ~${result.estimated_read_tokens}t\n` +
+            `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             `Observation counts:\n${counts}\n\n` +
+            `Top types:\n${topTypes}\n\n` +
             `Recent sessions:\n${sessions}\n\n` +
             `Hot files:\n${hotFiles}\n\n` +
+            `Observation provenance:\n${provenance}\n\n` +
             `Recent memory objects:\n${topTitles}`,
         },
       ],

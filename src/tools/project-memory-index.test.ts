@@ -51,6 +51,7 @@ describe("getProjectMemoryIndex", () => {
       quality: 0.8,
       user_id: "david",
       device_id: "laptop",
+      source_tool: "Edit",
     });
     db.insertObservation({
       session_id: "sess-1",
@@ -69,6 +70,16 @@ describe("getProjectMemoryIndex", () => {
       quality: 0.4,
       user_id: "david",
       device_id: "laptop",
+    });
+    db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "change",
+      title: "Bedford Hotel now appears inactive in site list",
+      quality: 0.72,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "assistant-stop",
     });
     db.insertSessionSummary({
       session_id: "sess-1",
@@ -96,6 +107,8 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.hot_files[0]?.path).toBe("src/auth.ts");
     expect(result?.recent_outcomes).toContain("Fixed auth redirect");
     expect(result?.recent_outcomes).not.toContain("Modified auth.ts");
+    expect(result?.provenance_summary).toEqual([{ tool: "assistant-stop", count: 1 }, { tool: "Edit", count: 1 }]);
+    expect(result?.assistant_checkpoint_count).toBe(1);
     expect(result?.top_types[0]).toEqual({ type: "bugfix", count: 1 });
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);
     expect(result?.suggested_tools).toContain("recent_sessions");

@@ -35,6 +35,8 @@ export interface ProjectMemoryIndexResult {
   raw_capture_active: boolean;
   capture_summary: CaptureSummary;
   hot_files: Array<{ path: string; count: number }>;
+  provenance_summary: Array<{ tool: string; count: number }>;
+  assistant_checkpoint_count: number;
   top_titles: Array<{ type: string; title: string; id: number }>;
   top_types: Array<{ type: string; count: number }>;
   estimated_read_tokens: number;
@@ -82,6 +84,17 @@ export function getProjectMemoryIndex(
     .map(([path, count]) => ({ path, count }))
     .sort((a, b) => b.count - a.count || a.path.localeCompare(b.path))
     .slice(0, 8);
+  const provenanceSummary = Array.from(
+    observations.reduce((acc, obs) => {
+      if (!obs.source_tool) return acc;
+      acc.set(obs.source_tool, (acc.get(obs.source_tool) ?? 0) + 1);
+      return acc;
+    }, new Map<string, number>()).entries()
+  )
+    .map(([tool, count]) => ({ tool, count }))
+    .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
+    .slice(0, 6);
+  const assistantCheckpointCount = observations.filter((obs) => obs.source_tool === "assistant-stop").length;
 
   const topTitles = observations
     .slice(0, 12)
@@ -139,6 +152,8 @@ export function getProjectMemoryIndex(
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
     capture_summary: captureSummary,
     hot_files: hotFiles,
+    provenance_summary: provenanceSummary,
+    assistant_checkpoint_count: assistantCheckpointCount,
     top_titles: topTitles,
     top_types: topTypes,
     estimated_read_tokens: estimatedReadTokens,
