@@ -10,6 +10,14 @@ import type { MemDatabase, ObservationRow, RecentSessionRow } from "../storage/s
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
+import { estimateTokens } from "../context/inject.js";
+
+export interface CaptureSummary {
+  rich_sessions: number;
+  partial_sessions: number;
+  summary_only_sessions: number;
+  legacy_sessions: number;
+}
 
 export interface ProjectMemoryIndexInput {
   cwd?: string;
@@ -25,8 +33,12 @@ export interface ProjectMemoryIndexResult {
   recent_requests_count: number;
   recent_tools_count: number;
   raw_capture_active: boolean;
+  capture_summary: CaptureSummary;
   hot_files: Array<{ path: string; count: number }>;
   top_titles: Array<{ type: string; title: string; id: number }>;
+  top_types: Array<{ type: string; count: number }>;
+  estimated_read_tokens: number;
+  suggested_tools: string[];
 }
 
 export function getProjectMemoryIndex(
@@ -102,6 +114,19 @@ export function getProjectMemoryIndex(
     .map((obs) => obs.title.trim())
     .filter((title) => title.length > 0 && !looksLikeFileOperationTitle(title))
     .slice(0, 8);
+  const captureSummary = summarizeCaptureState(recentSessions);
+  const topTypes = Object.entries(counts)
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
+    .slice(0, 5);
+  const suggestedTools = buildSuggestedTools(recentSessions, recentRequestsCount, recentToolsCount, observations.length);
+  const estimatedReadTokens = estimateTokens(
+    [
+      recentOutcomes.join("\n"),
+      topTitles.map((item) => `${item.type}: ${item.title}`).join("\n"),
+      hotFiles.map((item) => `${item.path} (${item.count})`).join("\n"),
+    ].filter(Boolean).join("\n")
+  );
 
   return {
     project: project.name,
@@ -112,8 +137,12 @@ export function getProjectMemoryIndex(
     recent_requests_count: recentRequestsCount,
     recent_tools_count: recentToolsCount,
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
+    capture_summary: captureSummary,
     hot_files: hotFiles,
     top_titles: topTitles,
+    top_types: topTypes,
+    estimated_read_tokens: estimatedReadTokens,
+    suggested_tools: suggestedTools,
   };
 }
 
@@ -132,4 +161,49 @@ function looksLikeFileOperationTitle(value: string): boolean {
   return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
     value.trim()
   );
+}
+
+function summarizeCaptureState(sessions: Array<RecentSessionRow & { capture_state?: string }>): CaptureSummary {
+  const summary: CaptureSummary = {
+    rich_sessions: 0,
+    partial_sessions: 0,
+    summary_only_sessions: 0,
+    legacy_sessions: 0,
+  };
+  for (const session of sessions) {
+    switch (session.capture_state) {
+      case "rich":
+        summary.rich_sessions += 1;
+        break;
+      case "partial":
+        summary.partial_sessions += 1;
+        break;
+      case "summary-only":
+        summary.summary_only_sessions += 1;
+        break;
+      default:
+        summary.legacy_sessions += 1;
+        break;
+    }
+  }
+  return summary;
+}
+
+function buildSuggestedTools(
+  sessions: RecentSessionRow[],
+  requestCount: number,
+  toolCount: number,
+  observationCount: number
+): string[] {
+  const suggested: string[] = [];
+  if (sessions.length > 0) {
+    suggested.push("recent_sessions", "session_story");
+  }
+  if (requestCount > 0 || toolCount > 0) {
+    suggested.push("activity_feed");
+  }
+  if (observationCount > 0) {
+    suggested.push("memory_console");
+  }
+  return Array.from(new Set(suggested)).slice(0, 4);
 }

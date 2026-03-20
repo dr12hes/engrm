@@ -22,12 +22,16 @@ export interface MemoryConsoleInput {
 export interface MemoryConsoleResult {
   project?: string;
   capture_mode: "rich" | "observations-only";
+  capture_summary?: ReturnType<typeof getProjectMemoryIndex>["capture_summary"];
   sessions: ReturnType<typeof getRecentSessions>["sessions"];
   requests: ReturnType<typeof getRecentRequests>["prompts"];
   tools: ReturnType<typeof getRecentTools>["tool_events"];
   observations: ReturnType<typeof getRecentActivity>["observations"];
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
+  top_types: Array<{ type: string; count: number }>;
+  estimated_read_tokens?: number;
+  suggested_tools: string[];
 }
 
 export function getMemoryConsole(
@@ -77,7 +81,24 @@ export function getMemoryConsole(
     requests,
     tools,
     observations,
+    capture_summary: projectIndex?.capture_summary,
     recent_outcomes: projectIndex?.recent_outcomes ?? [],
     hot_files: projectIndex?.hot_files ?? [],
+    top_types: projectIndex?.top_types ?? [],
+    estimated_read_tokens: projectIndex?.estimated_read_tokens,
+    suggested_tools: projectIndex?.suggested_tools ?? buildFallbackSuggestedTools(sessions.length, requests.length, tools.length, observations.length),
   };
+}
+
+function buildFallbackSuggestedTools(
+  sessionCount: number,
+  requestCount: number,
+  toolCount: number,
+  observationCount: number
+): string[] {
+  const suggested: string[] = [];
+  if (sessionCount > 0) suggested.push("recent_sessions", "session_story");
+  if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
+  if (observationCount > 0) suggested.push("memory_console");
+  return Array.from(new Set(suggested)).slice(0, 4);
 }

@@ -92,8 +92,13 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.recent_requests_count).toBe(1);
     expect(result?.recent_tools_count).toBe(1);
     expect(result?.raw_capture_active).toBe(true);
+    expect(result?.capture_summary.rich_sessions).toBe(1);
     expect(result?.hot_files[0]?.path).toBe("src/auth.ts");
     expect(result?.recent_outcomes).toContain("Fixed auth redirect");
     expect(result?.recent_outcomes).not.toContain("Modified auth.ts");
+    expect(result?.top_types[0]).toEqual({ type: "bugfix", count: 1 });
+    expect(result?.estimated_read_tokens).toBeGreaterThan(0);
+    expect(result?.suggested_tools).toContain("recent_sessions");
+    expect(result?.suggested_tools).toContain("activity_feed");
   });
 });
