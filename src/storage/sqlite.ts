@@ -16,6 +16,7 @@ interface RunResult {
 }
 
 export interface CompatDatabase {
+  __raw?: unknown;
   query<Row = unknown, Params extends unknown[] = unknown[]>(
     sql: string
   ): {
@@ -86,6 +87,7 @@ function openNodeDatabase(dbPath: string): CompatDatabase {
   const raw = new BetterSqlite3(dbPath);
 
   return {
+    __raw: raw,
     query<Row = unknown, Params extends unknown[] = unknown[]>(sql: string) {
       const stmt = raw.prepare(sql);
       return {
@@ -333,7 +335,7 @@ export class MemDatabase {
   private loadVecExtension(): boolean {
     try {
       const sqliteVec = require("sqlite-vec");
-      sqliteVec.load(this.db);
+      sqliteVec.load((this.db.__raw ?? this.db) as object);
       return true;
     } catch {
       return false;

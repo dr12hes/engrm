@@ -1,6 +1,6 @@
 {
   "name": "engrm",
-  "version": "0.4.11",
+  "version": "0.4.12",
   "description": "Shared memory across devices, sessions, and coding agents",
   "mcpName": "io.github.dr12hes/engrm",
   "type": "module",

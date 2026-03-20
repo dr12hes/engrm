@@ -4,6 +4,12 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.12
+
+### Changed
+
+- fixed sqlite-vec loading on macOS/Bun installs by passing the underlying `better-sqlite3` handle to `sqlite-vec`, so `engrm doctor` and local semantic search correctly detect embeddings on Macs using the wrapped database adapter
+
 ## 0.4.11
 
 ### Added
