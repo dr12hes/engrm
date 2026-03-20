@@ -34,6 +34,7 @@ import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
 import { captureGitWorktree } from "./tools/capture-git-worktree.js";
+import { captureRepoScan } from "./tools/capture-repo-scan.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
 import {
@@ -52,6 +53,7 @@ import { PLUGIN_SPEC_VERSION, PLUGIN_SURFACES } from "./plugins/types.js";
 import { listPluginManifests } from "./plugins/registry.js";
 import { savePluginMemory } from "./plugins/save.js";
 import { reduceGitDiffToMemory } from "./plugins/git-diff.js";
+import { reduceRepoScanToMemory } from "./plugins/repo-scan.js";
 
 // --- Bootstrap ---
 
@@ -462,6 +464,86 @@ server.tool(
           text:
             `Saved ${params.staged ? "staged" : "worktree"} git diff as observation #${result.observation_id} ` +
             `(${reduced.type}: ${reduced.title})`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: capture_repo_scan
+server.tool(
+  "capture_repo_scan",
+  "Run a lightweight repository scan, reduce the findings into durable memory, and save it with plugin provenance",
+  {
+    cwd: z.string().optional().describe("Repo path to scan; defaults to the current working directory"),
+    focus: z.array(z.string()).optional().describe("Optional extra topics to search for, like 'billing' or 'validation'"),
+    max_findings: z.number().optional().describe("Maximum findings to keep"),
+    summary: z.string().optional().describe("Optional human summary for the scan"),
+    session_id: z.string().optional(),
+  },
+  async (params) => {
+    let scan;
+    try {
+      scan = captureRepoScan({
+        cwd: params.cwd ?? process.cwd(),
+        focus: params.focus,
+        max_findings: params.max_findings,
+      });
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not captured: ${error instanceof Error ? error.message : "unable to scan repository"}`,
+          },
+        ],
+      };
+    }
+
+    if (scan.findings.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `No lightweight repo-scan findings found in ${scan.cwd}`,
+          },
+        ],
+      };
+    }
+
+    const reduced = reduceRepoScanToMemory({
+      summary: params.summary,
+      findings: scan.findings,
+      session_id: params.session_id,
+      cwd: scan.cwd,
+      agent: getDetectedAgent(),
+    });
+
+    const result = await savePluginMemory(db, config, reduced);
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not saved: ${result.reason}`,
+          },
+        ],
+      };
+    }
+
+    const findingSummary = scan.findings
+      .slice(0, 3)
+      .map((finding) => finding.title)
+      .join("; ");
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Saved repo scan as observation #${result.observation_id} ` +
+            `(${reduced.type}: ${reduced.title})` +
+            `${findingSummary ? `\nFindings: ${findingSummary}` : ""}`,
         },
       ],
     };
