@@ -148,4 +148,59 @@ describe("session-start startup brief", () => {
     expect(lines.some((line) => line.includes("Recent Tools:"))).toBe(true);
     expect(lines.join("\n")).toContain("pytest tests/test_mem_insights.py");
   });
+
+  test("startup splash shows context economics and inspect hints", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 3,
+      available: 86,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 420,
+      context: makeContext({
+        recentPrompts: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            prompt_number: 1,
+            prompt: "Fix topology routing",
+            prompt_hash: "hash",
+            cwd: "/Volumes/Data/devs/huginn",
+            user_id: "david",
+            device_id: "BackupMac",
+            agent: "claude-code",
+            created_at_epoch: 1,
+          },
+        ],
+        recentSessions: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            user_id: "david",
+            device_id: "BackupMac",
+            agent: "claude-code",
+            status: "active",
+            observation_count: 3,
+            started_at_epoch: 1,
+            completed_at_epoch: 2,
+            project_name: "huginn",
+            request: "Fix topology routing",
+            completed: "Replaced broken ELK edge rendering",
+            prompt_count: 1,
+            tool_event_count: 2,
+          },
+        ],
+      }),
+    });
+
+    expect(splash).toContain("Context economics:");
+    expect(splash).toContain("89 total memories");
+    expect(splash).toContain("read now ~420t");
+    expect(splash).toContain("Inspect:");
+    expect(splash).toContain("recent_sessions");
+    expect(splash).toContain("activity_feed");
+  });
 });

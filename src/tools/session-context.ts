@@ -9,6 +9,7 @@
 import type { MemDatabase } from "../storage/sqlite.js";
 import {
   buildSessionContext,
+  estimateTokens,
   formatContextForInjection,
   type ContextOptions,
 } from "../context/inject.js";
@@ -32,6 +33,8 @@ export interface SessionContextResult {
   hot_files: Array<{ path: string; count: number }>;
   capture_state: "rich" | "partial" | "summary-only";
   raw_capture_active: boolean;
+  estimated_read_tokens: number;
+  suggested_tools: string[];
   preview: string;
 }
 
@@ -47,6 +50,8 @@ export function getSessionContext(
   });
 
   if (!context) return null;
+
+  const preview = formatContextForInjection(context);
 
   const recentRequests = context.recentPrompts?.length ?? 0;
   const recentTools = context.recentToolEvents?.length ?? 0;
@@ -70,7 +75,9 @@ export function getSessionContext(
     hot_files: hotFiles,
     capture_state: captureState,
     raw_capture_active: recentRequests > 0 || recentTools > 0,
-    preview: formatContextForInjection(context),
+    estimated_read_tokens: estimateTokens(preview),
+    suggested_tools: buildSuggestedTools(context),
+    preview,
   };
 }
 
@@ -97,4 +104,20 @@ function parseJsonArray(value: string | null | undefined): string[] {
   } catch {
     return [];
   }
+}
+
+function buildSuggestedTools(
+  context: NonNullable<ReturnType<typeof buildSessionContext>>
+): string[] {
+  const tools: string[] = [];
+  if ((context.recentSessions?.length ?? 0) > 0) {
+    tools.push("recent_sessions", "session_story");
+  }
+  if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
+    tools.push("activity_feed");
+  }
+  if (context.observations.length > 0) {
+    tools.push("memory_console");
+  }
+  return Array.from(new Set(tools)).slice(0, 4);
 }

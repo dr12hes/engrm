@@ -73,6 +73,9 @@ describe("getSessionContext", () => {
     expect(result?.recent_tools).toBe(1);
     expect(result?.capture_state).toBe("rich");
     expect(result?.raw_capture_active).toBe(true);
+    expect(result?.estimated_read_tokens).toBeGreaterThan(0);
+    expect(result?.suggested_tools).toContain("recent_sessions");
+    expect(result?.suggested_tools).toContain("activity_feed");
     expect(result?.recent_outcomes).toContain("Exposed project memory index in MCP");
     expect(result?.hot_files).toEqual([
       { path: "src/tools/project-memory-index.ts", count: 1 },

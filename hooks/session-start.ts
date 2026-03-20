@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import {
   buildSessionContext,
+  estimateTokens,
   formatContextForInjection,
 } from "../src/context/inject.js";
 import type { InjectedContext } from "../src/context/inject.js";
@@ -115,6 +116,7 @@ async function main(): Promise<void> {
         unreadMessages: msgCount,
         synced: syncedCount,
         context,
+        estimatedReadTokens: estimateTokens(formatContextForInjection(context)),
       });
 
       // Pack recommendations appended to context
@@ -170,6 +172,7 @@ interface SplashData {
   unreadMessages: number;
   synced: number;
   context: InjectedContext;
+  estimatedReadTokens: number;
 }
 
 function formatSplashScreen(data: SplashData): string {
@@ -228,6 +231,22 @@ function formatSplashScreen(data: SplashData): string {
     lines.push("");
     lines.push(`  ${c.bold}Startup context${c.reset}`);
     for (const line of brief) {
+      lines.push(`  ${line}`);
+    }
+  }
+
+  const economics = formatContextEconomics(data);
+  if (economics.length > 0) {
+    lines.push("");
+    for (const line of economics) {
+      lines.push(`  ${line}`);
+    }
+  }
+
+  const inspectHints = formatInspectHints(data.context);
+  if (inspectHints.length > 0) {
+    lines.push("");
+    for (const line of inspectHints) {
       lines.push(`  ${line}`);
     }
   }
@@ -372,6 +391,38 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   }
 
   return lines.slice(0, 14);
+}
+
+function formatContextEconomics(data: SplashData): string[] {
+  const totalMemories = Math.max(0, data.loaded + data.available);
+  const parts: string[] = [];
+  if (totalMemories > 0) {
+    parts.push(`${totalMemories.toLocaleString()} total memories`);
+  }
+  if (data.estimatedReadTokens > 0) {
+    parts.push(`read now ~${data.estimatedReadTokens.toLocaleString()}t`);
+  }
+  if (parts.length === 0) return [];
+  return [`${c.dim}Context economics:${c.reset} ${parts.join(" · ")}`];
+}
+
+function formatInspectHints(context: InjectedContext): string[] {
+  const hints: string[] = [];
+
+  if ((context.recentSessions?.length ?? 0) > 0) {
+    hints.push("recent_sessions");
+    hints.push("session_story");
+  }
+  if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
+    hints.push("activity_feed");
+  }
+  if (context.observations.length > 0) {
+    hints.push("memory_console");
+  }
+
+  const unique = Array.from(new Set(hints)).slice(0, 4);
+  if (unique.length === 0) return [];
+  return [`${c.dim}Inspect:${c.reset} ${unique.join(" · ")}`];
 }
 
 function rememberShownItem(shown: Set<string>, value: string | null | undefined): void {
@@ -796,6 +847,7 @@ function capitalize(value: string): string {
 }
 
 export const __testables = {
+  formatSplashScreen,
   formatVisibleStartupBrief,
 };
 
