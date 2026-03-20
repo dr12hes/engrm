@@ -55,6 +55,19 @@ async function main(): Promise<void> {
       }
 
       db.incrementSessionMetrics(event.session_id, metricsIncrement);
+
+      db.insertToolEvent({
+        session_id: event.session_id,
+        project_id: project?.id ?? null,
+        tool_name: event.tool_name,
+        tool_input_json: safeSerializeToolInput(event.tool_input),
+        tool_response_preview: truncatePreview(event.tool_response, 1200),
+        file_path: extractFilePath(event.tool_input),
+        command: extractCommand(event.tool_input),
+        user_id: config.user_id,
+        device_id: config.device_id,
+        agent: "claude-code",
+      });
     }
 
     // --- Security scanning ---
@@ -175,6 +188,37 @@ async function main(): Promise<void> {
   } finally {
     db.close();
   }
+}
+
+function safeSerializeToolInput(toolInput: Record<string, unknown>): string | null {
+  try {
+    const raw = JSON.stringify(toolInput);
+    return truncatePreview(raw, 2000);
+  } catch {
+    return null;
+  }
+}
+
+function truncatePreview(value: string | null | undefined, maxLen: number): string | null {
+  if (!value) return null;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, maxLen - 1)}…`;
+}
+
+function extractFilePath(toolInput: Record<string, unknown>): string | null {
+  const filePath = toolInput["file_path"];
+  return typeof filePath === "string" && filePath.trim().length > 0
+    ? filePath
+    : null;
+}
+
+function extractCommand(toolInput: Record<string, unknown>): string | null {
+  const command = toolInput["command"];
+  return typeof command === "string" && command.trim().length > 0
+    ? truncatePreview(command, 500)
+    : null;
 }
 
 /**

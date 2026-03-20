@@ -4,6 +4,32 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.8
+
+### Added
+
+- first-class local prompt chronology capture via Claude `UserPromptSubmit`
+- first-class local tool chronology capture via `PostToolUse`
+- new local MCP inspection tools:
+  - `capture_status`
+  - `activity_feed`
+  - `memory_console`
+  - `project_memory_index`
+  - `workspace_memory_index`
+  - `recent_requests`
+  - `recent_tools`
+  - `recent_sessions`
+  - `session_story`
+- public Engrm plugin spec and initial plugin foundation for memory-aware integrations
+
+### Changed
+
+- startup context now includes recent requests, recent tools, recent session rollups, and project signal counts
+- local sync summaries now carry prompt/tool capture metadata for downstream hosted surfaces
+- CLI `status` and `doctor` now show whether raw chronology capture is actually active on the machine
+- public/default server URL is now `https://engrm.dev`, with legacy public Candengo hosts normalized automatically
+- CLI connectivity and auth validation now use API-key-compatible Engrm endpoints instead of the broken `/v1/account/me` check
+
 ## 0.4.7
 
 ### Added

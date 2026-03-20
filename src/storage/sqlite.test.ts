@@ -244,6 +244,169 @@ describe("MemDatabase — observations", () => {
   });
 });
 
+describe("MemDatabase — user prompts", () => {
+  let projectId: number;
+
+  beforeEach(() => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+    projectId = project.id;
+  });
+
+  test("insertUserPrompt stores prompt chronology", () => {
+    const first = db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: projectId,
+      prompt: "Investigate the auth redirect loop",
+      cwd: "/tmp/repo",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+
+    const second = db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: projectId,
+      prompt: "Now fix the cookie domain handling too",
+      cwd: "/tmp/repo",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+
+    expect(first.prompt_number).toBe(1);
+    expect(second.prompt_number).toBe(2);
+
+    const prompts = db.getSessionUserPrompts("sess-1");
+    expect(prompts.map((item) => item.prompt_number)).toEqual([1, 2]);
+    expect(prompts[0]?.prompt).toContain("auth redirect loop");
+    expect(prompts[1]?.prompt).toContain("cookie domain");
+  });
+
+  test("insertUserPrompt deduplicates immediate duplicate prompt in a session", () => {
+    const first = db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: projectId,
+      prompt: "Review the startup memory output",
+      cwd: "/tmp/repo",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+
+    const second = db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: projectId,
+      prompt: "Review the startup memory output",
+      cwd: "/tmp/repo",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+
+    expect(second.id).toBe(first.id);
+    expect(db.getSessionUserPrompts("sess-1")).toHaveLength(1);
+  });
+
+  test("getRecentUserPrompts scopes by project and user", () => {
+    db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: projectId,
+      prompt: "Fix auth flow",
+      cwd: "/tmp/repo",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+
+    db.insertUserPrompt({
+      session_id: "sess-2",
+      project_id: projectId,
+      prompt: "Alice private prompt",
+      cwd: "/tmp/repo",
+      user_id: "alice",
+      device_id: "desktop-xyz",
+    });
+
+    const prompts = db.getRecentUserPrompts(projectId, 10, "david");
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]?.prompt).toBe("Fix auth flow");
+  });
+});
+
+describe("MemDatabase — tool events", () => {
+  let projectId: number;
+
+  beforeEach(() => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+    projectId = project.id;
+  });
+
+  test("insertToolEvent stores raw tool chronology", () => {
+    const first = db.insertToolEvent({
+      session_id: "sess-tools",
+      project_id: projectId,
+      tool_name: "Edit",
+      tool_input_json: "{\"file_path\":\"src/auth.ts\"}",
+      tool_response_preview: "Edited src/auth.ts",
+      file_path: "src/auth.ts",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+
+    expect(first.id).toBeGreaterThan(0);
+    expect(first.tool_name).toBe("Edit");
+    expect(first.file_path).toBe("src/auth.ts");
+  });
+
+  test("getSessionToolEvents returns chronological order", () => {
+    db.insertToolEvent({
+      session_id: "sess-tools",
+      project_id: projectId,
+      tool_name: "Read",
+      tool_response_preview: "Read config",
+      user_id: "david",
+      device_id: "laptop-abc",
+      created_at_epoch: 100,
+    });
+    db.insertToolEvent({
+      session_id: "sess-tools",
+      project_id: projectId,
+      tool_name: "Edit",
+      tool_response_preview: "Edited config",
+      user_id: "david",
+      device_id: "laptop-abc",
+      created_at_epoch: 200,
+    });
+
+    const events = db.getSessionToolEvents("sess-tools");
+    expect(events.map((event) => event.tool_name)).toEqual(["Read", "Edit"]);
+  });
+
+  test("getRecentToolEvents scopes by project and user", () => {
+    db.insertToolEvent({
+      session_id: "sess-tools",
+      project_id: projectId,
+      tool_name: "Bash",
+      command: "bun test",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+    db.insertToolEvent({
+      session_id: "sess-tools-2",
+      project_id: projectId,
+      tool_name: "Bash",
+      command: "npm run build",
+      user_id: "alice",
+      device_id: "desktop-xyz",
+    });
+
+    const events = db.getRecentToolEvents(projectId, 10, "david");
+    expect(events).toHaveLength(1);
+    expect(events[0]?.command).toBe("bun test");
+  });
+});
+
 describe("MemDatabase — FTS5 search", () => {
   let projectId: number;
 
@@ -479,6 +642,45 @@ describe("MemDatabase — sessions", () => {
       .get("sess-001");
     expect(session!.status).toBe("completed");
     expect(session!.completed_at_epoch).not.toBeNull();
+  });
+
+  test("getRecentSessions returns session rollup with prompt/tool counts", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+    db.upsertSession("sess-001", project.id, "david", "laptop-abc");
+    db.insertUserPrompt({
+      session_id: "sess-001",
+      project_id: project.id,
+      prompt: "Fix auth flow",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+    db.insertToolEvent({
+      session_id: "sess-001",
+      project_id: project.id,
+      tool_name: "Edit",
+      file_path: "src/auth.ts",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+    db.insertSessionSummary({
+      session_id: "sess-001",
+      project_id: project.id,
+      user_id: "david",
+      request: "Fix auth flow",
+      investigated: null,
+      learned: null,
+      completed: "Added retry",
+      next_steps: null,
+    });
+
+    const sessions = db.getRecentSessions(project.id, 10, "david");
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.prompt_count).toBe(1);
+    expect(sessions[0]?.tool_event_count).toBe(1);
+    expect(sessions[0]?.request).toBe("Fix auth flow");
   });
 });
 

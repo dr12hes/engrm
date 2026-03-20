@@ -51,6 +51,7 @@ console.log("  dist/server.js");
 const hookResult = await Bun.build({
   entrypoints: [
     join(root, "hooks/session-start.ts"),
+    join(root, "hooks/user-prompt-submit.ts"),
     join(root, "hooks/pre-compact.ts"),
     join(root, "hooks/post-tool-use.ts"),
     join(root, "hooks/stop.ts"),
@@ -76,6 +77,7 @@ if (!hookResult.success) {
   process.exit(1);
 }
 console.log("  dist/hooks/session-start.js");
+console.log("  dist/hooks/user-prompt-submit.js");
 console.log("  dist/hooks/pre-compact.js");
 console.log("  dist/hooks/post-tool-use.js");
 console.log("  dist/hooks/stop.js");
@@ -92,7 +94,7 @@ async function addShebang(filePath) {
 
 await addShebang(join(dist, "cli.js"));
 await addShebang(join(dist, "server.js"));
-for (const hook of ["session-start", "pre-compact", "post-tool-use", "stop", "codex-stop", "sentinel", "elicitation-result"]) {
+for (const hook of ["session-start", "user-prompt-submit", "pre-compact", "post-tool-use", "stop", "codex-stop", "sentinel", "elicitation-result"]) {
   await addShebang(join(dist, "hooks", `${hook}.js`));
 }
 

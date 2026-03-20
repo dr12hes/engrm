@@ -39,6 +39,8 @@ import { runBrowserAuth } from "./provisioning/browser-auth.js";
 import { registerAll } from "./register.js";
 import { listPacks, installPack } from "./packs/loader.js";
 import { listRulePacks, installRulePacks } from "./sentinel/rules.js";
+import { getCaptureStatus } from "./tools/capture-status.js";
+import { normalizeBaseUrl } from "./sync/auth.js";
 
 const LEGACY_CODEX_SERVER_NAME = `candengo-${"mem"}`;
 
@@ -427,7 +429,7 @@ async function initManual(): Promise<void> {
   }
 
   const candengoUrl = await prompt(
-    "Candengo Vector URL (e.g. https://www.candengo.com): "
+    "Engrm server URL (e.g. https://engrm.dev): "
   );
   const apiKey = await prompt("API key (cvk_...): ");
   const siteId = await prompt("Site ID: ");
@@ -536,7 +538,7 @@ function handleStatus(): void {
 
   // --- Integration section ---
   console.log("\n  Integration");
-  console.log(`    Candengo:      ${config.candengo_url || "(not set)"}`);
+  console.log(`    Server:        ${config.candengo_url ? normalizeBaseUrl(config.candengo_url) : "(not set)"}`);
   console.log(`    Sync:          ${config.sync.enabled ? "enabled" : "disabled"}`);
 
   const claudeJson = join(homedir(), ".claude.json");
@@ -547,7 +549,10 @@ function handleStatus(): void {
   const settingsContent = existsSync(claudeSettings) ? readFileSync(claudeSettings, "utf-8") : "";
   const codexContent = existsSync(codexConfig) ? readFileSync(codexConfig, "utf-8") : "";
   const codexHooksContent = existsSync(codexHooks) ? readFileSync(codexHooks, "utf-8") : "";
-  const hooksRegistered = settingsContent.includes("engrm") || settingsContent.includes("session-start");
+  const hooksRegistered =
+    settingsContent.includes("engrm") ||
+    settingsContent.includes("session-start") ||
+    settingsContent.includes("user-prompt-submit");
   const codexRegistered =
     codexContent.includes("[mcp_servers.engrm]") ||
     codexContent.includes(`[mcp_servers.${LEGACY_CODEX_SERVER_NAME}]`);
@@ -565,7 +570,7 @@ function handleStatus(): void {
         if (Array.isArray(entries)) {
           for (const entry of entries) {
             const e = entry as { hooks?: { command?: string }[] };
-            if (e.hooks?.some((h) => h.command?.includes("engrm") || h.command?.includes("session-start") || h.command?.includes("sentinel") || h.command?.includes("post-tool-use") || h.command?.includes("pre-compact") || h.command?.includes("stop") || h.command?.includes("elicitation"))) {
+            if (e.hooks?.some((h) => h.command?.includes("engrm") || h.command?.includes("session-start") || h.command?.includes("user-prompt-submit") || h.command?.includes("sentinel") || h.command?.includes("post-tool-use") || h.command?.includes("pre-compact") || h.command?.includes("stop") || h.command?.includes("elicitation"))) {
               hookCount++;
             }
           }
@@ -642,6 +647,17 @@ function handleStatus(): void {
         )
         .get()?.count ?? 0;
       console.log(`    Sessions:      ${summaryCount} summarised`);
+
+      const capture = getCaptureStatus(db, { user_id: config.user_id });
+      console.log(
+        `    Raw capture:   ${capture.raw_capture_active ? "active" : "observations-only so far"}`
+      );
+      console.log(
+        `    Prompts/tools: ${capture.recent_user_prompts}/${capture.recent_tool_events} in last 24h`
+      );
+      console.log(
+        `    Hook state:    Claude ${capture.claude_hooks_registered ? "ok" : "missing"}, Codex ${capture.codex_hooks_registered ? "ok" : "missing"}`
+      );
 
       // Value signals
       try {
@@ -1006,7 +1022,7 @@ async function handleDoctor(): Promise<void> {
           if (Array.isArray(entries)) {
             for (const entry of entries) {
               const e = entry as { hooks?: { command?: string }[] };
-              if (e.hooks?.some((h) => h.command?.includes("engrm") || h.command?.includes("session-start") || h.command?.includes("sentinel") || h.command?.includes("post-tool-use") || h.command?.includes("pre-compact") || h.command?.includes("stop") || h.command?.includes("elicitation"))) {
+              if (e.hooks?.some((h) => h.command?.includes("engrm") || h.command?.includes("session-start") || h.command?.includes("user-prompt-submit") || h.command?.includes("sentinel") || h.command?.includes("post-tool-use") || h.command?.includes("pre-compact") || h.command?.includes("stop") || h.command?.includes("elicitation"))) {
                 hookCount++;
               }
             }
@@ -1067,14 +1083,23 @@ async function handleDoctor(): Promise<void> {
   // 7. Server connectivity
   if (config.candengo_url) {
     try {
+      const baseUrl = normalizeBaseUrl(config.candengo_url);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       const start = Date.now();
-      const res = await fetch(`${config.candengo_url}/health`, { signal: controller.signal });
+      let res = await fetch(`${baseUrl}/health`, { signal: controller.signal });
+      if (res.status === 404) {
+        res = await fetch(`${baseUrl}/v1/mem/provision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+          signal: controller.signal,
+        });
+      }
       clearTimeout(timeout);
       const elapsed = Date.now() - start;
-      if (res.ok) {
-        const host = new URL(config.candengo_url).hostname;
+      if (res.ok || res.status === 400) {
+        const host = new URL(baseUrl).hostname;
         pass(`Server connectivity (${host}, ${elapsed}ms)`);
       } else {
         fail(`Server returned HTTP ${res.status}`);
@@ -1090,16 +1115,16 @@ async function handleDoctor(): Promise<void> {
   // 8. Auth valid
   if (config.candengo_url && config.candengo_api_key) {
     try {
+      const baseUrl = normalizeBaseUrl(config.candengo_url);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`${config.candengo_url}/v1/account/me`, {
+      const res = await fetch(`${baseUrl}/v1/mem/user-settings`, {
         headers: { Authorization: `Bearer ${config.candengo_api_key}` },
         signal: controller.signal,
       });
       clearTimeout(timeout);
       if (res.ok) {
-        const data = (await res.json()) as { email?: string };
-        const email = data.email ?? config.user_email ?? "unknown";
+        const email = config.user_email ?? "configured";
         pass(`Authentication valid (${email})`);
       } else if (res.status === 401 || res.status === 403) {
         fail("Authentication failed — API key may be expired");
@@ -1162,7 +1187,25 @@ async function handleDoctor(): Promise<void> {
     warn("Could not count observations");
   }
 
-  // 12. Disk space
+  // 12. Raw chronology capture
+  try {
+    const capture = getCaptureStatus(db, { user_id: config.user_id });
+    if (capture.raw_capture_active) {
+      pass(
+        `Raw chronology active (${capture.recent_user_prompts} prompts, ${capture.recent_tool_events} tools in last 24h)`
+      );
+    } else if (capture.claude_hooks_registered || capture.codex_hooks_registered) {
+      warn(
+        "Hooks are registered, but no raw prompt/tool chronology has been captured in the last 24h"
+      );
+    } else {
+      warn("Raw chronology inactive — hook registration is incomplete");
+    }
+  } catch {
+    warn("Could not check raw chronology capture");
+  }
+
+  // 13. Disk space
   try {
     const dbPath = getDbPath();
     if (existsSync(dbPath)) {

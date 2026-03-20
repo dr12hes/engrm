@@ -6,7 +6,7 @@
  */
 
 import { detectProject } from "../storage/projects.js";
-import type { MemDatabase, ObservationRow } from "../storage/sqlite.js";
+import type { MemDatabase, ObservationRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
 
 export interface TimelineInput {
   anchor_id: number;
@@ -21,6 +21,8 @@ export interface TimelineResult {
   observations: ObservationRow[];
   anchor_index: number;
   project?: string;
+  session_prompts?: UserPromptRow[];
+  session_tool_events?: ToolEventRow[];
 }
 
 /**
@@ -57,10 +59,18 @@ export function getTimeline(
 
   // Find the anchor's position in the result
   const anchorIndex = observations.findIndex((o) => o.id === input.anchor_id);
+  const sessionPrompts = observations[anchorIndex >= 0 ? anchorIndex : 0]?.session_id
+    ? db.getSessionUserPrompts(observations[anchorIndex >= 0 ? anchorIndex : 0]!.session_id!, 10)
+    : [];
+  const sessionToolEvents = observations[anchorIndex >= 0 ? anchorIndex : 0]?.session_id
+    ? db.getSessionToolEvents(observations[anchorIndex >= 0 ? anchorIndex : 0]!.session_id!, 12)
+    : [];
 
   return {
     observations,
     anchor_index: anchorIndex >= 0 ? anchorIndex : 0,
     project: projectName,
+    session_prompts: sessionPrompts.length > 0 ? sessionPrompts : undefined,
+    session_tool_events: sessionToolEvents.length > 0 ? sessionToolEvents : undefined,
   };
 }

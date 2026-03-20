@@ -12,6 +12,8 @@ import { computeSessionInsights } from "../intelligence/session-insights.js";
 
 export interface MemoryStatsResult {
   active_observations: number;
+  user_prompts: number;
+  tool_events: number;
   messages: number;
   session_summaries: number;
   decisions: number;
@@ -44,6 +46,12 @@ export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
        WHERE type = 'message' AND lifecycle IN ('active', 'aging', 'pinned')`
     )
     .get()?.count ?? 0;
+  const userPrompts = db.db
+    .query<{ count: number }, []>("SELECT COUNT(*) as count FROM user_prompts")
+    .get()?.count ?? 0;
+  const toolEvents = db.db
+    .query<{ count: number }, []>("SELECT COUNT(*) as count FROM tool_events")
+    .get()?.count ?? 0;
 
   const sessionSummaries = db.db
     .query<{ count: number }, []>("SELECT COUNT(*) as count FROM session_summaries")
@@ -66,6 +74,8 @@ export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
 
   return {
     active_observations: activeObservations,
+    user_prompts: userPrompts,
+    tool_events: toolEvents,
     messages,
     session_summaries: sessionSummaries,
     decisions: signals.decisions_count,

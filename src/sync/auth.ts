@@ -7,6 +7,22 @@
 
 import type { Config } from "../config.js";
 
+const LEGACY_PUBLIC_HOSTS = new Set(["www.candengo.com", "candengo.com"]);
+
+export function normalizeBaseUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  try {
+    const parsed = new URL(trimmed);
+    if (LEGACY_PUBLIC_HOSTS.has(parsed.hostname)) {
+      parsed.hostname = "engrm.dev";
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return trimmed.replace(/\/$/, "");
+  }
+}
+
 /**
  * Get API key for Candengo Vector.
  * Priority: ENGRM_TOKEN env var → config.candengo_api_key
@@ -25,7 +41,7 @@ export function getApiKey(config: Config): string | null {
  */
 export function getBaseUrl(config: Config): string | null {
   if (config.candengo_url && config.candengo_url.length > 0) {
-    return config.candengo_url;
+    return normalizeBaseUrl(config.candengo_url);
   }
   return null;
 }

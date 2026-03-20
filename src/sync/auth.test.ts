@@ -43,8 +43,14 @@ describe("getApiKey", () => {
 });
 
 describe("getBaseUrl", () => {
-  test("returns config URL", () => {
-    expect(getBaseUrl(makeConfig())).toBe("https://candengo.com");
+  test("normalizes legacy public URL to engrm.dev", () => {
+    expect(getBaseUrl(makeConfig())).toBe("https://engrm.dev");
+  });
+
+  test("preserves custom hosts", () => {
+    expect(getBaseUrl(makeConfig({ candengo_url: "https://vector.internal.company.com" }))).toBe(
+      "https://vector.internal.company.com"
+    );
   });
 
   test("returns null for empty URL", () => {

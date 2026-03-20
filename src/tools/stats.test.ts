@@ -52,12 +52,32 @@ describe("getMemoryStats", () => {
       completed: "Added refresh before retry",
       next_steps: null,
     });
+    db.insertUserPrompt({
+      session_id: "sess-123",
+      project_id: project.id,
+      prompt: "Fix auth flow",
+      cwd: tmpDir,
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
+    db.insertToolEvent({
+      session_id: "sess-123",
+      project_id: project.id,
+      tool_name: "Edit",
+      file_path: "src/auth.ts",
+      tool_input_json: "{\"file_path\":\"src/auth.ts\"}",
+      tool_response_preview: "Edited src/auth.ts",
+      user_id: "david",
+      device_id: "laptop-abc",
+    });
     db.markPackInstalled("typescript-patterns", 12);
     db.addToOutbox("observation", 1);
 
     const stats = getMemoryStats(db);
 
     expect(stats.active_observations).toBe(2);
+    expect(stats.user_prompts).toBe(1);
+    expect(stats.tool_events).toBe(1);
     expect(stats.messages).toBe(1);
     expect(stats.session_summaries).toBe(1);
     expect(stats.summaries_with_learned).toBe(1);

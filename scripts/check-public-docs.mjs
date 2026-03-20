@@ -11,6 +11,8 @@ const allowedRootMarkdown = new Set([
   "ARCHITECTURE.md",
   "CHANGELOG.md",
   "CONTRIBUTING.md",
+  "ECOSYSTEM_LISTINGS.md",
+  "PLUGIN_SPEC.md",
   "ROADMAP.md",
   "SECURITY.md",
 ]);

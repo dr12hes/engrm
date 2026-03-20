@@ -193,6 +193,6 @@ describe("provision", () => {
 
 describe("DEFAULT_CANDENGO_URL", () => {
   test("points to production", () => {
-    expect(DEFAULT_CANDENGO_URL).toBe("https://www.candengo.com");
+    expect(DEFAULT_CANDENGO_URL).toBe("https://engrm.dev");
   });
 });

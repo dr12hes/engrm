@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { MemDatabase } from "../storage/sqlite.js";
 import type { Config } from "../config.js";
 import { saveObservation, type SaveObservationInput } from "./save.js";
+import { savePluginMemory } from "../plugins/save.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -315,5 +316,46 @@ describe("saveObservation", () => {
         expect(result.reason).not.toContain("Invalid type");
       }
     }
+  });
+
+  test("saves plugin memory with stable provenance tags", async () => {
+    const result = await savePluginMemory(db, config, {
+      plugin_id: "engrm.git-diff",
+      type: "bugfix",
+      title: "Protect AP classification during scanner upsert",
+      summary: "Reduced a noisy diff into a durable bugfix memory object for later recall.",
+      facts: ["Scanner had been overwriting AP with switch"],
+      source: "git",
+      surfaces: ["briefs", "startup"],
+      tags: ["device-classification"],
+      source_refs: [{ kind: "file", value: "src/scanner.ts" }],
+      files_modified: ["/tmp/project/src/scanner.ts"],
+      cwd: "/tmp/project",
+    });
+
+    expect(result.success).toBe(true);
+
+    const obs = db.getObservationById(result.observation_id!);
+    const concepts = JSON.parse(obs!.concepts!);
+    const facts = JSON.parse(obs!.facts!);
+
+    expect(concepts).toContain("plugin:engrm.git-diff");
+    expect(concepts).toContain("source:git");
+    expect(concepts).toContain("surface:briefs");
+    expect(concepts).toContain("surface:startup");
+    expect(facts).toContain("file: src/scanner.ts");
+  });
+
+  test("rejects plugin memory when manifest type is unsupported", async () => {
+    const result = await savePluginMemory(db, config, {
+      plugin_id: "engrm.openclaw-content",
+      type: "bugfix",
+      title: "Should fail",
+      summary: "This plugin does not declare bugfix output.",
+      cwd: "/tmp/project",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toContain("does not declare type");
   });
 });

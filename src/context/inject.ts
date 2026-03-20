@@ -14,7 +14,15 @@
  */
 
 import { detectProject } from "../storage/projects.js";
-import type { MemDatabase, ObservationRow, SessionSummaryRow, SecurityFindingRow } from "../storage/sqlite.js";
+import type {
+  MemDatabase,
+  ObservationRow,
+  RecentSessionRow,
+  SessionSummaryRow,
+  SecurityFindingRow,
+  ToolEventRow,
+  UserPromptRow,
+} from "../storage/sqlite.js";
 import { findStaleDecisions, findStaleDecisionsGlobal } from "../intelligence/followthrough.js";
 import type { StaleDecision } from "../intelligence/followthrough.js";
 import {
@@ -60,6 +68,14 @@ export interface InjectedContext {
   recentProjects?: RecentProject[];
   /** Decisions with no matching implementation — "what you didn't do" */
   staleDecisions?: StaleDecision[];
+  /** Recent raw prompts from this project/session, newest first */
+  recentPrompts?: UserPromptRow[];
+  /** Recent raw tool chronology from this project/session, newest first */
+  recentToolEvents?: ToolEventRow[];
+  /** Recent session rollups for this project */
+  recentSessions?: RecentSessionRow[];
+  /** Project-level counts by observation type */
+  projectTypeCounts?: Record<string, number>;
 }
 
 export interface ContextObservation {
@@ -68,6 +84,8 @@ export interface ContextObservation {
   title: string;
   narrative: string | null;
   facts: string | null;
+  files_read?: string | null;
+  files_modified?: string | null;
   quality: number;
   created_at: string;
   /** Present when observation is from a different project (cross-project search) */
@@ -272,12 +290,32 @@ export function buildSessionContext(
   if (maxCount !== undefined) {
     const remaining = Math.max(0, maxCount - pinned.length - dedupedRecent.length);
     const all = [...pinned, ...dedupedRecent, ...sorted.slice(0, remaining)];
+    const recentPrompts = db.getRecentUserPrompts(
+      isNewProject ? null : projectId,
+      isNewProject ? 8 : 6,
+      opts.userId
+    );
+    const recentToolEvents = db.getRecentToolEvents(
+      isNewProject ? null : projectId,
+      isNewProject ? 8 : 6,
+      opts.userId
+    );
+    const recentSessions = isNewProject
+      ? []
+      : db.getRecentSessions(projectId, 5, opts.userId);
+    const projectTypeCounts = isNewProject
+      ? undefined
+      : getProjectTypeCounts(db, projectId, opts.userId);
     return {
       project_name: projectName,
       canonical_id: canonicalId,
       observations: all.map(toContextObservation),
       session_count: all.length,
       total_active: totalActive,
+      recentPrompts: recentPrompts.length > 0 ? recentPrompts : undefined,
+      recentToolEvents: recentToolEvents.length > 0 ? recentToolEvents : undefined,
+      recentSessions: recentSessions.length > 0 ? recentSessions : undefined,
+      projectTypeCounts,
     };
   }
 
@@ -310,6 +348,23 @@ export function buildSessionContext(
 
   // Fetch recent session summaries for lessons learned
   const summaries = isNewProject ? [] : db.getRecentSummaries(projectId, 5);
+
+  const recentPrompts = db.getRecentUserPrompts(
+    isNewProject ? null : projectId,
+    isNewProject ? 8 : 6,
+    opts.userId
+  );
+  const recentToolEvents = db.getRecentToolEvents(
+    isNewProject ? null : projectId,
+    isNewProject ? 8 : 6,
+    opts.userId
+  );
+  const recentSessions = isNewProject
+    ? []
+    : db.getRecentSessions(projectId, 5, opts.userId);
+  const projectTypeCounts = isNewProject
+    ? undefined
+    : getProjectTypeCounts(db, projectId, opts.userId);
 
   // Fetch recent security findings (last 7 days) for risk awareness
   let securityFindings: SecurityFindingRow[] = [];
@@ -395,6 +450,10 @@ export function buildSessionContext(
     securityFindings: securityFindings.length > 0 ? securityFindings : undefined,
     recentProjects,
     staleDecisions,
+    recentPrompts: recentPrompts.length > 0 ? recentPrompts : undefined,
+    recentToolEvents: recentToolEvents.length > 0 ? recentToolEvents : undefined,
+    recentSessions: recentSessions.length > 0 ? recentSessions : undefined,
+    projectTypeCounts,
   };
 }
 
@@ -432,7 +491,13 @@ function estimateObservationTokens(
 export function formatContextForInjection(
   context: InjectedContext
 ): string {
-  if (context.observations.length === 0) {
+  if (
+    context.observations.length === 0 &&
+    (!context.recentPrompts || context.recentPrompts.length === 0) &&
+    (!context.recentToolEvents || context.recentToolEvents.length === 0) &&
+    (!context.recentSessions || context.recentSessions.length === 0) &&
+    (!context.projectTypeCounts || Object.keys(context.projectTypeCounts).length === 0)
+  ) {
     return `Project: ${context.project_name} (no prior observations)`;
   }
 
@@ -460,12 +525,57 @@ export function formatContextForInjection(
     lines.push("");
   }
 
+  if (context.recentPrompts && context.recentPrompts.length > 0) {
+    lines.push("## Recent Requests");
+    for (const prompt of context.recentPrompts.slice(0, 5)) {
+      const label = prompt.prompt_number > 0
+        ? `#${prompt.prompt_number}`
+        : new Date(prompt.created_at_epoch * 1000).toISOString().split("T")[0];
+      lines.push(`- ${label}: ${truncateText(prompt.prompt.replace(/\s+/g, " "), 160)}`);
+    }
+    lines.push("");
+  }
+
+  if (context.recentToolEvents && context.recentToolEvents.length > 0) {
+    lines.push("## Recent Tools");
+    for (const tool of context.recentToolEvents.slice(0, 5)) {
+      lines.push(`- ${tool.tool_name}: ${formatToolEventDetail(tool)}`);
+    }
+    lines.push("");
+  }
+
+  if (context.recentSessions && context.recentSessions.length > 0) {
+    lines.push("## Recent Sessions");
+    for (const session of context.recentSessions.slice(0, 4)) {
+      const summary = session.request ?? session.completed ?? "(no summary)";
+      lines.push(
+        `- ${session.session_id}: ${truncateText(summary.replace(/\s+/g, " "), 140)} ` +
+        `(prompts ${session.prompt_count}, tools ${session.tool_event_count}, obs ${session.observation_count})`
+      );
+    }
+    lines.push("");
+  }
+
+  if (context.projectTypeCounts && Object.keys(context.projectTypeCounts).length > 0) {
+    const topTypes = Object.entries(context.projectTypeCounts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 5)
+      .map(([type, count]) => `${type} ${count}`)
+      .join(" · ");
+    if (topTypes) {
+      lines.push(`## Project Signals`);
+      lines.push(`Top memory types: ${topTypes}`);
+      lines.push("");
+    }
+  }
+
   for (let i = 0; i < context.observations.length; i++) {
     const obs = context.observations[i]!;
     const date = obs.created_at.split("T")[0];
     const fromLabel = obs.source_project ? ` [from: ${obs.source_project}]` : "";
+    const fileLabel = formatObservationFiles(obs);
     lines.push(
-      `- **[${obs.type}]** ${obs.title} (${date}, q=${obs.quality.toFixed(1)})${fromLabel}`
+      `- **#${obs.id} [${obs.type}]** ${obs.title} (${date}, q=${obs.quality.toFixed(1)})${fromLabel}${fileLabel}`
     );
 
     // Detailed tier: show facts or narrative snippet
@@ -661,8 +771,67 @@ function toContextObservation(obs: ObservationRow & { _source_project?: string }
     title: obs.title,
     narrative: obs.narrative,
     facts: obs.facts,
+    files_read: obs.files_read,
+    files_modified: obs.files_modified,
     quality: obs.quality,
     created_at: obs.created_at,
     ...(obs._source_project ? { source_project: obs._source_project } : {}),
   };
+}
+
+function formatObservationFiles(obs: ContextObservation): string {
+  const modified = parseJsonStringArray(obs.files_modified);
+  if (modified.length > 0) {
+    return ` · files: ${truncateText(modified.slice(0, 2).join(", "), 60)}`;
+  }
+
+  const read = parseJsonStringArray(obs.files_read);
+  if (read.length > 0) {
+    return ` · read: ${truncateText(read.slice(0, 2).join(", "), 60)}`;
+  }
+
+  return "";
+}
+
+function parseJsonStringArray(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function formatToolEventDetail(tool: ToolEventRow): string {
+  const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
+  return truncateText(detail || "recent tool execution", 160);
+}
+
+function getProjectTypeCounts(
+  db: MemDatabase,
+  projectId: number,
+  userId?: string
+): Record<string, number> {
+  const visibilityClause = userId
+    ? " AND (sensitivity != 'personal' OR user_id = ?)"
+    : "";
+  const rows = db.db
+    .query<{ type: string; count: number }, (number | string)[]>(
+      `SELECT type, COUNT(*) as count
+       FROM observations
+       WHERE project_id = ?
+         AND lifecycle IN ('active', 'aging', 'pinned')
+         AND superseded_by IS NULL
+         ${visibilityClause}
+       GROUP BY type`
+    )
+    .all(projectId, ...(userId ? [userId] : []));
+
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    counts[row.type] = row.count;
+  }
+  return counts;
 }

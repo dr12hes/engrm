@@ -380,6 +380,71 @@ describe("token budget", () => {
     // Should be within budget range (3000 + some margin for header/footer)
     expect(tokens).toBeLessThan(4000);
   });
+
+  test("includes recent prompts in context for the current project", () => {
+    const project = db.upsertProject({
+      canonical_id: "local/testproject",
+      name: "testproject",
+    });
+
+    db.insertUserPrompt({
+      session_id: "sess-prompts",
+      project_id: project.id,
+      prompt: "Investigate the startup brief mismatch against claude-mem",
+      cwd: "/tmp/testproject",
+      user_id: "david",
+      device_id: "laptop",
+    });
+
+    const ctx = buildSessionContext(db, "/tmp/testproject");
+    expect(ctx?.recentPrompts?.[0]?.prompt).toContain("startup brief mismatch");
+  });
+
+  test("includes recent session rollups and project type counts for the current project", () => {
+    const project = db.upsertProject({
+      canonical_id: "local/testproject",
+      name: "testproject",
+    });
+    db.upsertSession("sess-ctx", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-ctx",
+      project_id: project.id,
+      prompt: "Fix auth flow",
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.insertToolEvent({
+      session_id: "sess-ctx",
+      project_id: project.id,
+      tool_name: "Edit",
+      file_path: "src/auth.ts",
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.insertObservation({
+      session_id: "sess-ctx",
+      project_id: project.id,
+      type: "bugfix",
+      title: "Fixed auth redirect",
+      quality: 0.8,
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.insertSessionSummary({
+      session_id: "sess-ctx",
+      project_id: project.id,
+      user_id: "david",
+      request: "Fix auth flow",
+      investigated: null,
+      learned: null,
+      completed: "Added retry",
+      next_steps: null,
+    });
+
+    const ctx = buildSessionContext(db, "/tmp/testproject");
+    expect(ctx?.recentSessions?.[0]?.session_id).toBe("sess-ctx");
+    expect(ctx?.projectTypeCounts?.bugfix).toBe(1);
+  });
 });
 
 // --- formatContextForInjection (tiered + facts-first) ---
@@ -420,6 +485,111 @@ describe("formatContextForInjection", () => {
     expect(text).toContain("  - SQLite is fast");
     expect(text).toContain("  - Works offline");
     expect(text).toContain("  - No server needed");
+  });
+
+  test("formats recent prompts ahead of observations when available", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [
+        {
+          id: 1,
+          type: "decision",
+          title: "Use SQLite",
+          narrative: null,
+          facts: '["Fast local reads"]',
+          quality: 0.9,
+          created_at: "2026-03-10T10:00:00Z",
+        },
+      ],
+      session_count: 1,
+      total_active: 1,
+      recentPrompts: [
+        {
+          id: 11,
+          session_id: "sess-1",
+          project_id: 1,
+          prompt_number: 3,
+          prompt: "Investigate why startup context feels too shallow compared with claude-mem",
+          prompt_hash: "hash",
+          cwd: "/tmp/myproject",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          created_at_epoch: 1,
+        },
+      ],
+    });
+
+    expect(text).toContain("## Recent Requests");
+    expect(text).toContain("#3: Investigate why startup context feels too shallow");
+  });
+
+  test("formats recent tool chronology when available", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [],
+      session_count: 0,
+      total_active: 0,
+      recentToolEvents: [
+        {
+          id: 21,
+          session_id: "sess-1",
+          project_id: 1,
+          tool_name: "Edit",
+          tool_input_json: "{\"file_path\":\"src/auth.ts\"}",
+          tool_response_preview: "Edited src/auth.ts",
+          file_path: "src/auth.ts",
+          command: null,
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          created_at_epoch: 1,
+        },
+      ],
+    });
+
+    expect(text).toContain("## Recent Tools");
+    expect(text).toContain("Edit: src/auth.ts");
+  });
+
+  test("formats recent sessions and project signals when available", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [],
+      session_count: 0,
+      total_active: 0,
+      recentSessions: [
+        {
+          id: 1,
+          session_id: "sess-1",
+          project_id: 1,
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          status: "active",
+          observation_count: 3,
+          started_at_epoch: 1,
+          completed_at_epoch: 2,
+          project_name: "myproject",
+          request: "Fix auth flow",
+          completed: "Added retry",
+          prompt_count: 1,
+          tool_event_count: 2,
+        },
+      ],
+      projectTypeCounts: {
+        bugfix: 3,
+        decision: 1,
+      },
+    });
+
+    expect(text).toContain("## Recent Sessions");
+    expect(text).toContain("sess-1: Fix auth flow");
+    expect(text).toContain("## Project Signals");
+    expect(text).toContain("Top memory types: bugfix 3");
   });
 
   test("falls back to narrative when no facts", () => {

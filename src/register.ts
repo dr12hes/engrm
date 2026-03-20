@@ -2,7 +2,7 @@
  * Auto-register Engrm MCP server + hooks in Claude Code config.
  *
  * - MCP server → ~/.claude.json (mcpServers.engrm)
- * - Hooks → ~/.claude/settings.json (hooks.SessionStart, PostToolUse, ElicitationResult, Stop)
+ * - Hooks → ~/.claude/settings.json (hooks.SessionStart, UserPromptSubmit, PostToolUse, ElicitationResult, Stop)
  *
  * Merges into existing config — never overwrites other servers or hooks.
  */
@@ -294,6 +294,7 @@ export function registerHooks(): { path: string; added: boolean } {
   }
 
   const sessionStartCmd = hookCmd("session-start");
+  const userPromptSubmitCmd = hookCmd("user-prompt-submit");
   const preCompactCmd = hookCmd("pre-compact");
   const preToolUseCmd = hookCmd("sentinel");
   const postToolUseCmd = hookCmd("post-tool-use");
@@ -308,6 +309,12 @@ export function registerHooks(): { path: string; added: boolean } {
     hooks["SessionStart"],
     { hooks: [{ type: "command", command: sessionStartCmd }] },
     "session-start"
+  );
+
+  hooks["UserPromptSubmit"] = replaceEngrmHook(
+    hooks["UserPromptSubmit"],
+    { hooks: [{ type: "command", command: userPromptSubmitCmd }] },
+    "user-prompt-submit"
   );
 
   hooks["PreCompact"] = replaceEngrmHook(

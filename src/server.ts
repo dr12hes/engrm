@@ -18,6 +18,15 @@ import { getObservations } from "./tools/get.js";
 import { getTimeline } from "./tools/timeline.js";
 import { pinObservation } from "./tools/pin.js";
 import { getRecentActivity } from "./tools/recent.js";
+import { getRecentRequests } from "./tools/recent-prompts.js";
+import { getRecentTools } from "./tools/recent-tools.js";
+import { getSessionStory } from "./tools/session-story.js";
+import { getRecentSessions } from "./tools/recent-sessions.js";
+import { getMemoryConsole } from "./tools/memory-console.js";
+import { getProjectMemoryIndex } from "./tools/project-memory-index.js";
+import { getWorkspaceMemoryIndex } from "./tools/workspace-memory-index.js";
+import { getActivityFeed } from "./tools/activity-feed.js";
+import { getCaptureStatus } from "./tools/capture-status.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
 import {
@@ -32,6 +41,10 @@ import { detectStacksFromProject } from "./telemetry/stack-detect.js";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { PLUGIN_SPEC_VERSION, PLUGIN_SURFACES } from "./plugins/types.js";
+import { listPluginManifests } from "./plugins/registry.js";
+import { savePluginMemory } from "./plugins/save.js";
+import { reduceGitDiffToMemory } from "./plugins/git-diff.js";
 
 // --- Bootstrap ---
 
@@ -227,6 +240,153 @@ server.tool(
   }
 );
 
+// Tool: plugin_catalog
+server.tool(
+  "plugin_catalog",
+  "List Engrm plugin manifests so tools can produce memory in a compatible shape",
+  {
+    surface: z.enum(PLUGIN_SURFACES).optional().describe("Optional surface filter"),
+  },
+  async (params) => {
+    const manifests = listPluginManifests(params.surface);
+    const lines = manifests.map((manifest) =>
+      `- ${manifest.id} (${manifest.kind}) -> produces ${manifest.produces.join(", ")}; surfaces ${manifest.surfaces.join(", ")}`
+    );
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Engrm plugin spec: ${PLUGIN_SPEC_VERSION}\n\n` +
+            (params.surface ? `Surface filter: ${params.surface}\n\n` : "") +
+            (lines.length > 0 ? lines.join("\n") : "No plugin manifests available."),
+        },
+      ],
+    };
+  }
+);
+
+// Tool: save_plugin_memory
+server.tool(
+  "save_plugin_memory",
+  "Save reduced plugin output as durable Engrm memory with stable plugin provenance",
+  {
+    plugin_id: z.string().describe("Stable plugin identifier such as 'engrm.git-diff'"),
+    type: z.enum([
+      "bugfix",
+      "discovery",
+      "decision",
+      "pattern",
+      "change",
+      "feature",
+      "refactor",
+      "digest",
+      "message",
+    ]),
+    title: z.string().describe("Short durable memory title"),
+    summary: z.string().optional().describe("Reduced summary of what happened and why it matters"),
+    facts: z.array(z.string()).optional().describe("Reusable facts worth remembering"),
+    tags: z.array(z.string()).optional().describe("Plugin-specific tags"),
+    source: z.string().optional().describe("Upstream source like git, openclaw, ci, or issues"),
+    source_refs: z.array(z.object({
+      kind: z.enum(["file", "url", "ticket", "commit", "thread", "command", "other"]),
+      value: z.string(),
+    })).optional().describe("Pointers back to the original evidence"),
+    surfaces: z.array(z.enum(PLUGIN_SURFACES)).optional().describe("Engrm surfaces this memory is designed to feed"),
+    files_read: z.array(z.string()).optional().describe("Files read (project-relative when possible)"),
+    files_modified: z.array(z.string()).optional().describe("Files modified (project-relative when possible)"),
+    sensitivity: z.enum(["shared", "personal", "secret"]).optional(),
+    session_id: z.string().optional(),
+    cwd: z.string().optional().describe("Project root for relative-path normalization"),
+  },
+  async (params) => {
+    const result = await savePluginMemory(db, config, {
+      ...params,
+      agent: getDetectedAgent(),
+    });
+
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not saved: ${result.reason}`,
+          },
+        ],
+      };
+    }
+
+    if (result.merged_into) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Merged plugin memory into observation #${result.merged_into} (quality: ${result.quality_score?.toFixed(2)})`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Saved plugin memory as observation #${result.observation_id} (quality: ${result.quality_score?.toFixed(2)})`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: capture_git_diff
+server.tool(
+  "capture_git_diff",
+  "Reduce a git diff into a durable Engrm memory object and save it with plugin provenance",
+  {
+    diff: z.string().describe("Unified git diff text"),
+    summary: z.string().optional().describe("Optional human summary or commit-style title"),
+    files: z.array(z.string()).optional().describe("Optional changed file paths if already known"),
+    session_id: z.string().optional(),
+    cwd: z.string().optional().describe("Project root for relative-path normalization"),
+  },
+  async (params) => {
+    const reduced = reduceGitDiffToMemory({
+      ...params,
+      cwd: params.cwd ?? process.cwd(),
+      agent: getDetectedAgent(),
+    });
+
+    const result = await savePluginMemory(db, config, reduced);
+
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not saved: ${result.reason}`,
+          },
+        ],
+      };
+    }
+
+    const reducedFacts = reduced.facts && reduced.facts.length > 0
+      ? `\nFacts: ${reduced.facts.join("; ")}`
+      : "";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Saved git diff as observation #${result.observation_id} ` +
+            `(${reduced.type}: ${reduced.title})${reducedFacts}`,
+        },
+      ],
+    };
+  }
+);
+
 // Tool: search
 server.tool(
   "search",
@@ -392,12 +552,26 @@ server.tool(
     const projectLine = result.project
       ? `Project: ${result.project}\n`
       : "";
+    const promptSection = result.session_prompts && result.session_prompts.length > 0
+      ? `\n\nSession requests:\n${result.session_prompts
+          .map((prompt) => `- #${prompt.prompt_number} ${prompt.prompt.replace(/\s+/g, " ").trim()}`)
+          .join("\n")}`
+      : "";
+    const toolSection = result.session_tool_events && result.session_tool_events.length > 0
+      ? `\n\nSession tools:\n${result.session_tool_events
+          .slice(-8)
+          .map((tool) => {
+            const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
+            return `- ${tool.tool_name}${detail ? ` — ${detail}` : ""}`;
+          })
+          .join("\n")}`
+      : "";
 
     return {
       content: [
         {
           type: "text" as const,
-          text: `${projectLine}Timeline around #${params.anchor}:\n\n${lines.join("\n")}`,
+          text: `${projectLine}Timeline around #${params.anchor}:\n\n${lines.join("\n")}${promptSection}${toolSection}`,
         },
       ],
     };
@@ -599,6 +773,8 @@ server.tool(
           type: "text" as const,
           text:
             `Active observations: ${stats.active_observations}\n` +
+            `User prompts: ${stats.user_prompts}\n` +
+            `Tool events: ${stats.tool_events}\n` +
             `Messages: ${stats.messages}\n` +
             `Session summaries: ${stats.session_summaries}\n` +
             `Summary coverage: learned ${stats.summaries_with_learned}, completed ${stats.summaries_with_completed}, next steps ${stats.summaries_with_next_steps}\n` +
@@ -608,6 +784,406 @@ server.tool(
             `Recent lessons:\n${recentLessons}\n\n` +
             `Recent completed:\n${recentCompleted}\n\n` +
             `Next steps:\n${nextSteps}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: memory_console
+server.tool(
+  "memory_console",
+  "Show a high-signal local overview of what Engrm currently knows about this project",
+  {
+    cwd: z.string().optional(),
+    project_scoped: z.boolean().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getMemoryConsole(db, {
+      ...params,
+      cwd: params.cwd ?? process.cwd(),
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const sessionLines = result.sessions.length > 0
+      ? result.sessions.map((session) => {
+          const label = session.request ?? session.completed ?? "(no summary)";
+          return `- ${session.session_id} :: ${label.replace(/\s+/g, " ").trim()}`;
+        }).join("\n")
+      : "- (none)";
+
+    const requestLines = result.requests.length > 0
+      ? result.requests.map((prompt) => `- #${prompt.prompt_number} ${prompt.prompt.replace(/\s+/g, " ").trim()}`).join("\n")
+      : "- (none)";
+
+    const toolLines = result.tools.length > 0
+      ? result.tools.map((tool) => {
+          const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
+          return `- ${tool.tool_name}${detail ? ` — ${detail}` : ""}`;
+        }).join("\n")
+      : "- (none)";
+
+    const observationLines = result.observations.length > 0
+      ? result.observations.map((obs) => `- #${obs.id} [${obs.type}] ${obs.title}`).join("\n")
+      : "- (none)";
+
+    const projectLine = result.project ? `Project: ${result.project}\n\n` : "";
+    const captureLine = result.capture_mode === "rich"
+      ? `Raw chronology: active (${result.requests.length} requests, ${result.tools.length} tools)\n\n`
+      : "Raw chronology: observations-only so far (prompt/tool hooks have not produced local history here yet)\n\n";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${projectLine}` +
+            `${captureLine}` +
+            `Recent sessions:\n${sessionLines}\n\n` +
+            `Recent requests:\n${requestLines}\n\n` +
+            `Recent tools:\n${toolLines}\n\n` +
+            `Recent observations:\n${observationLines}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: capture_status
+server.tool(
+  "capture_status",
+  "Show whether Engrm hook registration and recent prompt/tool chronology capture are actually active on this machine",
+  {
+    lookback_hours: z.number().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getCaptureStatus(db, {
+      lookback_hours: params.lookback_hours,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const latestPrompt = result.latest_prompt_epoch
+      ? new Date(result.latest_prompt_epoch * 1000).toISOString()
+      : "none";
+    const latestTool = result.latest_tool_event_epoch
+      ? new Date(result.latest_tool_event_epoch * 1000).toISOString()
+      : "none";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Schema: v${result.schema_version} (${result.schema_current ? "current" : "outdated"})\n` +
+            `Claude MCP: ${result.claude_mcp_registered ? "registered" : "missing"}\n` +
+            `Claude hooks: ${result.claude_hooks_registered ? `registered (${result.claude_hook_count})` : "missing"}\n` +
+            `Codex MCP: ${result.codex_mcp_registered ? "registered" : "missing"}\n` +
+            `Codex hooks: ${result.codex_hooks_registered ? "registered" : "missing"}\n\n` +
+            `Recent user prompts: ${result.recent_user_prompts}\n` +
+            `Recent tool events: ${result.recent_tool_events}\n` +
+            `Recent sessions with raw chronology: ${result.recent_sessions_with_raw_capture}\n` +
+            `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n` +
+            `Latest prompt: ${latestPrompt}\n` +
+            `Latest tool event: ${latestTool}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: activity_feed
+server.tool(
+  "activity_feed",
+  "Show one chronological local feed across prompts, tools, observations, and summaries",
+  {
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    session_id: z.string().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getActivityFeed(db, {
+      ...params,
+      cwd: params.cwd ?? process.cwd(),
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.events.length > 0
+      ? result.events.map((event) => {
+          const stamp = new Date(event.created_at_epoch * 1000).toISOString().replace("T", " ").slice(0, 16);
+          const kind = event.kind === "observation" && event.observation_type
+            ? `${event.kind}:${event.observation_type}`
+            : event.kind;
+          return `- ${stamp} [${kind}] ${event.title}${event.detail ? ` — ${event.detail}` : ""}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}Activity feed:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: project_memory_index
+server.tool(
+  "project_memory_index",
+  "Show a typed local memory index for the current project",
+  {
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getProjectMemoryIndex(db, {
+      cwd: params.cwd ?? process.cwd(),
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    if (!result) {
+      return {
+        content: [{ type: "text" as const, text: "No project memory found for this folder yet." }],
+      };
+    }
+
+    const counts = Object.entries(result.observation_counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([type, count]) => `- ${type}: ${count}`)
+      .join("\n") || "- (none)";
+
+    const sessions = result.recent_sessions.length > 0
+      ? result.recent_sessions.map((session) => {
+          const label = session.request ?? session.completed ?? "(no summary)";
+          return `- ${session.session_id} :: ${label.replace(/\s+/g, " ").trim()}`;
+        }).join("\n")
+      : "- (none)";
+
+    const hotFiles = result.hot_files.length > 0
+      ? result.hot_files.map((file) => `- ${file.path} (${file.count})`).join("\n")
+      : "- (none)";
+
+    const topTitles = result.top_titles.length > 0
+      ? result.top_titles.map((item) => `- #${item.id} [${item.type}] ${item.title}`).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Project: ${result.project}\n` +
+            `Canonical ID: ${result.canonical_id}\n` +
+            `Recent requests captured: ${result.recent_requests_count}\n` +
+            `Recent tools captured: ${result.recent_tools_count}\n\n` +
+            `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
+            `Observation counts:\n${counts}\n\n` +
+            `Recent sessions:\n${sessions}\n\n` +
+            `Hot files:\n${hotFiles}\n\n` +
+            `Recent memory objects:\n${topTitles}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: workspace_memory_index
+server.tool(
+  "workspace_memory_index",
+  "Show a cross-project local memory index for the whole Engrm workspace",
+  {
+    limit: z.number().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getWorkspaceMemoryIndex(db, {
+      limit: params.limit,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const projectLines = result.projects.length > 0
+      ? result.projects.map((project) => {
+          const when = new Date(project.last_active_epoch * 1000).toISOString().split("T")[0];
+          return `- ${project.name} (${when}) obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Workspace totals: observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}\n\n` +
+            `Projects with raw chronology: ${result.projects_with_raw_capture}\n\n` +
+            `Projects:\n${projectLines}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: recent_requests
+server.tool(
+  "recent_requests",
+  "Inspect recently captured raw user requests and prompt chronology",
+  {
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    session_id: z.string().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getRecentRequests(db, params);
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.prompts.length > 0
+      ? result.prompts.map((prompt) => {
+          const stamp = new Date(prompt.created_at_epoch * 1000).toISOString().split("T")[0];
+          return `- #${prompt.prompt_number} (${stamp}) ${prompt.prompt.replace(/\s+/g, " ").trim()}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}Recent requests:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: recent_tools
+server.tool(
+  "recent_tools",
+  "Inspect recently captured raw tool chronology",
+  {
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    session_id: z.string().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getRecentTools(db, params);
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.tool_events.length > 0
+      ? result.tool_events.map((tool) => {
+          const stamp = new Date(tool.created_at_epoch * 1000).toISOString().split("T")[0];
+          const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
+          return `- ${stamp} ${tool.tool_name}${detail ? ` — ${detail}` : ""}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}Recent tools:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: recent_sessions
+server.tool(
+  "recent_sessions",
+  "List the latest captured sessions so you can inspect one in detail",
+  {
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getRecentSessions(db, params);
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.sessions.length > 0
+      ? result.sessions.map((session) => {
+          const whenEpoch = session.completed_at_epoch ?? session.started_at_epoch ?? 0;
+          const when = whenEpoch > 0
+            ? new Date(whenEpoch * 1000).toISOString().split("T")[0]
+            : "unknown";
+          const summary = session.request ?? session.completed ?? "(no summary)";
+          return `- ${session.session_id} (${when}) prompts=${session.prompt_count} tools=${session.tool_event_count} obs=${session.observation_count} :: ${summary.replace(/\s+/g, " ").trim()}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}Recent sessions:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: session_story
+server.tool(
+  "session_story",
+  "Show the full local memory story for one session",
+  {
+    session_id: z.string().describe("Session ID to inspect"),
+  },
+  async (params) => {
+    const result = getSessionStory(db, params);
+    if (!result.session) {
+      return {
+        content: [{ type: "text" as const, text: `Session ${params.session_id} not found` }],
+      };
+    }
+
+    const summaryLines = result.summary
+      ? [
+          result.summary.request ? `Request: ${result.summary.request}` : null,
+          result.summary.investigated ? `Investigated: ${result.summary.investigated}` : null,
+          result.summary.learned ? `Learned: ${result.summary.learned}` : null,
+          result.summary.completed ? `Completed: ${result.summary.completed}` : null,
+          result.summary.next_steps ? `Next steps: ${result.summary.next_steps}` : null,
+        ].filter(Boolean).join("\n")
+      : "(none)";
+
+    const promptLines = result.prompts.length > 0
+      ? result.prompts.map((prompt) => `- #${prompt.prompt_number} ${prompt.prompt.replace(/\s+/g, " ").trim()}`).join("\n")
+      : "- (none)";
+
+    const toolLines = result.tool_events.length > 0
+      ? result.tool_events.slice(-15).map((tool) => {
+          const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
+          return `- ${tool.tool_name}${detail ? ` — ${detail}` : ""}`;
+        }).join("\n")
+      : "- (none)";
+
+    const observationLines = result.observations.length > 0
+      ? result.observations.slice(-15).map((obs) => `- #${obs.id} [${obs.type}] ${obs.title}`).join("\n")
+      : "- (none)";
+
+    const metrics = result.metrics
+      ? `files=${result.metrics.files_touched_count}, searches=${result.metrics.searches_performed}, tools=${result.metrics.tool_calls_count}, observations=${result.metrics.observation_count}`
+      : "metrics unavailable";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Session: ${result.session.session_id}\n` +
+            `Status: ${result.session.status}\n` +
+            `Metrics: ${metrics}\n\n` +
+            `Summary:\n${summaryLines}\n\n` +
+            `Prompts:\n${promptLines}\n\n` +
+            `Tools:\n${toolLines}\n\n` +
+            `Observations:\n${observationLines}`,
         },
       ],
     };

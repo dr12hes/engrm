@@ -162,7 +162,12 @@ describe("buildSummaryVectorDocument", () => {
     const doc = buildSummaryVectorDocument(summary, makeConfig(), {
       canonical_id: "github.com/test/repo",
       name: "repo",
-    }, observations);
+    }, observations, {
+      prompt_count: 1,
+      tool_event_count: 1,
+      latest_request: "Improve local memory ranking",
+      recent_tool_names: ["Edit"],
+    });
 
     expect(doc.source_type).toBe("summary");
     expect(doc.content).toContain("Request: Improve local memory ranking");
@@ -176,6 +181,10 @@ describe("buildSummaryVectorDocument", () => {
     expect(doc.metadata.next_step_items).toEqual([
       "Follow through: wire richer summaries into sync",
     ]);
+    expect(doc.metadata.prompt_count).toBe(1);
+    expect(doc.metadata.tool_event_count).toBe(1);
+    expect(doc.metadata.latest_request).toBe("Improve local memory ranking");
+    expect(doc.metadata.recent_tool_names).toEqual(["Edit"]);
     expect(doc.metadata.decisions_count).toBe(1);
     expect(doc.metadata.features_count).toBe(1);
     expect(doc.metadata.repeated_patterns_count).toBe(1);

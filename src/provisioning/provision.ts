@@ -5,7 +5,7 @@
  * Returns everything needed to write ~/.engrm/settings.json.
  */
 
-export const DEFAULT_CANDENGO_URL = "https://www.candengo.com";
+export const DEFAULT_CANDENGO_URL = "https://engrm.dev";
 
 export interface ProvisionRequest {
   /** cmt_ provisioning token from web signup */

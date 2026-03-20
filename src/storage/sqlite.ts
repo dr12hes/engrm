@@ -1,4 +1,5 @@
 import { runMigrations, ensureObservationTypes } from "./migrations.js";
+import { createHash } from "node:crypto";
 
 /**
  * Cross-runtime SQLite adapter.
@@ -151,6 +152,14 @@ export interface SessionRow {
   completed_at_epoch: number | null;
 }
 
+export interface RecentSessionRow extends SessionRow {
+  project_name: string | null;
+  request: string | null;
+  completed: string | null;
+  prompt_count: number;
+  tool_event_count: number;
+}
+
 export interface FtsMatchRow {
   id: number;
   rank: number;
@@ -172,6 +181,35 @@ export interface SessionSummaryRow {
   completed: string | null;
   next_steps: string | null;
   created_at_epoch: number | null;
+}
+
+export interface UserPromptRow {
+  id: number;
+  session_id: string;
+  project_id: number | null;
+  prompt_number: number;
+  prompt: string;
+  prompt_hash: string;
+  cwd: string | null;
+  user_id: string;
+  device_id: string;
+  agent: string;
+  created_at_epoch: number;
+}
+
+export interface ToolEventRow {
+  id: number;
+  session_id: string;
+  project_id: number | null;
+  tool_name: string;
+  tool_input_json: string | null;
+  tool_response_preview: string | null;
+  file_path: string | null;
+  command: string | null;
+  user_id: string;
+  device_id: string;
+  agent: string;
+  created_at_epoch: number;
 }
 
 export interface SecurityFindingRow {
@@ -240,6 +278,31 @@ export interface InsertSecurityFinding {
   tool_name?: string | null;
   user_id: string;
   device_id: string;
+}
+
+export interface InsertUserPrompt {
+  session_id: string;
+  project_id: number | null;
+  prompt: string;
+  cwd?: string | null;
+  user_id: string;
+  device_id: string;
+  agent?: string;
+  created_at_epoch?: number;
+}
+
+export interface InsertToolEvent {
+  session_id: string;
+  project_id: number | null;
+  tool_name: string;
+  tool_input_json?: string | null;
+  tool_response_preview?: string | null;
+  file_path?: string | null;
+  command?: string | null;
+  user_id: string;
+  device_id: string;
+  agent?: string;
+  created_at_epoch?: number;
 }
 
 // --- Database class ---
@@ -692,6 +755,230 @@ export class MemDatabase {
       .run(now, sessionId);
   }
 
+  getSessionById(sessionId: string): SessionRow | null {
+    return (
+      this.db
+        .query<SessionRow, [string]>(
+          "SELECT * FROM sessions WHERE session_id = ?"
+        )
+        .get(sessionId) ?? null
+    );
+  }
+
+  getRecentSessions(
+    projectId: number | null,
+    limit: number = 10,
+    userId?: string
+  ): RecentSessionRow[] {
+    const visibilityClause = userId ? " AND s.user_id = ?" : "";
+    if (projectId !== null) {
+      return this.db
+        .query<RecentSessionRow, (number | string)[]>(
+          `SELECT
+             s.*,
+             p.name AS project_name,
+             ss.request AS request,
+             ss.completed AS completed,
+             (SELECT COUNT(*) FROM user_prompts up WHERE up.session_id = s.session_id) AS prompt_count,
+             (SELECT COUNT(*) FROM tool_events te WHERE te.session_id = s.session_id) AS tool_event_count
+           FROM sessions s
+           LEFT JOIN projects p ON p.id = s.project_id
+           LEFT JOIN session_summaries ss ON ss.session_id = s.session_id
+           WHERE s.project_id = ?${visibilityClause}
+           ORDER BY COALESCE(s.completed_at_epoch, s.started_at_epoch, 0) DESC, s.id DESC
+           LIMIT ?`
+        )
+        .all(projectId, ...(userId ? [userId] : []), limit);
+    }
+
+    return this.db
+      .query<RecentSessionRow, (number | string)[]>(
+        `SELECT
+           s.*,
+           p.name AS project_name,
+           ss.request AS request,
+           ss.completed AS completed,
+           (SELECT COUNT(*) FROM user_prompts up WHERE up.session_id = s.session_id) AS prompt_count,
+           (SELECT COUNT(*) FROM tool_events te WHERE te.session_id = s.session_id) AS tool_event_count
+         FROM sessions s
+         LEFT JOIN projects p ON p.id = s.project_id
+         LEFT JOIN session_summaries ss ON ss.session_id = s.session_id
+         WHERE 1 = 1${visibilityClause}
+         ORDER BY COALESCE(s.completed_at_epoch, s.started_at_epoch, 0) DESC, s.id DESC
+         LIMIT ?`
+      )
+      .all(...(userId ? [userId] : []), limit);
+  }
+
+  // --- User prompts ---
+
+  insertUserPrompt(input: InsertUserPrompt): UserPromptRow {
+    const createdAt = input.created_at_epoch ?? Math.floor(Date.now() / 1000);
+    const normalizedPrompt = input.prompt.trim();
+    const promptHash = hashPrompt(normalizedPrompt);
+
+    const latest = this.db
+      .query<UserPromptRow, [string]>(
+        `SELECT * FROM user_prompts
+         WHERE session_id = ?
+         ORDER BY prompt_number DESC
+         LIMIT 1`
+      )
+      .get(input.session_id);
+
+    if (latest && latest.prompt_hash === promptHash) {
+      return latest;
+    }
+
+    const promptNumber = (latest?.prompt_number ?? 0) + 1;
+
+    const result = this.db
+      .query(
+        `INSERT INTO user_prompts (
+          session_id, project_id, prompt_number, prompt, prompt_hash, cwd,
+          user_id, device_id, agent, created_at_epoch
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        input.session_id,
+        input.project_id,
+        promptNumber,
+        normalizedPrompt,
+        promptHash,
+        input.cwd ?? null,
+        input.user_id,
+        input.device_id,
+        input.agent ?? "claude-code",
+        createdAt
+      );
+
+    return this.getUserPromptById(Number(result.lastInsertRowid))!;
+  }
+
+  getUserPromptById(id: number): UserPromptRow | null {
+    return (
+      this.db
+        .query<UserPromptRow, [number]>(
+          "SELECT * FROM user_prompts WHERE id = ?"
+        )
+        .get(id) ?? null
+    );
+  }
+
+  getRecentUserPrompts(
+    projectId: number | null,
+    limit: number = 10,
+    userId?: string
+  ): UserPromptRow[] {
+    const visibilityClause = userId ? " AND user_id = ?" : "";
+    if (projectId !== null) {
+      return this.db
+        .query<UserPromptRow, (number | string)[]>(
+          `SELECT * FROM user_prompts
+           WHERE project_id = ?${visibilityClause}
+           ORDER BY created_at_epoch DESC, prompt_number DESC
+           LIMIT ?`
+        )
+        .all(projectId, ...(userId ? [userId] : []), limit);
+    }
+
+    return this.db
+      .query<UserPromptRow, (number | string)[]>(
+        `SELECT * FROM user_prompts
+         WHERE 1 = 1${visibilityClause}
+         ORDER BY created_at_epoch DESC, prompt_number DESC
+         LIMIT ?`
+      )
+      .all(...(userId ? [userId] : []), limit);
+  }
+
+  getSessionUserPrompts(sessionId: string, limit: number = 20): UserPromptRow[] {
+    return this.db
+      .query<UserPromptRow, [string, number]>(
+        `SELECT * FROM user_prompts
+         WHERE session_id = ?
+         ORDER BY prompt_number ASC
+         LIMIT ?`
+      )
+      .all(sessionId, limit);
+  }
+
+  // --- Tool events ---
+
+  insertToolEvent(input: InsertToolEvent): ToolEventRow {
+    const createdAt = input.created_at_epoch ?? Math.floor(Date.now() / 1000);
+    const result = this.db
+      .query(
+        `INSERT INTO tool_events (
+          session_id, project_id, tool_name, tool_input_json, tool_response_preview,
+          file_path, command, user_id, device_id, agent, created_at_epoch
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        input.session_id,
+        input.project_id,
+        input.tool_name,
+        input.tool_input_json ?? null,
+        input.tool_response_preview ?? null,
+        input.file_path ?? null,
+        input.command ?? null,
+        input.user_id,
+        input.device_id,
+        input.agent ?? "claude-code",
+        createdAt
+      );
+
+    return this.getToolEventById(Number(result.lastInsertRowid))!;
+  }
+
+  getToolEventById(id: number): ToolEventRow | null {
+    return (
+      this.db
+        .query<ToolEventRow, [number]>(
+          "SELECT * FROM tool_events WHERE id = ?"
+        )
+        .get(id) ?? null
+    );
+  }
+
+  getSessionToolEvents(sessionId: string, limit: number = 20): ToolEventRow[] {
+    return this.db
+      .query<ToolEventRow, [string, number]>(
+        `SELECT * FROM tool_events
+         WHERE session_id = ?
+         ORDER BY created_at_epoch ASC, id ASC
+         LIMIT ?`
+      )
+      .all(sessionId, limit);
+  }
+
+  getRecentToolEvents(
+    projectId: number | null,
+    limit: number = 20,
+    userId?: string
+  ): ToolEventRow[] {
+    const visibilityClause = userId ? " AND user_id = ?" : "";
+    if (projectId !== null) {
+      return this.db
+        .query<ToolEventRow, (number | string)[]>(
+          `SELECT * FROM tool_events
+           WHERE project_id = ?${visibilityClause}
+           ORDER BY created_at_epoch DESC, id DESC
+           LIMIT ?`
+        )
+        .all(projectId, ...(userId ? [userId] : []), limit);
+    }
+
+    return this.db
+      .query<ToolEventRow, (number | string)[]>(
+        `SELECT * FROM tool_events
+         WHERE 1 = 1${visibilityClause}
+         ORDER BY created_at_epoch DESC, id DESC
+         LIMIT ?`
+      )
+      .all(...(userId ? [userId] : []), limit);
+  }
+
   // --- Sync outbox ---
 
   addToOutbox(recordType: "observation" | "summary", recordId: number): void {
@@ -1066,4 +1353,8 @@ export class MemDatabase {
       )
       .run(name, now, observationCount);
   }
+}
+
+function hashPrompt(prompt: string): string {
+  return createHash("sha256").update(prompt).digest("hex");
 }

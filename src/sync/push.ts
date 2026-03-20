@@ -5,7 +5,13 @@
  * and pushes them via the REST client. Supports batch operations.
  */
 
-import type { MemDatabase, ObservationRow, SessionSummaryRow } from "../storage/sqlite.js";
+import type {
+  MemDatabase,
+  ObservationRow,
+  SessionSummaryRow,
+  ToolEventRow,
+  UserPromptRow,
+} from "../storage/sqlite.js";
 import type { Config } from "../config.js";
 import {
   getPendingEntries,
@@ -21,6 +27,13 @@ export interface PushResult {
   pushed: number;
   failed: number;
   skipped: number;
+}
+
+interface SummaryCaptureContext {
+  prompt_count: number;
+  tool_event_count: number;
+  latest_request: string | null;
+  recent_tool_names: string[];
 }
 
 /**
@@ -85,7 +98,8 @@ export function buildSummaryVectorDocument(
   summary: SessionSummaryRow,
   config: Config,
   project: { canonical_id: string; name: string },
-  observations: ObservationRow[] = []
+  observations: ObservationRow[] = [],
+  captureContext?: SummaryCaptureContext
 ): VectorDocument {
   const parts: string[] = [];
   if (summary.request) parts.push(`Request: ${summary.request}`);
@@ -117,6 +131,10 @@ export function buildSummaryVectorDocument(
       learned_items: extractSectionItems(summary.learned),
       completed_items: extractSectionItems(summary.completed),
       next_step_items: extractSectionItems(summary.next_steps),
+      prompt_count: captureContext?.prompt_count ?? 0,
+      tool_event_count: captureContext?.tool_event_count ?? 0,
+      latest_request: captureContext?.latest_request ?? null,
+      recent_tool_names: captureContext?.recent_tool_names ?? [],
       decisions_count: valueSignals.decisions_count,
       lessons_count: valueSignals.lessons_count,
       discoveries_count: valueSignals.discoveries_count,
@@ -178,10 +196,12 @@ export async function pushOutbox(
 
       markSyncing(db, entry.id);
       const summaryObservations = db.getObservationsBySession(summary.session_id);
+      const sessionPrompts = db.getSessionUserPrompts(summary.session_id, 20);
+      const sessionToolEvents = db.getSessionToolEvents(summary.session_id, 20);
       const doc = buildSummaryVectorDocument(summary, config, {
         canonical_id: project.canonical_id,
         name: project.name,
-      }, summaryObservations);
+      }, summaryObservations, buildSummaryCaptureContext(sessionPrompts, sessionToolEvents));
       batch.push({ entryId: entry.id, doc });
       continue;
     }
@@ -279,4 +299,27 @@ function extractSectionItems(section: string | null): string[] {
     .map((line) => line.replace(/^[-*]\s*/, "").trim())
     .filter(Boolean)
     .slice(0, 4);
+}
+
+function buildSummaryCaptureContext(
+  prompts: UserPromptRow[],
+  toolEvents: ToolEventRow[]
+): SummaryCaptureContext {
+  const latestRequest = prompts.length > 0
+    ? prompts[prompts.length - 1]?.prompt ?? null
+    : null;
+
+  const recentToolNames = [...new Set(
+    toolEvents
+      .slice(-8)
+      .map((tool) => tool.tool_name)
+      .filter(Boolean)
+  )];
+
+  return {
+    prompt_count: prompts.length,
+    tool_event_count: toolEvents.length,
+    latest_request: latestRequest,
+    recent_tool_names: recentToolNames,
+  };
 }

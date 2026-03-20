@@ -1,0 +1,202 @@
+/**
+ * activity_feed MCP tool.
+ *
+ * Merges prompts, tools, observations, and session summaries into one
+ * chronological local feed so agents can inspect the working story without
+ * hopping between multiple narrower tools.
+ */
+
+import { detectProject } from "../storage/projects.js";
+import type {
+  MemDatabase,
+  ObservationRow,
+  SessionSummaryRow,
+  ToolEventRow,
+  UserPromptRow,
+} from "../storage/sqlite.js";
+import { getRecentActivity } from "./recent.js";
+import { getRecentRequests } from "./recent-prompts.js";
+import { getRecentSessions } from "./recent-sessions.js";
+import { getRecentTools } from "./recent-tools.js";
+import { getSessionStory } from "./session-story.js";
+
+export interface ActivityFeedInput {
+  limit?: number;
+  project_scoped?: boolean;
+  session_id?: string;
+  cwd?: string;
+  user_id?: string;
+}
+
+export interface ActivityFeedEvent {
+  kind: "prompt" | "tool" | "observation" | "summary";
+  created_at_epoch: number;
+  session_id: string | null;
+  title: string;
+  detail?: string;
+  id?: number;
+  observation_type?: string;
+}
+
+export interface ActivityFeedResult {
+  events: ActivityFeedEvent[];
+  project?: string;
+}
+
+function toPromptEvent(prompt: UserPromptRow): ActivityFeedEvent {
+  return {
+    kind: "prompt",
+    created_at_epoch: prompt.created_at_epoch,
+    session_id: prompt.session_id,
+    id: prompt.id,
+    title: `#${prompt.prompt_number} ${prompt.prompt.replace(/\s+/g, " ").trim()}`,
+  };
+}
+
+function toToolEvent(tool: ToolEventRow): ActivityFeedEvent {
+  const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? undefined;
+  return {
+    kind: "tool",
+    created_at_epoch: tool.created_at_epoch,
+    session_id: tool.session_id,
+    id: tool.id,
+    title: tool.tool_name,
+    detail: detail?.replace(/\s+/g, " ").trim(),
+  };
+}
+
+function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
+  return {
+    kind: "observation",
+    created_at_epoch: obs.created_at_epoch,
+    session_id: obs.session_id,
+    id: obs.id,
+    title: obs.title,
+    observation_type: obs.type,
+  };
+}
+
+function toSummaryEvent(
+  summary: SessionSummaryRow,
+  fallbackEpoch: number = 0
+): ActivityFeedEvent | null {
+  const title = summary.request ?? summary.completed ?? summary.learned ?? summary.investigated;
+  if (!title) return null;
+
+  const detail = [
+    summary.completed && summary.completed !== title ? `Completed: ${summary.completed}` : null,
+    summary.learned ? `Learned: ${summary.learned}` : null,
+    summary.next_steps ? `Next: ${summary.next_steps}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  return {
+    kind: "summary",
+    created_at_epoch: summary.created_at_epoch ?? fallbackEpoch,
+    session_id: summary.session_id,
+    id: summary.id,
+    title: title.replace(/\s+/g, " ").trim(),
+    detail: detail || undefined,
+  };
+}
+
+function compareEvents(a: ActivityFeedEvent, b: ActivityFeedEvent): number {
+  if (b.created_at_epoch !== a.created_at_epoch) {
+    return b.created_at_epoch - a.created_at_epoch;
+  }
+
+  const kindOrder: Record<ActivityFeedEvent["kind"], number> = {
+    summary: 0,
+    observation: 1,
+    tool: 2,
+    prompt: 3,
+  };
+  if (kindOrder[a.kind] !== kindOrder[b.kind]) {
+    return kindOrder[a.kind] - kindOrder[b.kind];
+  }
+
+  return (b.id ?? 0) - (a.id ?? 0);
+}
+
+export function getActivityFeed(
+  db: MemDatabase,
+  input: ActivityFeedInput
+): ActivityFeedResult {
+  const limit = Math.max(1, Math.min(input.limit ?? 30, 100));
+
+  if (input.session_id) {
+    const story = getSessionStory(db, { session_id: input.session_id });
+    const project =
+      story.session?.project_id !== null && story.session?.project_id !== undefined
+        ? db.getProjectById(story.session.project_id)?.name
+        : undefined;
+
+    const events = [
+      ...(story.summary
+        ? [toSummaryEvent(story.summary, story.session?.completed_at_epoch ?? story.session?.started_at_epoch ?? 0)].filter(
+            (event): event is ActivityFeedEvent => event !== null
+          )
+        : []),
+      ...story.prompts.map(toPromptEvent),
+      ...story.tool_events.map(toToolEvent),
+      ...story.observations.map(toObservationEvent),
+    ]
+      .sort(compareEvents)
+      .slice(0, limit);
+
+    return { events, project };
+  }
+
+  const projectScoped = input.project_scoped !== false;
+  let projectName: string | undefined;
+
+  if (projectScoped) {
+    const cwd = input.cwd ?? process.cwd();
+    const detected = detectProject(cwd);
+    const project = db.getProjectByCanonicalId(detected.canonical_id);
+    if (project) {
+      projectName = project.name;
+    }
+  }
+
+  const prompts = getRecentRequests(db, { ...input, limit }).prompts;
+  const tools = getRecentTools(db, { ...input, limit }).tool_events;
+  const observations = getRecentActivity(db, {
+    limit,
+    project_scoped: input.project_scoped,
+    cwd: input.cwd,
+    user_id: input.user_id,
+  }).observations;
+  const sessions = getRecentSessions(db, {
+    limit,
+    project_scoped: input.project_scoped,
+    cwd: input.cwd,
+    user_id: input.user_id,
+  }).sessions;
+
+  const summaryEvents = sessions
+    .map((session) => {
+      const summary = db.getSessionSummary(session.session_id);
+      if (!summary) return null;
+      return toSummaryEvent(
+        summary,
+        session.completed_at_epoch ?? session.started_at_epoch ?? 0
+      );
+    })
+    .filter((event): event is ActivityFeedEvent => event !== null);
+
+  const events = [
+    ...summaryEvents,
+    ...prompts.map(toPromptEvent),
+    ...tools.map(toToolEvent),
+    ...observations.map(toObservationEvent),
+  ]
+    .sort(compareEvents)
+    .slice(0, limit);
+
+  return {
+    events,
+    project: projectName,
+  };
+}

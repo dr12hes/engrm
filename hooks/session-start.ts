@@ -192,6 +192,15 @@ function formatSplashScreen(data: SplashData): string {
   if (data.available > 0) {
     statParts.push(`${c.dim}${data.available.toLocaleString()} searchable${c.reset}`);
   }
+  if (data.context.recentSessions && data.context.recentSessions.length > 0) {
+    statParts.push(`${c.white}${data.context.recentSessions.length} sessions${c.reset}`);
+  }
+  if (data.context.recentPrompts && data.context.recentPrompts.length > 0) {
+    statParts.push(`${c.magenta}${data.context.recentPrompts.length} requests${c.reset}`);
+  }
+  if (data.context.recentToolEvents && data.context.recentToolEvents.length > 0) {
+    statParts.push(`${c.yellow}${data.context.recentToolEvents.length} tools${c.reset}`);
+  }
   if (data.synced > 0) {
     statParts.push(`${c.cyan}${data.synced} synced${c.reset}`);
   }
@@ -232,10 +241,14 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const lines: string[] = [];
   const latest = pickBestSummary(context);
   const observationFallbacks = buildObservationFallbacks(context);
+  const promptFallback = buildPromptFallback(context);
+  const toolFallbacks = buildToolFallbacks(context);
+  const sessionFallbacks = buildSessionFallbacks(context);
+  const projectSignals = buildProjectSignalLine(context);
 
   if (latest) {
     const sections: Array<[string, string | null, number]> = [
-      ["Request", chooseRequest(latest.request, observationFallbacks.request), 1],
+      ["Request", chooseRequest(latest.request, promptFallback ?? observationFallbacks.request), 1],
       ["Investigated", chooseSection(latest.investigated, observationFallbacks.investigated, "Investigated"), 2],
       ["Learned", latest.learned, 2],
       ["Completed", chooseSection(latest.completed, observationFallbacks.completed, "Completed"), 2],
@@ -251,6 +264,27 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
         }
       }
     }
+  } else if (promptFallback) {
+    lines.push(`${c.cyan}Request:${c.reset}`);
+    lines.push(`  - ${truncateInline(promptFallback, 140)}`);
+    if (toolFallbacks.length > 0) {
+      lines.push(`${c.cyan}Recent Tools:${c.reset}`);
+      for (const item of toolFallbacks) {
+        lines.push(`  - ${truncateInline(item, 140)}`);
+      }
+    }
+  }
+
+  if (sessionFallbacks.length > 0) {
+    lines.push(`${c.cyan}Recent Sessions:${c.reset}`);
+    for (const item of sessionFallbacks) {
+      lines.push(`  - ${truncateInline(item, 140)}`);
+    }
+  }
+
+  if (projectSignals) {
+    lines.push(`${c.cyan}Project Signals:${c.reset}`);
+    lines.push(`  - ${truncateInline(projectSignals, 140)}`);
   }
 
   const stale = pickRelevantStaleDecision(context, latest);
@@ -276,6 +310,43 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   }
 
   return lines.slice(0, 10);
+}
+
+function buildPromptFallback(context: InjectedContext): string | null {
+  const latest = context.recentPrompts?.[0];
+  if (!latest?.prompt) return null;
+  return latest.prompt.replace(/\s+/g, " ").trim();
+}
+
+function buildToolFallbacks(context: InjectedContext): string[] {
+  return (context.recentToolEvents ?? [])
+    .slice(0, 3)
+    .map((tool) => {
+      const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
+      return `${tool.tool_name}: ${detail}`.trim();
+    })
+    .filter((item) => item.length > 0);
+}
+
+function buildSessionFallbacks(context: InjectedContext): string[] {
+  return (context.recentSessions ?? [])
+    .slice(0, 2)
+    .map((session) => {
+      const summary = session.request ?? session.completed ?? "";
+      if (!summary) return "";
+      return `${session.session_id}: ${summary}`;
+    })
+    .filter((item) => item.length > 0);
+}
+
+function buildProjectSignalLine(context: InjectedContext): string | null {
+  if (!context.projectTypeCounts) return null;
+  const top = Object.entries(context.projectTypeCounts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 4)
+    .map(([type, count]) => `${type} ${count}`)
+    .join("; ");
+  return top || null;
 }
 
 function toSplashLines(value: string | null, maxItems: number): string[] {

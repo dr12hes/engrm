@@ -329,6 +329,64 @@ const MIGRATIONS: Migration[] = [
       INSERT INTO observations_fts(observations_fts) VALUES('rebuild');
     `,
   },
+  {
+    version: 9,
+    description: "Add first-class user prompt capture",
+    sql: `
+      CREATE TABLE IF NOT EXISTS user_prompts (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id        TEXT NOT NULL,
+          project_id        INTEGER REFERENCES projects(id),
+          prompt_number     INTEGER NOT NULL,
+          prompt            TEXT NOT NULL,
+          prompt_hash       TEXT NOT NULL,
+          cwd               TEXT,
+          user_id           TEXT NOT NULL,
+          device_id         TEXT NOT NULL,
+          agent             TEXT DEFAULT 'claude-code',
+          created_at_epoch  INTEGER NOT NULL,
+          UNIQUE(session_id, prompt_number)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_user_prompts_session
+        ON user_prompts(session_id, prompt_number DESC);
+      CREATE INDEX IF NOT EXISTS idx_user_prompts_project
+        ON user_prompts(project_id, created_at_epoch DESC);
+      CREATE INDEX IF NOT EXISTS idx_user_prompts_created
+        ON user_prompts(created_at_epoch DESC);
+      CREATE INDEX IF NOT EXISTS idx_user_prompts_hash
+        ON user_prompts(prompt_hash);
+    `,
+  },
+  {
+    version: 10,
+    description: "Add first-class tool event chronology",
+    sql: `
+      CREATE TABLE IF NOT EXISTS tool_events (
+          id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id          TEXT NOT NULL,
+          project_id          INTEGER REFERENCES projects(id),
+          tool_name           TEXT NOT NULL,
+          tool_input_json     TEXT,
+          tool_response_preview TEXT,
+          file_path           TEXT,
+          command             TEXT,
+          user_id             TEXT NOT NULL,
+          device_id           TEXT NOT NULL,
+          agent               TEXT DEFAULT 'claude-code',
+          created_at_epoch    INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tool_events_session
+        ON tool_events(session_id, created_at_epoch DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_tool_events_project
+        ON tool_events(project_id, created_at_epoch DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_tool_events_tool_name
+        ON tool_events(tool_name, created_at_epoch DESC);
+      CREATE INDEX IF NOT EXISTS idx_tool_events_created
+        ON tool_events(created_at_epoch DESC, id DESC);
+    `,
+  },
 ];
 
 /**
