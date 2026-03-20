@@ -31,6 +31,7 @@ import { getActivityFeed } from "./tools/activity-feed.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
 import { getCaptureQuality } from "./tools/capture-quality.js";
 import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
+import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
@@ -1007,6 +1008,43 @@ server.tool(
           text:
             `${result.project ? `Project: ${result.project}\n\n` : ""}` +
             `Tools producing durable memory:\n${toolLines}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: session_tool_memory
+server.tool(
+  "session_tool_memory",
+  "Show which tools in one session produced durable memory and which tools produced none",
+  {
+    session_id: z.string().describe("Session ID to inspect"),
+  },
+  async (params) => {
+    const result = getSessionToolMemory(db, params);
+
+    const toolLines = result.tools.length > 0
+      ? result.tools.map((tool) => {
+          const typeMix = tool.top_types.map((item) => `${item.type} ${item.count}`).join(", ");
+          const sample = tool.sample_titles[0] ? ` sample="${tool.sample_titles[0]}"` : "";
+          const promptInfo = typeof tool.latest_prompt_number === "number" ? ` latest_prompt=#${tool.latest_prompt_number}` : "";
+          return `- ${tool.tool}: events=${tool.tool_event_count} observations=${tool.observation_count}${promptInfo} types=[${typeMix}]${sample}`;
+        }).join("\n")
+      : "- (none)";
+
+    const unmappedLines = result.tools_without_memory.length > 0
+      ? result.tools_without_memory.map((tool) => `- ${tool.tool}: events=${tool.tool_event_count}`).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Session: ${result.session_id}\n\n` +
+            `Tools producing durable memory:\n${toolLines}\n\n` +
+            `Tools without durable memory:\n${unmappedLines}`,
         },
       ],
     };
