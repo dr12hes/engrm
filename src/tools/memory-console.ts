@@ -105,6 +105,6 @@ function buildFallbackSuggestedTools(
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions", "session_story");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
-  if (observationCount > 0) suggested.push("memory_console", "tool_memory_index");
+  if (observationCount > 0) suggested.push("tool_memory_index", "memory_console");
   return Array.from(new Set(suggested)).slice(0, 4);
 }

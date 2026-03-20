@@ -232,7 +232,7 @@ function buildSuggestedTools(
     suggested.push("activity_feed");
   }
   if (observationCount > 0) {
-    suggested.push("memory_console", "tool_memory_index");
+    suggested.push("tool_memory_index", "memory_console");
   }
   return Array.from(new Set(suggested)).slice(0, 4);
 }
