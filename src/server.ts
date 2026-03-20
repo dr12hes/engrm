@@ -30,6 +30,7 @@ import { reclassifyProjectMemory } from "./tools/reclassify-project-memory.js";
 import { getActivityFeed } from "./tools/activity-feed.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
 import { getCaptureQuality } from "./tools/capture-quality.js";
+import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionContext } from "./tools/session-context.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
@@ -966,6 +967,46 @@ server.tool(
             `Observation provenance:\n${provenanceLines}\n\n` +
             `Provenance type mix:\n${provenanceMixLines}\n\n` +
             `Top projects:\n${projectLines}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: tool_memory_index
+server.tool(
+  "tool_memory_index",
+  "Show which source tools are producing durable memory and what kinds of memory they create",
+  {
+    cwd: z.string().optional(),
+    project_scoped: z.boolean().optional(),
+    limit: z.number().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getToolMemoryIndex(db, {
+      cwd: params.cwd ?? process.cwd(),
+      project_scoped: params.project_scoped,
+      limit: params.limit,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const toolLines = result.tools.length > 0
+      ? result.tools.map((tool) => {
+          const typeMix = tool.top_types.map((item) => `${item.type} ${item.count}`).join(", ");
+          const sample = tool.sample_titles[0] ? ` sample="${tool.sample_titles[0]}"` : "";
+          const promptInfo = typeof tool.latest_prompt_number === "number" ? ` latest_prompt=#${tool.latest_prompt_number}` : "";
+          return `- ${tool.tool}: obs=${tool.observation_count} sessions=${tool.session_count}${promptInfo} types=[${typeMix}]${sample}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${result.project ? `Project: ${result.project}\n\n` : ""}` +
+            `Tools producing durable memory:\n${toolLines}`,
         },
       ],
     };
