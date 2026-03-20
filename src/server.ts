@@ -33,6 +33,7 @@ import { getCaptureQuality } from "./tools/capture-quality.js";
 import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
+import { captureGitWorktree } from "./tools/capture-git-worktree.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
 import {
@@ -387,6 +388,80 @@ server.tool(
           text:
             `Saved git diff as observation #${result.observation_id} ` +
             `(${reduced.type}: ${reduced.title})${reducedFacts}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: capture_git_worktree
+server.tool(
+  "capture_git_worktree",
+  "Read the current git worktree diff, reduce it into durable memory, and save it with plugin provenance",
+  {
+    cwd: z.string().optional().describe("Git repo path; defaults to the current working directory"),
+    staged: z.boolean().optional().describe("Capture staged changes instead of unstaged worktree changes"),
+    summary: z.string().optional().describe("Optional human summary or commit-style title"),
+    session_id: z.string().optional(),
+  },
+  async (params) => {
+    let worktree;
+    try {
+      worktree = captureGitWorktree({
+        cwd: params.cwd ?? process.cwd(),
+        staged: params.staged,
+      });
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not captured: ${error instanceof Error ? error.message : "unable to read git worktree"}`,
+          },
+        ],
+      };
+    }
+
+    if (!worktree.diff.trim()) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `No ${params.staged ? "staged" : "unstaged"} git diff found in ${worktree.cwd}`,
+          },
+        ],
+      };
+    }
+
+    const reduced = reduceGitDiffToMemory({
+      diff: worktree.diff,
+      summary: params.summary,
+      files: worktree.files,
+      session_id: params.session_id,
+      cwd: worktree.cwd,
+      agent: getDetectedAgent(),
+    });
+
+    const result = await savePluginMemory(db, config, reduced);
+
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not saved: ${result.reason}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Saved ${params.staged ? "staged" : "worktree"} git diff as observation #${result.observation_id} ` +
+            `(${reduced.type}: ${reduced.title})`,
         },
       ],
     };
