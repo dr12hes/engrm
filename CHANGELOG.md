@@ -4,7 +4,25 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
-## 0.4.9
+## 0.4.11
+
+### Added
+
+- richer session-context and summary-sync metadata:
+  - `capture_state`
+  - `recent_request_prompts`
+  - `recent_tool_commands`
+  - `recent_outcomes`
+  - `hot_files`
+
+### Changed
+
+- startup context now suppresses fake repeated next steps and only shows recent tools when they add new information
+- retrospective extraction no longer promotes already-completed work into `Next Steps`
+- legacy Engrm databases now infer schema version from existing columns/tables so mixed old installs recover cleanly instead of failing duplicate-column migrations
+- summary sync payloads and local session inspection tools now expose richer chronology and file/outcome signals for hosted Briefs/dashboard surfaces
+
+## 0.4.10
 
 ### Added
 

@@ -51,6 +51,16 @@ describe("getSessionContext", () => {
       user_id: "david",
       device_id: "laptop",
     });
+    db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "change",
+      title: "Exposed project memory index in MCP",
+      files_modified: JSON.stringify(["src/tools/project-memory-index.ts"]),
+      quality: 0.7,
+      user_id: "david",
+      device_id: "laptop",
+    });
 
     const result = getSessionContext(db, {
       cwd: "/tmp/repo",
@@ -61,7 +71,12 @@ describe("getSessionContext", () => {
     expect(result?.project_name).toBe("repo");
     expect(result?.recent_requests).toBe(1);
     expect(result?.recent_tools).toBe(1);
+    expect(result?.capture_state).toBe("rich");
     expect(result?.raw_capture_active).toBe(true);
+    expect(result?.recent_outcomes).toContain("Exposed project memory index in MCP");
+    expect(result?.hot_files).toEqual([
+      { path: "src/tools/project-memory-index.ts", count: 1 },
+    ]);
     expect(result?.preview).toContain("## Recent Requests");
     expect(result?.preview).toContain("## Recent Tools");
   });

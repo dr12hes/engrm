@@ -157,6 +157,17 @@ describe("extractRetrospective", () => {
     expect(result!.next_steps).toContain("Follow through: Add admin audit trail after auth hardening");
   });
 
+  test("does not promote already-completed work into next steps", () => {
+    const obs = [
+      makeObs({ id: 1, type: "change", title: "Started insights improvements" }),
+      makeObs({ id: 2, type: "change", title: "Fixed team ID field reference in insights page initialization" }),
+      makeObs({ id: 3, type: "bugfix", title: "Fixed team ID field reference in insights page initialization", narrative: "Error: team_id was undefined" }),
+    ];
+    const result = extractRetrospective(obs, "sess-001", 1, "david");
+    expect(result!.completed).toContain("Fixed team ID field reference in insights page initialization");
+    expect(result!.next_steps).toBeNull();
+  });
+
   test("sets session metadata correctly", () => {
     const obs = [makeObs({ type: "change", title: "Something" })];
     const result = extractRetrospective(obs, "sess-abc", 42, "alice");

@@ -32,8 +32,13 @@ export interface PushResult {
 interface SummaryCaptureContext {
   prompt_count: number;
   tool_event_count: number;
+  recent_request_prompts: string[];
   latest_request: string | null;
   recent_tool_names: string[];
+  recent_tool_commands: string[];
+  capture_state: "rich" | "partial" | "summary-only";
+  hot_files: string[];
+  recent_outcomes: string[];
 }
 
 /**
@@ -133,8 +138,13 @@ export function buildSummaryVectorDocument(
       next_step_items: extractSectionItems(summary.next_steps),
       prompt_count: captureContext?.prompt_count ?? 0,
       tool_event_count: captureContext?.tool_event_count ?? 0,
+      capture_state: captureContext?.capture_state ?? "summary-only",
+      recent_request_prompts: captureContext?.recent_request_prompts ?? [],
       latest_request: captureContext?.latest_request ?? null,
       recent_tool_names: captureContext?.recent_tool_names ?? [],
+      recent_tool_commands: captureContext?.recent_tool_commands ?? [],
+      hot_files: captureContext?.hot_files ?? [],
+      recent_outcomes: captureContext?.recent_outcomes ?? [],
       decisions_count: valueSignals.decisions_count,
       lessons_count: valueSignals.lessons_count,
       discoveries_count: valueSignals.discoveries_count,
@@ -201,7 +211,7 @@ export async function pushOutbox(
       const doc = buildSummaryVectorDocument(summary, config, {
         canonical_id: project.canonical_id,
         name: project.name,
-      }, summaryObservations, buildSummaryCaptureContext(sessionPrompts, sessionToolEvents));
+      }, summaryObservations, buildSummaryCaptureContext(sessionPrompts, sessionToolEvents, summaryObservations));
       batch.push({ entryId: entry.id, doc });
       continue;
     }
@@ -303,11 +313,17 @@ function extractSectionItems(section: string | null): string[] {
 
 function buildSummaryCaptureContext(
   prompts: UserPromptRow[],
-  toolEvents: ToolEventRow[]
+  toolEvents: ToolEventRow[],
+  observations: ObservationRow[]
 ): SummaryCaptureContext {
   const latestRequest = prompts.length > 0
     ? prompts[prompts.length - 1]?.prompt ?? null
     : null;
+
+  const recentRequestPrompts = prompts
+    .slice(-3)
+    .map((prompt) => prompt.prompt.trim())
+    .filter(Boolean);
 
   const recentToolNames = [...new Set(
     toolEvents
@@ -316,10 +332,56 @@ function buildSummaryCaptureContext(
       .filter(Boolean)
   )];
 
+  const recentToolCommands = [...new Set(
+    toolEvents
+      .slice(-5)
+      .map((tool) => (tool.command ?? tool.file_path ?? "").trim())
+      .filter(Boolean)
+  )];
+
+  const hotFiles = [...new Set(
+    observations
+      .flatMap((obs) => [
+        ...parseJsonArray(obs.files_modified),
+        ...parseJsonArray(obs.files_read),
+      ])
+      .filter(Boolean)
+  )].slice(0, 6);
+
+  const recentOutcomes = observations
+    .filter((obs) => ["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type))
+    .map((obs) => obs.title.trim())
+    .filter((title) => title.length > 0)
+    .slice(0, 6);
+
+  const captureState: SummaryCaptureContext["capture_state"] =
+    prompts.length > 0 && toolEvents.length > 0
+      ? "rich"
+      : prompts.length > 0 || toolEvents.length > 0
+        ? "partial"
+        : "summary-only";
+
   return {
     prompt_count: prompts.length,
     tool_event_count: toolEvents.length,
+    recent_request_prompts: recentRequestPrompts,
     latest_request: latestRequest,
     recent_tool_names: recentToolNames,
+    recent_tool_commands: recentToolCommands,
+    capture_state: captureState,
+    hot_files: hotFiles,
+    recent_outcomes: recentOutcomes,
   };
+}
+
+function parseJsonArray(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
 }

@@ -254,21 +254,30 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const sessionFallbacks = sessionFallbacksFromContext(context);
   const recentOutcomeLines = buildRecentOutcomeLines(context, latest);
   const projectSignals = buildProjectSignalLine(context);
+  const shownItems = new Set<string>();
 
   if (promptLines.length > 0) {
     lines.push(`${c.cyan}Recent Requests:${c.reset}`);
     for (const item of promptLines) {
       lines.push(`  - ${truncateInline(item, 160)}`);
+      rememberShownItem(shownItems, item);
     }
   }
 
   if (latest) {
+    const sanitizedNextSteps = sanitizeNextSteps(latest.next_steps, {
+      request: currentRequest,
+      investigated: chooseSection(latest.investigated, observationFallbacks.investigated, "Investigated"),
+      learned: latest.learned,
+      completed: chooseSection(latest.completed, observationFallbacks.completed, "Completed"),
+      recentOutcomes: recentOutcomeLines,
+    });
     const sections: Array<[string, string | null, number]> = [
       ["Request", currentRequest, 1],
       ["Investigated", chooseSection(latest.investigated, observationFallbacks.investigated, "Investigated"), 2],
       ["Learned", latest.learned, 2],
       ["Completed", chooseSection(latest.completed, observationFallbacks.completed, "Completed"), 2],
-      ["Next Steps", latest.next_steps, 2],
+      ["Next Steps", sanitizedNextSteps, 2],
     ];
 
     for (const [label, value, maxItems] of sections) {
@@ -277,16 +286,22 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
         lines.push(`${c.cyan}${label}:${c.reset}`);
         for (const item of formatted) {
           lines.push(`  ${item}`);
+          rememberShownItem(shownItems, item);
         }
       }
     }
   } else if (currentRequest && !duplicatesPromptLine(currentRequest, latestPromptLine)) {
     lines.push(`${c.cyan}Current Request:${c.reset}`);
     lines.push(`  - ${truncateInline(currentRequest, 160)}`);
+    rememberShownItem(shownItems, currentRequest);
     if (toolFallbacks.length > 0) {
-      lines.push(`${c.cyan}Recent Tools:${c.reset}`);
-      for (const item of toolFallbacks) {
-        lines.push(`  - ${truncateInline(item, 160)}`);
+      const additiveTools = filterAdditiveToolFallbacks(toolFallbacks, shownItems);
+      if (additiveTools.length > 0) {
+        lines.push(`${c.cyan}Recent Tools:${c.reset}`);
+        for (const item of additiveTools) {
+          lines.push(`  - ${truncateInline(item, 160)}`);
+          rememberShownItem(shownItems, item);
+        }
       }
     }
   }
@@ -299,19 +314,25 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   ) {
     lines.push(`${c.cyan}Current Request:${c.reset}`);
     lines.push(`  - ${truncateInline(currentRequest, 160)}`);
+    rememberShownItem(shownItems, currentRequest);
   }
 
   if (recentOutcomeLines.length > 0) {
     lines.push(`${c.cyan}Recent Work:${c.reset}`);
     for (const item of recentOutcomeLines) {
       lines.push(`  - ${truncateInline(item, 160)}`);
+      rememberShownItem(shownItems, item);
     }
   }
 
   if (toolFallbacks.length > 0 && latest) {
-    lines.push(`${c.cyan}Recent Tools:${c.reset}`);
-    for (const item of toolFallbacks) {
-      lines.push(`  - ${truncateInline(item, 160)}`);
+    const additiveTools = filterAdditiveToolFallbacks(toolFallbacks, shownItems);
+    if (additiveTools.length > 0) {
+      lines.push(`${c.cyan}Recent Tools:${c.reset}`);
+      for (const item of additiveTools) {
+        lines.push(`  - ${truncateInline(item, 160)}`);
+        rememberShownItem(shownItems, item);
+      }
     }
   }
 
@@ -351,6 +372,61 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   }
 
   return lines.slice(0, 14);
+}
+
+function rememberShownItem(shown: Set<string>, value: string | null | undefined): void {
+  if (!value) return;
+  for (const item of value.split("\n")) {
+    const normalized = normalizeStartupItem(item);
+    if (normalized) shown.add(normalized);
+  }
+}
+
+function extractNormalizedSplashItems(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split("\n")
+    .map((line) => normalizeStartupItem(line))
+    .filter(Boolean);
+}
+
+function sanitizeNextSteps(
+  nextSteps: string | null | undefined,
+  context: {
+    request: string | null;
+    investigated: string | null;
+    learned: string | null;
+    completed: string | null;
+    recentOutcomes: string[];
+  }
+): string | null {
+  if (!nextSteps) return null;
+  const covered = new Set<string>([
+    normalizeStartupItem(context.request ?? ""),
+    ...extractNormalizedSplashItems(context.investigated),
+    ...extractNormalizedSplashItems(context.learned),
+    ...extractNormalizedSplashItems(context.completed),
+    ...context.recentOutcomes.map((item) => normalizeStartupItem(item)),
+  ].filter(Boolean));
+
+  const kept = nextSteps
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s*/, ""))
+    .filter((line) => {
+      const normalized = normalizeStartupItem(line.replace(/^(investigate|follow through):\s*/i, ""));
+      return normalized && !covered.has(normalized);
+    });
+
+  return kept.length > 0 ? kept.map((line) => `- ${line}`).join("\n") : null;
+}
+
+function filterAdditiveToolFallbacks(toolFallbacks: string[], shownItems: Set<string>): string[] {
+  return toolFallbacks.filter((item) => {
+    const normalized = normalizeStartupItem(item);
+    return normalized && !shownItems.has(normalized);
+  });
 }
 
 function buildPromptFallback(context: InjectedContext): string | null {

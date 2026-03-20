@@ -401,6 +401,58 @@ function isVecExtensionLoaded(db: CompatDatabase): boolean {
   }
 }
 
+function tableExists(db: CompatDatabase, name: string): boolean {
+  const row = db
+    .query<{ name: string }, [string]>(
+      `SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`
+    )
+    .get(name);
+  return Boolean(row?.name);
+}
+
+function columnExists(db: CompatDatabase, table: string, column: string): boolean {
+  if (!tableExists(db, table)) return false;
+  const rows = db.query<{ name: string }>(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return rows.some((row) => row.name === column);
+}
+
+function ensureLegacyBaseTables(db: CompatDatabase): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sync_state (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+}
+
+function inferLegacySchemaVersion(db: CompatDatabase): number {
+  const hasProjects = tableExists(db, "projects");
+  const hasObservations = tableExists(db, "observations");
+  const hasSessions = tableExists(db, "sessions");
+  if (!(hasProjects && hasObservations && hasSessions)) return 0;
+
+  ensureLegacyBaseTables(db);
+
+  let version = 1;
+
+  if (columnExists(db, "observations", "superseded_by")) version = Math.max(version, 2);
+  if (columnExists(db, "observations", "remote_source_id")) version = Math.max(version, 3);
+  if (tableExists(db, "vec_observations")) version = Math.max(version, 4);
+
+  const hasSessionMetrics =
+    columnExists(db, "sessions", "files_touched_count") &&
+    columnExists(db, "sessions", "searches_performed") &&
+    columnExists(db, "sessions", "tool_calls_count");
+  if (hasSessionMetrics || tableExists(db, "security_findings")) version = Math.max(version, 5);
+
+  if (columnExists(db, "sessions", "risk_score")) version = Math.max(version, 6);
+  if (tableExists(db, "packs_installed")) version = Math.max(version, 7);
+  if (tableExists(db, "user_prompts")) version = Math.max(version, 9);
+  if (tableExists(db, "tool_events")) version = Math.max(version, 10);
+
+  return version;
+}
+
 /**
  * Run all pending migrations on the given database.
  * Uses SQLite's user_version pragma to track schema version.
@@ -410,6 +462,12 @@ export function runMigrations(db: CompatDatabase): void {
     user_version: number;
   };
   let version = currentVersion.user_version;
+
+  const inferred = inferLegacySchemaVersion(db);
+  if (inferred > version) {
+    db.exec(`PRAGMA user_version = ${inferred}`);
+    version = inferred;
+  }
 
   for (const migration of MIGRATIONS) {
     if (migration.version <= version) continue;

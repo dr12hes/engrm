@@ -157,6 +157,16 @@ describe("buildSummaryVectorDocument", () => {
         user_id: "david",
         device_id: "laptop-abc",
       }),
+      db.insertObservation({
+        session_id: "sess-123",
+        project_id: projectId,
+        type: "change",
+        title: "Exposed per-project insights endpoint",
+        files_modified: JSON.stringify(["app/services/mem_insights.py"]),
+        quality: 0.7,
+        user_id: "david",
+        device_id: "laptop-abc",
+      }),
     ];
 
     const doc = buildSummaryVectorDocument(summary, makeConfig(), {
@@ -165,8 +175,13 @@ describe("buildSummaryVectorDocument", () => {
     }, observations, {
       prompt_count: 1,
       tool_event_count: 1,
+      capture_state: "rich",
+      recent_request_prompts: ["Improve local memory ranking"],
       latest_request: "Improve local memory ranking",
       recent_tool_names: ["Edit"],
+      recent_tool_commands: ["app/services/mem_insights.py"],
+      hot_files: ["app/services/mem_insights.py"],
+      recent_outcomes: ["Exposed per-project insights endpoint"],
     });
 
     expect(doc.source_type).toBe("summary");
@@ -183,8 +198,15 @@ describe("buildSummaryVectorDocument", () => {
     ]);
     expect(doc.metadata.prompt_count).toBe(1);
     expect(doc.metadata.tool_event_count).toBe(1);
+    expect(doc.metadata.capture_state).toBe("rich");
+    expect(doc.metadata.recent_request_prompts).toEqual([
+      "Improve local memory ranking",
+    ]);
     expect(doc.metadata.latest_request).toBe("Improve local memory ranking");
     expect(doc.metadata.recent_tool_names).toEqual(["Edit"]);
+    expect(doc.metadata.recent_tool_commands).toEqual(["app/services/mem_insights.py"]);
+    expect(doc.metadata.hot_files).toEqual(["app/services/mem_insights.py"]);
+    expect(doc.metadata.recent_outcomes).toEqual(["Exposed per-project insights endpoint"]);
     expect(doc.metadata.decisions_count).toBe(1);
     expect(doc.metadata.features_count).toBe(1);
     expect(doc.metadata.repeated_patterns_count).toBe(1);

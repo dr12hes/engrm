@@ -26,7 +26,10 @@ export function extractRetrospective(
   const investigated = extractInvestigated(observations);
   const learned = extractLearned(observations);
   const completed = extractCompleted(observations);
-  const nextSteps = extractNextSteps(observations);
+  const nextSteps = extractNextSteps(observations, {
+    request,
+    completed,
+  });
 
   // Don't create empty summaries
   if (!request && !investigated && !learned && !completed && !nextSteps) {
@@ -120,23 +123,35 @@ function extractCompleted(observations: ObservationRow[]): string | null {
  * Bugfix observations that appear late in the session (last 25%)
  * and reference errors suggest unfinished work.
  */
-function extractNextSteps(observations: ObservationRow[]): string | null {
+function extractNextSteps(
+  observations: ObservationRow[],
+  existing: {
+    request: string | null;
+    completed: string | null;
+  }
+): string | null {
   if (observations.length < 2) return null;
 
   const lastQuarterStart = Math.max(0, Math.min(observations.length - 1, observations.length - 3, Math.floor(observations.length * 0.75)));
   const lastQuarter = observations.slice(lastQuarterStart);
+  const alreadyCovered = new Set<string>([
+    normalizeObservationKey(existing.request ?? ""),
+    ...extractNormalizedSummaryItems(existing.completed),
+  ].filter(Boolean));
 
   const unresolved = lastQuarter.filter(
     (o) =>
       o.type === "bugfix" &&
       o.narrative &&
-      /error|fail|exception/i.test(o.narrative)
+      /error|fail|exception/i.test(o.narrative) &&
+      !alreadyCovered.has(normalizeObservationKey(o.title))
   );
 
   const explicitDecisions = lastQuarter
     .filter((o) => o.type === "decision")
     .sort((a, b) => scoreNarrativeObservation(b) - scoreNarrativeObservation(a))
     .slice(0, 2)
+    .filter((o) => !alreadyCovered.has(normalizeObservationKey(o.title)))
     .map((o) => `- Follow through: ${o.title}`);
 
   if (unresolved.length === 0 && explicitDecisions.length === 0) return null;
@@ -190,6 +205,18 @@ function dedupeObservationsByTitle(observations: ObservationRow[]): ObservationR
     deduped.push(obs);
   }
   return deduped;
+}
+
+function extractNormalizedSummaryItems(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map((line) => line.replace(/^(investigate|follow through):\s*/i, ""))
+    .map((line) => normalizeObservationKey(line))
+    .filter(Boolean);
 }
 
 function scoreCompletedObservation(obs: ObservationRow): number {

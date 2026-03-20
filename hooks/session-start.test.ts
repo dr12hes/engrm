@@ -85,4 +85,67 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("Replaced broken ELK edge rendering with ReactFlow path computation");
     expect(recentSessionsIndex).toBeGreaterThan(recentWorkIndex);
   });
+
+  test("suppresses next steps that only repeat completed work", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        summaries: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            request: "Improve insights messaging",
+            investigated: null,
+            learned: "Fixed team ID field reference in insights page initialization",
+            completed: "Exposed per-project insights as REST API endpoint",
+            next_steps: "Investigate: Fixed team ID field reference in insights page initialization",
+            created_at_epoch: 1,
+            source_observation_id: null,
+          },
+        ],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Next Steps:"))).toBe(false);
+  });
+
+  test("shows recent tools only when they add new information", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        summaries: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            request: "Update mem insights endpoint",
+            investigated: null,
+            learned: null,
+            completed: "Exposed per-project insights as REST API endpoint",
+            next_steps: null,
+            created_at_epoch: 1,
+            source_observation_id: null,
+          },
+        ],
+        recentToolEvents: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            tool_name: "Bash",
+            tool_input_json: null,
+            tool_response_preview: null,
+            file_path: null,
+            command: "pytest tests/test_mem_insights.py",
+            user_id: "david",
+            device_id: "BackupMac",
+            agent: "claude-code",
+            created_at_epoch: 1,
+          },
+        ],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Recent Tools:"))).toBe(true);
+    expect(lines.join("\n")).toContain("pytest tests/test_mem_insights.py");
+  });
 });
