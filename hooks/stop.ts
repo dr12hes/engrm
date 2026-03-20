@@ -136,6 +136,14 @@ async function main(): Promise<void> {
     }
     // Detect unsaved plans/decisions in the final assistant message
     if (event.last_assistant_message) {
+      if (event.session_id) {
+        try {
+          createAssistantCheckpoint(db, event.session_id, event.cwd, event.last_assistant_message);
+        } catch {
+          // Assistant checkpoint is optional — don't block shutdown
+        }
+      }
+
       const unsaved = detectUnsavedPlans(event.last_assistant_message);
       if (unsaved.length > 0) {
         console.error("");
@@ -337,6 +345,105 @@ function createSessionDigest(
   db.addToOutbox("observation", digestObs.id);
 }
 
+function createAssistantCheckpoint(
+  db: MemDatabase,
+  sessionId: string,
+  cwd: string,
+  message: string
+): void {
+  const checkpoint = extractAssistantCheckpoint(message);
+  if (!checkpoint) return;
+
+  const existing = db
+    .getObservationsBySession(sessionId)
+    .find((obs) => obs.source_tool === "assistant-stop" && obs.title === checkpoint.title);
+  if (existing) return;
+
+  const detected = detectProject(cwd);
+  const project = db.getProjectByCanonicalId(detected.canonical_id);
+  if (!project) return;
+
+  const promptNumber = db.getLatestSessionPromptNumber(sessionId);
+  const row = db.insertObservation({
+    session_id: sessionId,
+    project_id: project.id,
+    type: checkpoint.type,
+    title: checkpoint.title,
+    narrative: checkpoint.narrative,
+    facts: checkpoint.facts.length > 0 ? JSON.stringify(checkpoint.facts.slice(0, 8)) : null,
+    quality: checkpoint.quality,
+    lifecycle: "active",
+    sensitivity: "shared",
+    user_id: db.getSessionById(sessionId)?.user_id ?? "unknown",
+    device_id: db.getSessionById(sessionId)?.device_id ?? "unknown",
+    agent: db.getSessionById(sessionId)?.agent ?? "claude-code",
+    source_tool: "assistant-stop",
+    source_prompt_number: promptNumber,
+  });
+  db.addToOutbox("observation", row.id);
+}
+
+function extractAssistantCheckpoint(message: string): {
+  type: "decision" | "change" | "feature";
+  title: string;
+  narrative: string;
+  facts: string[];
+  quality: number;
+} | null {
+  const compact = message.replace(/\r/g, "").trim();
+  if (compact.length < 180) return null;
+
+  const bulletLines = compact
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => /^[-*]\s+/.test(line))
+    .map((line) => line.replace(/^[-*]\s+/, "").trim())
+    .filter((line) => line.length > 20)
+    .slice(0, 8);
+
+  const substantiveLines = compact
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^#+\s*/.test(line))
+    .filter((line) => !/^[-*]\s*$/.test(line));
+
+  const title = pickAssistantCheckpointTitle(substantiveLines, bulletLines);
+  if (!title) return null;
+
+  const lowered = compact.toLowerCase();
+  const type =
+    /\bdecid|recommend|strategy|pricing|plan\b/.test(lowered)
+      ? "decision"
+      : /\bshipped|deployed|launched|released|implemented|added\b/.test(lowered)
+        ? "feature"
+        : "change";
+
+  const facts = bulletLines.filter((line) => line !== title);
+  const narrative = substantiveLines.slice(0, 6).join("\n");
+  return {
+    type,
+    title,
+    narrative,
+    facts,
+    quality: 0.72,
+  };
+}
+
+function pickAssistantCheckpointTitle(
+  substantiveLines: string[],
+  bulletLines: string[]
+): string | null {
+  const candidates = [...bulletLines, ...substantiveLines]
+    .map((line) => line.replace(/^Completed:\s*/i, "").trim())
+    .filter((line) => line.length > 20)
+    .filter((line) => !/^Next Steps?:/i.test(line))
+    .filter((line) => !/^Investigated:/i.test(line))
+    .filter((line) => !/^Learned:/i.test(line));
+  return candidates[0] ?? null;
+}
+
 /**
  * Detect plans, decisions, or strategies in the last assistant message
  * that weren't written to a file. Returns hint strings for each detected type.
@@ -452,5 +559,9 @@ function readSessionMetrics(sessionId: string): {
 
   return result;
 }
+
+export const __testables = {
+  extractAssistantCheckpoint,
+};
 
 runHook("stop", main);

@@ -40,6 +40,8 @@ interface SummaryCaptureContext {
   capture_state: "rich" | "partial" | "summary-only";
   hot_files: string[];
   recent_outcomes: string[];
+  observation_source_tools: Array<{ tool: string; count: number }>;
+  latest_observation_prompt_number: number | null;
 }
 
 /**
@@ -88,6 +90,8 @@ export function buildVectorDocument(
       files_modified: obs.files_modified
         ? JSON.parse(obs.files_modified)
         : [],
+      source_tool: obs.source_tool,
+      source_prompt_number: obs.source_prompt_number,
       session_id: obs.session_id,
       created_at_epoch: obs.created_at_epoch,
       created_at: obs.created_at,
@@ -146,6 +150,8 @@ export function buildSummaryVectorDocument(
       recent_tool_commands: captureContext?.recent_tool_commands ?? [],
       hot_files: captureContext?.hot_files ?? [],
       recent_outcomes: captureContext?.recent_outcomes ?? [],
+      observation_source_tools: captureContext?.observation_source_tools ?? [],
+      latest_observation_prompt_number: captureContext?.latest_observation_prompt_number ?? null,
       decisions_count: valueSignals.decisions_count,
       lessons_count: valueSignals.lessons_count,
       discoveries_count: valueSignals.discoveries_count,
@@ -355,6 +361,22 @@ function buildSummaryCaptureContext(
         ? "partial"
         : "summary-only";
 
+  const observationSourceTools = Array.from(
+    observations.reduce((acc, obs) => {
+      if (!obs.source_tool) return acc;
+      acc.set(obs.source_tool, (acc.get(obs.source_tool) ?? 0) + 1);
+      return acc;
+    }, new Map<string, number>()).entries()
+  )
+    .map(([tool, count]) => ({ tool, count }))
+    .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
+    .slice(0, 6);
+
+  const latestObservationPromptNumber = observations
+    .map((obs) => obs.source_prompt_number)
+    .filter((value): value is number => typeof value === "number")
+    .sort((a, b) => b - a)[0] ?? null;
+
   return {
     prompt_count: prompts.length,
     tool_event_count: toolEvents.length,
@@ -365,6 +387,8 @@ function buildSummaryCaptureContext(
     capture_state: captureState,
     hot_files: hotFiles,
     recent_outcomes: recentOutcomes,
+    observation_source_tools: observationSourceTools,
+    latest_observation_prompt_number: latestObservationPromptNumber,
   };
 }
 

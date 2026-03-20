@@ -54,6 +54,8 @@ describe("buildVectorDocument", () => {
       user_id: "david",
       device_id: "laptop-abc",
       agent: "claude-code",
+      source_tool: "Edit",
+      source_prompt_number: 2,
     });
 
     const doc = buildVectorDocument(obs, makeConfig(), {
@@ -72,6 +74,8 @@ describe("buildVectorDocument", () => {
     expect(doc.metadata.project_canonical).toBe("github.com/test/repo");
     expect(doc.metadata.quality).toBe(0.8);
     expect(doc.metadata.user_id).toBe("david");
+    expect(doc.metadata.source_tool).toBe("Edit");
+    expect(doc.metadata.source_prompt_number).toBe(2);
   });
 
   test("handles observation with no narrative or facts", () => {
@@ -138,6 +142,8 @@ describe("buildSummaryVectorDocument", () => {
         quality: 0.8,
         user_id: "david",
         device_id: "laptop-abc",
+        source_tool: "Edit",
+        source_prompt_number: 1,
       }),
       db.insertObservation({
         session_id: "sess-123",
@@ -147,6 +153,8 @@ describe("buildSummaryVectorDocument", () => {
         quality: 0.7,
         user_id: "david",
         device_id: "laptop-abc",
+        source_tool: "Bash",
+        source_prompt_number: 1,
       }),
       db.insertObservation({
         session_id: "sess-123",
@@ -156,6 +164,8 @@ describe("buildSummaryVectorDocument", () => {
         quality: 0.7,
         user_id: "david",
         device_id: "laptop-abc",
+        source_tool: "assistant-stop",
+        source_prompt_number: 1,
       }),
       db.insertObservation({
         session_id: "sess-123",
@@ -166,6 +176,8 @@ describe("buildSummaryVectorDocument", () => {
         quality: 0.7,
         user_id: "david",
         device_id: "laptop-abc",
+        source_tool: "Edit",
+        source_prompt_number: 1,
       }),
     ];
 
@@ -207,6 +219,12 @@ describe("buildSummaryVectorDocument", () => {
     expect(doc.metadata.recent_tool_commands).toEqual(["app/services/mem_insights.py"]);
     expect(doc.metadata.hot_files).toEqual(["app/services/mem_insights.py"]);
     expect(doc.metadata.recent_outcomes).toEqual(["Exposed per-project insights endpoint"]);
+    expect(doc.metadata.observation_source_tools).toEqual([
+      { tool: "Edit", count: 2 },
+      { tool: "assistant-stop", count: 1 },
+      { tool: "Bash", count: 1 },
+    ]);
+    expect(doc.metadata.latest_observation_prompt_number).toBe(1);
     expect(doc.metadata.decisions_count).toBe(1);
     expect(doc.metadata.features_count).toBe(1);
     expect(doc.metadata.repeated_patterns_count).toBe(1);
