@@ -832,6 +832,25 @@ describe("MemDatabase — session summaries", () => {
     expect(summary.request).toBe("Fix auth bug");
   });
 
+  test("insertSessionSummary normalizes duplicate headed blobs", () => {
+    const summary = db.insertSessionSummary({
+      session_id: "sess-headed",
+      project_id: projectId,
+      user_id: "david",
+      request: "Deactivate Bedford Hotel on staging",
+      investigated: null,
+      learned: null,
+      completed: `**Deployment:**
+- Pushed commit 5fc897c to staging branch
+
+**Deployment:**
+- Pushed commit 5fc897c to staging branch`,
+      next_steps: null,
+    });
+
+    expect(summary.completed).toBe("- Deployment: Pushed commit 5fc897c to staging branch");
+  });
+
   test("getSessionSummary retrieves by session_id", () => {
     db.insertSessionSummary({
       session_id: "sess-002",

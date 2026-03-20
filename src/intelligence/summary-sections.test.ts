@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractSummaryItems, formatSummaryItems } from "./summary-sections.js";
+import { extractSummaryItems, formatSummaryItems, normalizeSummarySection } from "./summary-sections.js";
 
 describe("summary section normalization", () => {
   test("splits headed bullet blocks into reusable items and dedupes repeated paste", () => {
@@ -30,6 +30,18 @@ describe("summary section normalization", () => {
 
     expect(formatSummaryItems(section, 200)).toBe(
       "- Added context-aware growth insight messaging\n- Exposed per-project insights as REST API endpoint"
+    );
+  });
+
+  test("normalizes headed duplicate section text for storage", () => {
+    const section = `**Deployment:**
+- Pushed commit 5fc897c to staging branch
+
+**Deployment:**
+- Pushed commit 5fc897c to staging branch`;
+
+    expect(normalizeSummarySection(section)).toBe(
+      "- Deployment: Pushed commit 5fc897c to staging branch"
     );
   });
 });

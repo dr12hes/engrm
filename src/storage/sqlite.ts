@@ -1,5 +1,6 @@
 import { runMigrations, ensureObservationTypes } from "./migrations.js";
 import { createHash } from "node:crypto";
+import { normalizeSummaryRequest, normalizeSummarySection } from "../intelligence/summary-sections.js";
 
 /**
  * Cross-runtime SQLite adapter.
@@ -1177,6 +1178,13 @@ export class MemDatabase {
 
   insertSessionSummary(summary: InsertSessionSummary): SessionSummaryRow {
     const now = Math.floor(Date.now() / 1000);
+    const normalized = {
+      request: normalizeSummaryRequest(summary.request),
+      investigated: normalizeSummarySection(summary.investigated),
+      learned: normalizeSummarySection(summary.learned),
+      completed: normalizeSummarySection(summary.completed),
+      next_steps: normalizeSummarySection(summary.next_steps),
+    };
     const result = this.db
       .query(
         `INSERT INTO session_summaries (session_id, project_id, user_id, request, investigated, learned, completed, next_steps, created_at_epoch)
@@ -1186,11 +1194,11 @@ export class MemDatabase {
         summary.session_id,
         summary.project_id,
         summary.user_id,
-        summary.request,
-        summary.investigated,
-        summary.learned,
-        summary.completed,
-        summary.next_steps,
+        normalized.request,
+        normalized.investigated,
+        normalized.learned,
+        normalized.completed,
+        normalized.next_steps,
         now
       );
 

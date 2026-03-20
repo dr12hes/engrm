@@ -49,6 +49,20 @@ export function formatSummaryItems(section: string | null | undefined, maxLen: n
   return `${safe.trimEnd()}…`;
 }
 
+export function normalizeSummarySection(section: string | null | undefined): string | null {
+  const items = extractSummaryItems(section);
+  if (items.length === 0) {
+    const cleaned = section?.replace(/\s+/g, " ").trim() ?? "";
+    return cleaned || null;
+  }
+  return items.map((item) => `- ${item}`).join("\n");
+}
+
+export function normalizeSummaryRequest(value: string | null | undefined): string | null {
+  const cleaned = value?.replace(/\s+/g, " ").trim() ?? "";
+  return cleaned || null;
+}
+
 function stripSectionPrefix(value: string): string {
   return value
     .replace(/^(request|investigated|learned|completed|next steps|summary):\s*/i, "")
