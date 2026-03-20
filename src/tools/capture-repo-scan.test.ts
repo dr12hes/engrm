@@ -38,11 +38,11 @@ describe("captureRepoScan", () => {
   });
 
   test("adds focused discovery findings", () => {
-    const result = captureRepoScan({ cwd: tmpDir, focus: ["validation"] });
-    expect(result.findings.some((finding) => finding.title.includes("Found validation references"))).toBe(false);
+    const result = captureRepoScan({ cwd: tmpDir, focus: ["paymentgateway"] });
+    expect(result.findings.some((finding) => finding.title.includes("Found paymentgateway references"))).toBe(false);
 
-    writeFileSync(join(tmpDir, "src", "validation.ts"), "export const validation = true;\n");
-    const rescanned = captureRepoScan({ cwd: tmpDir, focus: ["validation"] });
-    expect(rescanned.findings.some((finding) => finding.title.includes("Found validation references"))).toBe(true);
+    writeFileSync(join(tmpDir, "src", "payments.ts"), "export const paymentgateway = true;\n");
+    const rescanned = captureRepoScan({ cwd: tmpDir, focus: ["paymentgateway"] });
+    expect(rescanned.findings.some((finding) => finding.title.includes("Found paymentgateway references"))).toBe(true);
   });
 });
