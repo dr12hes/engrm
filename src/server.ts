@@ -1152,9 +1152,12 @@ server.tool(
     const toolLines = result.tools.length > 0
       ? result.tools.map((tool) => {
           const typeMix = tool.top_types.map((item) => `${item.type} ${item.count}`).join(", ");
+          const pluginMix = tool.top_plugins.length > 0
+            ? ` plugins=[${tool.top_plugins.map((item) => `${item.plugin} ${item.count}`).join(", ")}]`
+            : "";
           const sample = tool.sample_titles[0] ? ` sample="${tool.sample_titles[0]}"` : "";
           const promptInfo = typeof tool.latest_prompt_number === "number" ? ` latest_prompt=#${tool.latest_prompt_number}` : "";
-          return `- ${tool.tool}: obs=${tool.observation_count} sessions=${tool.session_count}${promptInfo} types=[${typeMix}]${sample}`;
+          return `- ${tool.tool}: obs=${tool.observation_count} sessions=${tool.session_count}${promptInfo} types=[${typeMix}]${pluginMix}${sample}`;
         }).join("\n")
       : "- (none)";
 
@@ -1184,9 +1187,12 @@ server.tool(
     const toolLines = result.tools.length > 0
       ? result.tools.map((tool) => {
           const typeMix = tool.top_types.map((item) => `${item.type} ${item.count}`).join(", ");
+          const pluginMix = tool.top_plugins.length > 0
+            ? ` plugins=[${tool.top_plugins.map((item) => `${item.plugin} ${item.count}`).join(", ")}]`
+            : "";
           const sample = tool.sample_titles[0] ? ` sample="${tool.sample_titles[0]}"` : "";
           const promptInfo = typeof tool.latest_prompt_number === "number" ? ` latest_prompt=#${tool.latest_prompt_number}` : "";
-          return `- ${tool.tool}: events=${tool.tool_event_count} observations=${tool.observation_count}${promptInfo} types=[${typeMix}]${sample}`;
+          return `- ${tool.tool}: events=${tool.tool_event_count} observations=${tool.observation_count}${promptInfo} types=[${typeMix}]${pluginMix}${sample}`;
         }).join("\n")
       : "- (none)";
 

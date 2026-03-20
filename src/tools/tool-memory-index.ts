@@ -22,10 +22,23 @@ export interface ToolMemoryIndexResult {
     observation_count: number;
     latest_epoch: number;
     top_types: Array<{ type: string; count: number }>;
+    top_plugins: Array<{ plugin: string; count: number }>;
     sample_titles: string[];
     session_count: number;
     latest_prompt_number: number | null;
   }>;
+}
+
+function parseConcepts(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export function getToolMemoryIndex(
@@ -99,9 +112,9 @@ export function getToolMemoryIndex(
         count: typeRow.count,
       }));
 
-    const sampleTitles = db.db
-      .query<{ title: string }, (number | string)[]>(
-        `SELECT o.title
+    const observationRows = db.db
+      .query<{ title: string; concepts: string | null }, (number | string)[]>(
+        `SELECT o.title, o.concepts
          FROM observations o
          WHERE o.source_tool = ?
            AND o.lifecycle IN ('active', 'aging', 'pinned')
@@ -109,16 +122,33 @@ export function getToolMemoryIndex(
            ${projectClause}
            ${visibilityClause}
          ORDER BY o.created_at_epoch DESC, o.id DESC
-         LIMIT 4`
+         LIMIT 50`
       )
-      .all(...rowParams)
-      .map((sample) => sample.title);
+      .all(...rowParams);
+
+    const topPlugins = Array.from(
+      observationRows.reduce((acc, obs) => {
+        for (const concept of parseConcepts(obs.concepts)) {
+          if (!concept.startsWith("plugin:")) continue;
+          const plugin = concept.slice("plugin:".length);
+          if (!plugin) continue;
+          acc.set(plugin, (acc.get(plugin) ?? 0) + 1);
+        }
+        return acc;
+      }, new Map<string, number>()).entries()
+    )
+      .map(([plugin, count]) => ({ plugin, count }))
+      .sort((a, b) => b.count - a.count || a.plugin.localeCompare(b.plugin))
+      .slice(0, 4);
+
+    const sampleTitles = observationRows.map((sample) => sample.title).slice(0, 4);
 
     return {
       tool: row.source_tool,
       observation_count: row.observation_count,
       latest_epoch: row.latest_epoch,
       top_types: topTypes,
+      top_plugins: topPlugins,
       sample_titles: sampleTitles,
       session_count: row.session_count,
       latest_prompt_number: row.latest_prompt_number,

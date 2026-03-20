@@ -62,6 +62,7 @@ describe("getSessionToolMemory", () => {
       device_id: "laptop",
       source_tool: "Edit",
       source_prompt_number: 3,
+      concepts: JSON.stringify(["plugin:engrm.git-diff"]),
     });
     db.insertObservation({
       session_id: "sess-1",
@@ -73,6 +74,7 @@ describe("getSessionToolMemory", () => {
       device_id: "laptop",
       source_tool: "Edit",
       source_prompt_number: 4,
+      concepts: JSON.stringify(["plugin:engrm.git-diff"]),
     });
 
     const result = getSessionToolMemory(db, {
@@ -87,6 +89,9 @@ describe("getSessionToolMemory", () => {
       top_types: [
         { type: "bugfix", count: 1 },
         { type: "change", count: 1 },
+      ],
+      top_plugins: [
+        { plugin: "engrm.git-diff", count: 2 },
       ],
       sample_titles: [
         "Adjusted auth retry thresholds",

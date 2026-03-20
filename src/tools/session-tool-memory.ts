@@ -18,6 +18,7 @@ export interface SessionToolMemoryResult {
     tool_event_count: number;
     observation_count: number;
     top_types: Array<{ type: string; count: number }>;
+    top_plugins: Array<{ plugin: string; count: number }>;
     sample_titles: string[];
     latest_prompt_number: number | null;
   }>;
@@ -25,6 +26,18 @@ export interface SessionToolMemoryResult {
     tool: string;
     tool_event_count: number;
   }>;
+}
+
+function parseConcepts(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export function getSessionToolMemory(
@@ -64,6 +77,21 @@ export function getSessionToolMemory(
         .filter((title, index, all) => all.indexOf(title) === index)
         .slice(0, 4);
 
+      const topPlugins = Array.from(
+        groupedObservations.reduce((acc, obs) => {
+          for (const concept of parseConcepts(obs.concepts)) {
+            if (!concept.startsWith("plugin:")) continue;
+            const plugin = concept.slice("plugin:".length);
+            if (!plugin) continue;
+            acc.set(plugin, (acc.get(plugin) ?? 0) + 1);
+          }
+          return acc;
+        }, new Map<string, number>()).entries()
+      )
+        .map(([plugin, count]) => ({ plugin, count }))
+        .sort((a, b) => b.count - a.count || a.plugin.localeCompare(b.plugin))
+        .slice(0, 4);
+
       const latestPromptNumber = groupedObservations.reduce<number | null>(
         (latest, obs) =>
           typeof obs.source_prompt_number === "number"
@@ -79,6 +107,7 @@ export function getSessionToolMemory(
         tool_event_count: toolEventCounts.get(tool) ?? 0,
         observation_count: groupedObservations.length,
         top_types: topTypes,
+        top_plugins: topPlugins,
         sample_titles: sampleTitles,
         latest_prompt_number: latestPromptNumber,
       };

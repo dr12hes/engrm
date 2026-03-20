@@ -39,6 +39,7 @@ describe("getToolMemoryIndex", () => {
       device_id: "laptop",
       source_tool: "Edit",
       source_prompt_number: 1,
+      concepts: JSON.stringify(["plugin:engrm.git-diff"]),
     });
     db.insertObservation({
       session_id: "sess-1",
@@ -50,6 +51,7 @@ describe("getToolMemoryIndex", () => {
       device_id: "laptop",
       source_tool: "Edit",
       source_prompt_number: 2,
+      concepts: JSON.stringify(["plugin:engrm.git-diff"]),
     });
     db.insertObservation({
       session_id: "sess-2",
@@ -61,6 +63,7 @@ describe("getToolMemoryIndex", () => {
       device_id: "laptop",
       source_tool: "assistant-stop",
       source_prompt_number: 4,
+      concepts: JSON.stringify(["plugin:engrm.repo-scan"]),
     });
 
     const result = getToolMemoryIndex(db, {
@@ -77,8 +80,14 @@ describe("getToolMemoryIndex", () => {
       { type: "bugfix", count: 1 },
       { type: "change", count: 1 },
     ]);
+    expect(result.tools[0]?.top_plugins).toEqual([
+      { plugin: "engrm.git-diff", count: 2 },
+    ]);
     expect(result.tools[0]?.sample_titles[0]).toContain("Adjusted auth retry thresholds");
     expect(result.tools[1]?.tool).toBe("assistant-stop");
     expect(result.tools[1]?.top_types).toEqual([{ type: "decision", count: 1 }]);
+    expect(result.tools[1]?.top_plugins).toEqual([
+      { plugin: "engrm.repo-scan", count: 1 },
+    ]);
   });
 });
