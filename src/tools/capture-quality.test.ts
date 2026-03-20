@@ -99,6 +99,18 @@ describe("getCaptureQuality", () => {
       { tool: "Edit", count: 1 },
       { tool: "assistant-stop", count: 1 },
     ]);
+    expect(result.provenance_type_mix).toEqual([
+      {
+        tool: "assistant-stop",
+        count: 1,
+        top_types: [{ type: "change", count: 1 }],
+      },
+      {
+        tool: "Edit",
+        count: 1,
+        top_types: [{ type: "bugfix", count: 1 }],
+      },
+    ]);
     expect(result.assistant_checkpoint_types).toEqual([
       { type: "change", count: 1 },
     ]);

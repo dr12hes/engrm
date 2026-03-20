@@ -31,6 +31,11 @@ export interface CaptureQualityResult {
   };
   projects_with_raw_capture: number;
   provenance_summary: Array<{ tool: string; count: number }>;
+  provenance_type_mix: Array<{
+    tool: string;
+    count: number;
+    top_types: Array<{ type: string; count: number }>;
+  }>;
   assistant_checkpoint_types: Array<{ type: string; count: number }>;
   top_projects: Array<{
     name: string;
@@ -97,6 +102,35 @@ export function getCaptureQuality(
     )
     .all(...(input.user_id ? [input.user_id] : []));
 
+  const provenanceTypeRows = db.db
+    .query<{ source_tool: string; type: string; count: number }, (string | number)[]>(
+      `SELECT source_tool, type, COUNT(*) as count
+       FROM observations
+       WHERE source_tool IS NOT NULL
+         AND lifecycle IN ('active', 'aging', 'pinned')
+         AND superseded_by IS NULL
+         ${input.user_id ? " AND (sensitivity != 'personal' OR user_id = ?)" : ""}
+       GROUP BY source_tool, type
+       ORDER BY source_tool ASC, count DESC, type ASC`
+    )
+    .all(...(input.user_id ? [input.user_id] : []));
+
+  const provenanceTypeMix = Array.from(
+    provenanceTypeRows.reduce((acc, row) => {
+      const group = acc.get(row.source_tool) ?? [];
+      group.push({ type: row.type, count: row.count });
+      acc.set(row.source_tool, group);
+      return acc;
+    }, new Map<string, Array<{ type: string; count: number }>>()).entries()
+  )
+    .map(([tool, topTypes]) => ({
+      tool,
+      count: topTypes.reduce((sum, item) => sum + item.count, 0),
+      top_types: topTypes.slice(0, 4),
+    }))
+    .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
+    .slice(0, 8);
+
   return {
     totals: {
       projects: workspace.projects.length,
@@ -109,6 +143,7 @@ export function getCaptureQuality(
     session_states: sessionStates,
     projects_with_raw_capture: workspace.projects_with_raw_capture,
     provenance_summary: workspace.provenance_summary,
+    provenance_type_mix: provenanceTypeMix,
     assistant_checkpoint_types: checkpointTypeRows.map((row) => ({
       type: row.type,
       count: row.count,

@@ -839,6 +839,11 @@ server.tool(
     const provenanceLines = result.provenance_summary.length > 0
       ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
       : "- (none)";
+    const provenanceMixLines = result.provenance_type_mix.length > 0
+      ? result.provenance_type_mix
+          .map((item) => `- ${item.tool}: ${item.top_types.map((entry) => `${entry.type} ${entry.count}`).join(", ")}`)
+          .join("\n")
+      : "- (none)";
     const checkpointTypeLines = result.assistant_checkpoint_types.length > 0
       ? result.assistant_checkpoint_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
       : "- (none)";
@@ -959,6 +964,7 @@ server.tool(
             `Projects with raw capture: ${result.projects_with_raw_capture}\n\n` +
             `Assistant checkpoints by type:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
+            `Provenance type mix:\n${provenanceMixLines}\n\n` +
             `Top projects:\n${projectLines}`,
         },
       ],
