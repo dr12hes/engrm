@@ -889,9 +889,13 @@ server.tool(
             `Recent user prompts: ${result.recent_user_prompts}\n` +
             `Recent tool events: ${result.recent_tool_events}\n` +
             `Recent sessions with raw chronology: ${result.recent_sessions_with_raw_capture}\n` +
+            `Recent sessions with partial chronology: ${result.recent_sessions_with_partial_capture}\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n` +
             `Latest prompt: ${latestPrompt}\n` +
-            `Latest tool event: ${latestTool}`,
+            `Latest tool event: ${latestTool}\n` +
+            `Latest PostToolUse hook: ${formatEpoch(result.latest_post_tool_hook_epoch)}\n` +
+            `Last PostToolUse parse: ${result.latest_post_tool_parse_status ?? "unknown"}\n` +
+            `Last PostToolUse tool: ${result.latest_post_tool_name ?? "unknown"}`,
         },
       ],
     };
@@ -1238,7 +1242,7 @@ server.tool(
             ? new Date(whenEpoch * 1000).toISOString().split("T")[0]
             : "unknown";
           const summary = session.request ?? session.completed ?? "(no summary)";
-          return `- ${session.session_id} (${when}) prompts=${session.prompt_count} tools=${session.tool_event_count} obs=${session.observation_count} :: ${summary.replace(/\s+/g, " ").trim()}`;
+          return `- ${session.session_id} (${when}) [${session.capture_state}] prompts=${session.prompt_count} tools=${session.tool_event_count} obs=${session.observation_count} :: ${summary.replace(/\s+/g, " ").trim()}`;
         }).join("\n")
       : "- (none)";
 
@@ -1296,6 +1300,9 @@ server.tool(
     const metrics = result.metrics
       ? `files=${result.metrics.files_touched_count}, searches=${result.metrics.searches_performed}, tools=${result.metrics.tool_calls_count}, observations=${result.metrics.observation_count}`
       : "metrics unavailable";
+    const captureGaps = result.capture_gaps.length > 0
+      ? result.capture_gaps.map((gap) => `- ${gap}`).join("\n")
+      : "- none";
 
     return {
       content: [
@@ -1304,10 +1311,12 @@ server.tool(
           text:
             `Session: ${result.session.session_id}\n` +
             `Status: ${result.session.status}\n` +
+            `Capture: ${result.capture_state}\n` +
             `Metrics: ${metrics}\n\n` +
             `Summary:\n${summaryLines}\n\n` +
             `Prompts:\n${promptLines}\n\n` +
             `Tools:\n${toolLines}\n\n` +
+            `Capture gaps:\n${captureGaps}\n\n` +
             `Observations:\n${observationLines}`,
         },
       ],

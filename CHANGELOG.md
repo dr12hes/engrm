@@ -4,6 +4,29 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.9
+
+### Added
+
+- capture-state diagnostics for local session inspection:
+  - `rich`
+  - `partial`
+  - `summary-only`
+  - `legacy`
+- `recent_sessions` and `session_story` now report capture quality and missing chronology gaps
+- `capture_status`, `status`, and `doctor` now surface partial raw chronology instead of treating capture as only on/off
+- lightweight `PostToolUse` diagnostics now record the latest hook timestamp, parse status, and tool name
+
+### Changed
+
+- startup context now suppresses duplicate current-request lines and surfaces recent repo outcomes more prominently
+- injected project memory now includes recent outcomes and hides malformed prompt fragments and empty recent-session shells
+- project memory consoles and indexes now surface higher-signal recent outcomes instead of weak file-operation titles
+- git-aware project attribution is used more consistently so new captures follow the repo owning touched files
+- `PostToolUse` now persists raw tool chronology before slower observer work, keeping tool-event capture reliable
+- inline observer work is limited to higher-value tool types and uses the SDK timeout so normal `Edit`/`Write` hooks stay fast
+- sync pull now tolerates remote `summary` and missing-type records instead of crashing local pull
+
 ## 0.4.8
 
 ### Added

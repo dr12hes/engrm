@@ -83,6 +83,32 @@ describe("getCaptureStatus", () => {
     expect(result.recent_user_prompts).toBe(1);
     expect(result.recent_tool_events).toBe(1);
     expect(result.recent_sessions_with_raw_capture).toBe(1);
+    expect(result.recent_sessions_with_partial_capture).toBe(0);
     expect(result.raw_capture_active).toBe(true);
+  });
+
+  test("flags partial chronology when session metrics exist without raw tool events", () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+    db.upsertSession("sess-legacy", project.id, "david", "laptop", "claude-code");
+    db.incrementSessionMetrics("sess-legacy", { toolCalls: 3 });
+    db.insertUserPrompt({
+      session_id: "sess-legacy",
+      project_id: project.id,
+      prompt: "Fix auth flow",
+      user_id: "david",
+      device_id: "laptop",
+    });
+
+    const result = getCaptureStatus(db, {
+      user_id: "david",
+      home_dir: fakeHome,
+      lookback_hours: 24,
+    });
+
+    expect(result.recent_sessions_with_partial_capture).toBe(1);
   });
 });

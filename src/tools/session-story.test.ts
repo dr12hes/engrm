@@ -70,5 +70,7 @@ describe("getSessionStory", () => {
     expect(story.observations).toHaveLength(1);
     expect(story.summary?.request).toBe("Fix auth flow");
     expect(story.metrics?.tool_calls_count).toBe(1);
+    expect(story.capture_state).toBe("rich");
+    expect(story.capture_gaps).toEqual([]);
   });
 });

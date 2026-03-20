@@ -8,6 +8,10 @@
 import { detectProject } from "../storage/projects.js";
 import type { MemDatabase, RecentSessionRow } from "../storage/sqlite.js";
 
+export interface RecentSessionView extends RecentSessionRow {
+  capture_state: "rich" | "partial" | "summary-only" | "legacy";
+}
+
 export interface RecentSessionsInput {
   limit?: number;
   project_scoped?: boolean;
@@ -16,7 +20,7 @@ export interface RecentSessionsInput {
 }
 
 export interface RecentSessionsResult {
-  sessions: RecentSessionRow[];
+  sessions: RecentSessionView[];
   project?: string;
 }
 
@@ -40,7 +44,21 @@ export function getRecentSessions(
   }
 
   return {
-    sessions: db.getRecentSessions(projectId, limit, input.user_id),
+    sessions: db.getRecentSessions(projectId, limit, input.user_id).map((session) => ({
+      ...session,
+      capture_state: classifyCaptureState(session),
+    })),
     project: projectName,
   };
+}
+
+function classifyCaptureState(session: RecentSessionRow): RecentSessionView["capture_state"] {
+  const hasSummary = Boolean(session.request || session.completed);
+  const hasPrompts = session.prompt_count > 0;
+  const hasTools = session.tool_event_count > 0;
+
+  if (hasPrompts && hasTools) return "rich";
+  if (hasPrompts || hasTools) return hasSummary ? "partial" : "partial";
+  if (hasSummary) return "summary-only";
+  return "legacy";
 }

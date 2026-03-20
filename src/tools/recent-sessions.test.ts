@@ -45,5 +45,6 @@ describe("getRecentSessions", () => {
     expect(result.project).toBe("repo");
     expect(result.sessions).toHaveLength(1);
     expect(result.sessions[0]?.request).toBe("Fix auth flow");
+    expect(result.sessions[0]?.capture_state).toBe("summary-only");
   });
 });

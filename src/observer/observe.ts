@@ -74,6 +74,8 @@ function writeState(sessionId: string, state: ObserverState): void {
 export interface ObserveOptions {
   /** Model to use (default: "haiku") */
   model?: string;
+  /** Hard timeout for the observer query in milliseconds */
+  timeoutMs?: number;
 }
 
 export async function observeToolEvent(
@@ -106,6 +108,7 @@ export async function observeToolEvent(
     const queryOptions: Record<string, unknown> = {
       model: options?.model ?? "haiku",
       maxTurns: 1,
+      timeout: options?.timeoutMs ?? 800,
       disallowedTools: [
         "Bash",
         "Read",

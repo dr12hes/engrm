@@ -37,8 +37,12 @@ export interface CaptureStatusResult {
   recent_user_prompts: number;
   recent_tool_events: number;
   recent_sessions_with_raw_capture: number;
+  recent_sessions_with_partial_capture: number;
   latest_prompt_epoch: number | null;
   latest_tool_event_epoch: number | null;
+  latest_post_tool_hook_epoch: number | null;
+  latest_post_tool_parse_status: string | null;
+  latest_post_tool_name: string | null;
   raw_capture_active: boolean;
 }
 
@@ -150,6 +154,22 @@ export function getCaptureStatus(
     )
     .get(...params)?.count ?? 0;
 
+  const recentSessionsWithPartialCapture = db.db
+    .query<{ count: number }, (number | string)[]>(
+      `SELECT COUNT(*) as count
+       FROM sessions s
+       WHERE COALESCE(s.completed_at_epoch, s.started_at_epoch, 0) >= ?
+         ${input.user_id ? "AND s.user_id = ?" : ""}
+         AND (
+           (s.tool_calls_count > 0 AND NOT EXISTS (SELECT 1 FROM tool_events te WHERE te.session_id = s.session_id))
+           OR (
+             EXISTS (SELECT 1 FROM user_prompts up WHERE up.session_id = s.session_id)
+             AND NOT EXISTS (SELECT 1 FROM tool_events te WHERE te.session_id = s.session_id)
+           )
+         )`
+    )
+    .get(...params)?.count ?? 0;
+
   const latestPromptEpoch = db.db
     .query<{ created_at_epoch: number }, (string | number)[]>(
       `SELECT created_at_epoch FROM user_prompts
@@ -167,6 +187,14 @@ export function getCaptureStatus(
        LIMIT 1`
     )
     .get(...(input.user_id ? [input.user_id] : []))?.created_at_epoch ?? null;
+
+  const latestPostToolHookEpoch = parseNullableInt(
+    db.getSyncState("hook_post_tool_last_seen_epoch")
+  );
+  const latestPostToolParseStatus =
+    db.getSyncState("hook_post_tool_last_parse_status");
+  const latestPostToolName =
+    db.getSyncState("hook_post_tool_last_tool_name");
 
   const schemaVersion = getSchemaVersion(db.db);
 
@@ -188,11 +216,21 @@ export function getCaptureStatus(
     recent_user_prompts: recentUserPrompts,
     recent_tool_events: recentToolEvents,
     recent_sessions_with_raw_capture: recentSessionsWithRawCapture,
+    recent_sessions_with_partial_capture: recentSessionsWithPartialCapture,
     latest_prompt_epoch: latestPromptEpoch,
     latest_tool_event_epoch: latestToolEventEpoch,
+    latest_post_tool_hook_epoch: latestPostToolHookEpoch,
+    latest_post_tool_parse_status: latestPostToolParseStatus,
+    latest_post_tool_name: latestPostToolName,
     raw_capture_active:
       recentUserPrompts > 0 ||
       recentToolEvents > 0 ||
       recentSessionsWithRawCapture > 0,
   };
+}
+
+function parseNullableInt(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }

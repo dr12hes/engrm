@@ -11,7 +11,9 @@
  */
 
 import { extractObservation, type ToolUseEvent } from "../src/capture/extractor.js";
-import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
+import { readStdin, bootstrapHook, runHook } from "../src/hooks/common.js";
+import { getDbPath } from "../src/config.js";
+import { MemDatabase } from "../src/storage/sqlite.js";
 import { saveObservation } from "../src/tools/save.js";
 import { scanForSecrets } from "../src/capture/scanner.js";
 import { detectProject, detectProjectFromTouchedPaths } from "../src/storage/projects.js";
@@ -21,53 +23,38 @@ import { extractErrorSignature, recallPastFix } from "../src/capture/recall.js";
 import { checkSessionFatigue } from "../src/capture/fatigue.js";
 
 async function main(): Promise<void> {
-  const event = await parseStdinJson<ToolUseEvent>();
-  if (!event) process.exit(0);
+  const raw = await readStdin();
+  if (!raw.trim()) process.exit(0);
 
   const boot = bootstrapHook("post-tool-use");
   if (!boot) process.exit(0);
 
   const { config, db } = boot;
+  const now = Math.floor(Date.now() / 1000);
+
+  let event: ToolUseEvent | null = null;
+  try {
+    event = JSON.parse(raw) as ToolUseEvent;
+  } catch {
+    db.setSyncState("hook_post_tool_last_seen_epoch", String(now));
+    db.setSyncState("hook_post_tool_last_parse_status", "invalid-json");
+    db.setSyncState("hook_post_tool_last_payload_preview", truncatePreview(raw, 400) ?? "invalid");
+    db.close();
+    process.exit(0);
+  }
+
+  db.setSyncState("hook_post_tool_last_seen_epoch", String(now));
+  db.setSyncState("hook_post_tool_last_parse_status", "parsed");
+  db.setSyncState("hook_post_tool_last_tool_name", event.tool_name ?? "(unknown)");
+  db.setSyncState(
+    "hook_post_tool_last_payload_preview",
+    truncatePreview(raw, 400) ?? "parsed"
+  );
 
   try {
     // --- Session + Metrics tracking ---
     if (event.session_id) {
-      // Ensure session row exists (upsert on first tool use)
-      const detected = detectProjectForEvent(event);
-      const project = db.getProjectByCanonicalId(detected.canonical_id);
-      db.upsertSession(
-        event.session_id,
-        project?.id ?? null,
-        config.user_id,
-        config.device_id
-      );
-
-      const metricsIncrement: { files?: number; toolCalls?: number } = {
-        toolCalls: 1,
-      };
-
-      // Count file touches from Edit/Write tools
-      if (
-        (event.tool_name === "Edit" || event.tool_name === "Write") &&
-        event.tool_input["file_path"]
-      ) {
-        metricsIncrement.files = 1;
-      }
-
-      db.incrementSessionMetrics(event.session_id, metricsIncrement);
-
-      db.insertToolEvent({
-        session_id: event.session_id,
-        project_id: project?.id ?? null,
-        tool_name: event.tool_name,
-        tool_input_json: safeSerializeToolInput(event.tool_input),
-        tool_response_preview: truncatePreview(event.tool_response, 1200),
-        file_path: extractFilePath(event.tool_input),
-        command: extractCommand(event.tool_input),
-        user_id: config.user_id,
-        device_id: config.device_id,
-        agent: "claude-code",
-      });
+      persistRawToolChronology(event, config.user_id, config.device_id);
     }
 
     // --- Security scanning ---
@@ -154,11 +141,15 @@ async function main(): Promise<void> {
     // Try AI observer first (Claude Agent SDK), fall back to heuristics
     let saved = false;
 
-    if (config.observer?.enabled !== false) {
+    if (shouldRunInlineObserver(event, config.observer?.enabled !== false)) {
       try {
-        const observed = await observeToolEvent(event, {
-          model: config.observer.model,
-        });
+        const observed = await withTimeout(
+          observeToolEvent(event, {
+            model: config.observer.model,
+            timeoutMs: 800,
+          }),
+          1000
+        );
         if (observed) {
           await saveObservation(db, config, observed);
           incrementObserverSaveCount(event.session_id);
@@ -188,6 +179,76 @@ async function main(): Promise<void> {
   } finally {
     db.close();
   }
+}
+
+function persistRawToolChronology(
+  event: ToolUseEvent,
+  userId: string,
+  deviceId: string
+): void {
+  const rawDb = new MemDatabase(getDbPath());
+  try {
+    const detected = detectProjectForEvent(event);
+    const project = rawDb.upsertProject({
+      canonical_id: detected.canonical_id,
+      name: detected.name,
+      local_path: detected.local_path,
+      remote_url: detected.remote_url ?? null,
+    });
+
+    rawDb.upsertSession(
+      event.session_id,
+      project.id,
+      userId,
+      deviceId,
+      "claude-code"
+    );
+
+    const metricsIncrement: { files?: number; toolCalls?: number } = {
+      toolCalls: 1,
+    };
+    if (
+      (event.tool_name === "Edit" || event.tool_name === "Write") &&
+      event.tool_input["file_path"]
+    ) {
+      metricsIncrement.files = 1;
+    }
+
+    rawDb.incrementSessionMetrics(event.session_id, metricsIncrement);
+    rawDb.insertToolEvent({
+      session_id: event.session_id,
+      project_id: project.id,
+      tool_name: event.tool_name,
+      tool_input_json: safeSerializeToolInput(event.tool_input),
+      tool_response_preview: truncatePreview(event.tool_response, 1200),
+      file_path: extractFilePath(event.tool_input),
+      command: extractCommand(event.tool_input),
+      user_id: userId,
+      device_id: deviceId,
+      agent: "claude-code",
+    });
+  } finally {
+    rawDb.close();
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timeoutId = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function shouldRunInlineObserver(event: ToolUseEvent, observerEnabled: boolean): boolean {
+  if (!observerEnabled) return false;
+  return event.tool_name === "Bash" || event.tool_name.startsWith("mcp__");
 }
 
 function detectProjectForEvent(event: ToolUseEvent) {

@@ -655,9 +655,20 @@ function handleStatus(): void {
       console.log(
         `    Prompts/tools: ${capture.recent_user_prompts}/${capture.recent_tool_events} in last 24h`
       );
+      if (capture.recent_sessions_with_partial_capture > 0) {
+        console.log(
+          `    Partial raw:   ${capture.recent_sessions_with_partial_capture} recent session${capture.recent_sessions_with_partial_capture === 1 ? "" : "s"} missing some chronology`
+        );
+      }
       console.log(
         `    Hook state:    Claude ${capture.claude_user_prompt_hook && capture.claude_post_tool_hook ? "raw-ready" : "partial"}, Codex ${capture.codex_raw_chronology_supported ? "raw-ready" : "start/stop only"}`
       );
+      if (capture.latest_post_tool_hook_epoch) {
+        const lastSeen = new Date(capture.latest_post_tool_hook_epoch * 1000).toISOString();
+        const parseStatus = capture.latest_post_tool_parse_status ?? "unknown";
+        const toolName = capture.latest_post_tool_name ?? "unknown";
+        console.log(`    PostToolUse:   ${parseStatus} (${toolName}, ${lastSeen})`);
+      }
 
       // Value signals
       try {
@@ -1205,10 +1216,23 @@ async function handleDoctor(): Promise<void> {
   // 12. Raw chronology capture
   try {
     const capture = getCaptureStatus(db, { user_id: config.user_id });
-    if (capture.raw_capture_active) {
+    if (
+      capture.raw_capture_active &&
+      capture.recent_tool_events > 0 &&
+      capture.recent_sessions_with_partial_capture === 0
+    ) {
       pass(
         `Raw chronology active (${capture.recent_user_prompts} prompts, ${capture.recent_tool_events} tools in last 24h)`
       );
+    } else if (capture.raw_capture_active && capture.recent_sessions_with_partial_capture > 0) {
+      warn(
+        `Raw chronology is only partially active (${capture.recent_user_prompts} prompts, ${capture.recent_tool_events} tools in last 24h; ${capture.recent_sessions_with_partial_capture} recent session${capture.recent_sessions_with_partial_capture === 1 ? "" : "s"} missing some chronology).`
+      );
+      if (capture.latest_post_tool_hook_epoch) {
+        info(
+          `Last PostToolUse hook: ${new Date(capture.latest_post_tool_hook_epoch * 1000).toISOString()} (${capture.latest_post_tool_parse_status ?? "unknown"}${capture.latest_post_tool_name ? `, ${capture.latest_post_tool_name}` : ""})`
+        );
+      }
     } else if (capture.claude_hooks_registered || capture.codex_hooks_registered) {
       const guidance = capture.claude_user_prompt_hook && capture.claude_post_tool_hook
         ? "Claude is raw-ready; open a fresh Claude Code session and perform a few actions to verify capture."

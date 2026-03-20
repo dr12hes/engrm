@@ -35,6 +35,13 @@ const IS_BUN = typeof globalThis.Bun !== "undefined";
  */
 function openDatabase(dbPath: string): CompatDatabase {
   if (IS_BUN) {
+    if (process.platform === "darwin") {
+      try {
+        return openNodeDatabase(dbPath);
+      } catch {
+        // Fall back to bun:sqlite if the native addon is unavailable
+      }
+    }
     return openBunDatabase(dbPath);
   }
   return openNodeDatabase(dbPath);
