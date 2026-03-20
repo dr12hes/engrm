@@ -935,7 +935,10 @@ function handleUpdate(): void {
   const { execSync } = require("node:child_process");
   console.log("Updating Engrm to latest version...\n");
   try {
-    execSync("npm install -g engrm@latest", { stdio: "inherit" });
+    const latest = execSync("npm view engrm version", { encoding: "utf-8" }).trim();
+    if (!latest) throw new Error("Could not resolve latest engrm version from npm");
+    console.log(`Installing engrm@${latest}...\n`);
+    execSync(`npm install -g engrm@${latest}`, { stdio: "inherit" });
     console.log("\nUpdate complete. Re-registering integrations...");
     const result = registerAll();
     console.log(`  Claude MCP registered → ${result.mcp.path}`);
@@ -944,7 +947,8 @@ function handleUpdate(): void {
     console.log(`  Codex hooks registered → ${result.codexHooks.path}`);
     console.log("\nRestart Claude Code or Codex to use the new version.");
   } catch (error) {
-    console.error("Update failed. Try manually: npm install -g engrm@latest");
+    console.error(`Update failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("Try manually: npm install -g engrm@<version>");
   }
 }
 
