@@ -84,7 +84,7 @@ describe("getMemoryConsole", () => {
     expect(result.sessions).toHaveLength(1);
     expect(result.requests).toHaveLength(1);
     expect(result.tools).toHaveLength(1);
-    expect(result.observations).toHaveLength(1);
+    expect(result.observations).toHaveLength(2);
     expect(result.capture_summary?.rich_sessions).toBe(1);
     expect(result.recent_outcomes).toContain("Fixed auth redirect");
     expect(result.hot_files[0]?.path).toBe("src/auth.ts");

@@ -56,6 +56,7 @@ describe("getWorkspaceMemoryIndex", () => {
       quality: 0.8,
       user_id: "david",
       device_id: "laptop",
+      source_tool: "Edit",
     });
     db.insertObservation({
       session_id: "sess-b",
@@ -65,6 +66,7 @@ describe("getWorkspaceMemoryIndex", () => {
       quality: 0.8,
       user_id: "david",
       device_id: "laptop",
+      source_tool: "assistant-stop",
     });
 
     const result = getWorkspaceMemoryIndex(db, { user_id: "david" });
@@ -73,6 +75,11 @@ describe("getWorkspaceMemoryIndex", () => {
     expect(result.totals.sessions).toBe(2);
     expect(result.totals.prompts).toBe(1);
     expect(result.totals.tool_events).toBe(1);
+    expect(result.totals.assistant_checkpoints).toBe(1);
     expect(result.projects_with_raw_capture).toBe(2);
+    expect(result.provenance_summary).toEqual([
+      { tool: "Edit", count: 1 },
+      { tool: "assistant-stop", count: 1 },
+    ]);
   });
 });

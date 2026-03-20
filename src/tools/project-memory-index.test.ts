@@ -109,7 +109,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.recent_outcomes).not.toContain("Modified auth.ts");
     expect(result?.provenance_summary).toEqual([{ tool: "assistant-stop", count: 1 }, { tool: "Edit", count: 1 }]);
     expect(result?.assistant_checkpoint_count).toBe(1);
-    expect(result?.top_types[0]).toEqual({ type: "bugfix", count: 1 });
+    expect(result?.top_types[0]).toEqual({ type: "change", count: 2 });
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");

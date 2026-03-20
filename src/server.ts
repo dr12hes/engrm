@@ -1166,8 +1166,11 @@ server.tool(
     const projectLines = result.projects.length > 0
       ? result.projects.map((project) => {
           const when = new Date(project.last_active_epoch * 1000).toISOString().split("T")[0];
-          return `- ${project.name} (${when}) obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count}`;
+          return `- ${project.name} (${when}) obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count} checkpoints=${project.assistant_checkpoint_count}`;
         }).join("\n")
+      : "- (none)";
+    const provenanceLines = result.provenance_summary.length > 0
+      ? result.provenance_summary.map((item) => `- ${item.tool}: ${item.count}`).join("\n")
       : "- (none)";
 
     return {
@@ -1175,8 +1178,9 @@ server.tool(
         {
           type: "text" as const,
           text:
-            `Workspace totals: observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}\n\n` +
+            `Workspace totals: observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}, checkpoints=${result.totals.assistant_checkpoints}\n\n` +
             `Projects with raw chronology: ${result.projects_with_raw_capture}\n\n` +
+            `Observation provenance:\n${provenanceLines}\n\n` +
             `Projects:\n${projectLines}`,
         },
       ],
