@@ -1,15 +1,24 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { execSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   normaliseGitRemoteUrl,
   projectNameFromCanonicalId,
   detectProject,
+  detectProjectFromTouchedPaths,
 } from "./projects.js";
 
 let repoDir: string;
+
+function normalizePath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
 
 beforeEach(() => {
   repoDir = mkdtempSync(join(tmpdir(), "engrm-project-test-"));
@@ -143,7 +152,15 @@ describe("detectProject", () => {
     const result = detectProject(repoDir);
     expect(result.canonical_id).toBe("github.com/dr12hes/engrm");
     expect(result.name).toBe("engrm");
-    expect(result.local_path).toBe(repoDir);
+    expect(normalizePath(result.local_path)).toBe(normalizePath(repoDir));
+  });
+
+  test("uses git repo root as local path for nested directories", () => {
+    const nested = join(repoDir, "src", "feature");
+    mkdirSync(nested, { recursive: true });
+    const result = detectProject(nested);
+    expect(result.canonical_id).toBe("github.com/dr12hes/engrm");
+    expect(normalizePath(result.local_path)).toBe(normalizePath(repoDir));
   });
 
   test("falls back to directory name for non-git directory", () => {
@@ -154,5 +171,27 @@ describe("detectProject", () => {
     expect(result.name).toBe("engrm-non-git");
     expect(result.remote_url).toBeNull();
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("detectProjectFromTouchedPaths", () => {
+  test("prefers the repo owning touched files over fallback cwd", () => {
+    const otherRepo = mkdtempSync(join(tmpdir(), "engrm-project-test-other-"));
+    execSync("git init", { cwd: otherRepo, stdio: "pipe" });
+    execSync("git remote add origin https://github.com/dr12hes/huginn.git", {
+      cwd: otherRepo,
+      stdio: "pipe",
+    });
+    mkdirSync(join(otherRepo, "AIServer", "app"), { recursive: true });
+
+    const result = detectProjectFromTouchedPaths(
+      [join(otherRepo, "AIServer", "app", "routers.py")],
+      repoDir
+    );
+
+    expect(result.canonical_id).toBe("github.com/dr12hes/huginn");
+    expect(normalizePath(result.local_path)).toBe(normalizePath(otherRepo));
+
+    rmSync(otherRepo, { recursive: true, force: true });
   });
 });

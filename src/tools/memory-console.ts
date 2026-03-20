@@ -11,6 +11,7 @@ import { getRecentActivity } from "./recent.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getRecentSessions } from "./recent-sessions.js";
+import { getProjectMemoryIndex } from "./project-memory-index.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -25,6 +26,8 @@ export interface MemoryConsoleResult {
   requests: ReturnType<typeof getRecentRequests>["prompts"];
   tools: ReturnType<typeof getRecentTools>["tool_events"];
   observations: ReturnType<typeof getRecentActivity>["observations"];
+  recent_outcomes: string[];
+  hot_files: Array<{ path: string; count: number }>;
 }
 
 export function getMemoryConsole(
@@ -60,6 +63,12 @@ export function getMemoryConsole(
       user_id: input.user_id,
       limit: 8,
     }).observations;
+  const projectIndex = projectScoped
+    ? getProjectMemoryIndex(db, {
+        cwd,
+        user_id: input.user_id,
+      })
+    : null;
 
   return {
     project: project?.name,
@@ -68,5 +77,7 @@ export function getMemoryConsole(
     requests,
     tools,
     observations,
+    recent_outcomes: projectIndex?.recent_outcomes ?? [],
+    hot_files: projectIndex?.hot_files ?? [],
   };
 }

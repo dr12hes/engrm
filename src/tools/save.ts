@@ -11,7 +11,7 @@ import { scrubSecrets, containsSecrets } from "../capture/scrubber.js";
 import { scoreQuality, meetsQualityThreshold } from "../capture/quality.js";
 import { findDuplicate, type DedupCandidate } from "../capture/dedup.js";
 import { buildStructuredFacts } from "../capture/facts.js";
-import { detectProject } from "../storage/projects.js";
+import { detectProject, detectProjectFromTouchedPaths } from "../storage/projects.js";
 import type { MemDatabase, ObservationRow } from "../storage/sqlite.js";
 import { composeEmbeddingText, embedText } from "../embeddings/embedder.js";
 import { detectRecurrence } from "../capture/recurrence.js";
@@ -81,7 +81,10 @@ export async function saveObservation(
 
   // Detect project from cwd
   const cwd = input.cwd ?? process.cwd();
-  const detected = detectProject(cwd);
+  const touchedPaths = [...(input.files_read ?? []), ...(input.files_modified ?? [])];
+  const detected = touchedPaths.length > 0
+    ? detectProjectFromTouchedPaths(touchedPaths, cwd)
+    : detectProject(cwd);
   const project = db.upsertProject({
     canonical_id: detected.canonical_id,
     name: detected.name,

@@ -602,6 +602,29 @@ describe("MemDatabase — sessions", () => {
     expect(second.id).toBe(first.id);
   });
 
+  test("upsertSession upgrades existing null project_id when project becomes known", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+    const first = db.upsertSession(
+      "sess-001",
+      null,
+      "david",
+      "laptop-abc"
+    );
+    expect(first.project_id).toBeNull();
+
+    const second = db.upsertSession(
+      "sess-001",
+      project.id,
+      "david",
+      "laptop-abc"
+    );
+    expect(second.id).toBe(first.id);
+    expect(second.project_id).toBe(project.id);
+  });
+
   test("observation increments session count", () => {
     const project = db.upsertProject({
       canonical_id: "github.com/org/repo",

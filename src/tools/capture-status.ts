@@ -25,8 +25,15 @@ export interface CaptureStatusResult {
   claude_mcp_registered: boolean;
   claude_hooks_registered: boolean;
   claude_hook_count: number;
+  claude_session_start_hook: boolean;
+  claude_user_prompt_hook: boolean;
+  claude_post_tool_hook: boolean;
+  claude_stop_hook: boolean;
   codex_mcp_registered: boolean;
   codex_hooks_registered: boolean;
+  codex_session_start_hook: boolean;
+  codex_stop_hook: boolean;
+  codex_raw_chronology_supported: boolean;
   recent_user_prompts: number;
   recent_tool_events: number;
   recent_sessions_with_raw_capture: number;
@@ -66,10 +73,18 @@ export function getCaptureStatus(
     codexHooksContent.includes("\"Stop\"");
 
   let claudeHookCount = 0;
+  let claudeSessionStartHook = false;
+  let claudeUserPromptHook = false;
+  let claudePostToolHook = false;
+  let claudeStopHook = false;
   if (claudeHooksRegistered) {
     try {
       const settings = JSON.parse(claudeSettingsContent);
       const hooks = settings?.hooks ?? {};
+      claudeSessionStartHook = Array.isArray(hooks["SessionStart"]);
+      claudeUserPromptHook = Array.isArray(hooks["UserPromptSubmit"]);
+      claudePostToolHook = Array.isArray(hooks["PostToolUse"]);
+      claudeStopHook = Array.isArray(hooks["Stop"]);
       for (const entries of Object.values(hooks)) {
         if (!Array.isArray(entries)) continue;
         for (const entry of entries) {
@@ -93,6 +108,16 @@ export function getCaptureStatus(
     } catch {
       // Best-effort only
     }
+  }
+
+  let codexSessionStartHook = false;
+  let codexStopHook = false;
+  try {
+    const hooks = codexHooksContent ? JSON.parse(codexHooksContent)?.hooks ?? {} : {};
+    codexSessionStartHook = Array.isArray(hooks["SessionStart"]);
+    codexStopHook = Array.isArray(hooks["Stop"]);
+  } catch {
+    // Best-effort only
   }
 
   const visibilityClause = input.user_id ? " AND user_id = ?" : "";
@@ -151,8 +176,15 @@ export function getCaptureStatus(
     claude_mcp_registered: claudeMcpRegistered,
     claude_hooks_registered: claudeHooksRegistered,
     claude_hook_count: claudeHookCount,
+    claude_session_start_hook: claudeSessionStartHook,
+    claude_user_prompt_hook: claudeUserPromptHook,
+    claude_post_tool_hook: claudePostToolHook,
+    claude_stop_hook: claudeStopHook,
     codex_mcp_registered: codexMcpRegistered,
     codex_hooks_registered: codexHooksRegistered,
+    codex_session_start_hook: codexSessionStartHook,
+    codex_stop_hook: codexStopHook,
+    codex_raw_chronology_supported: false,
     recent_user_prompts: recentUserPrompts,
     recent_tool_events: recentToolEvents,
     recent_sessions_with_raw_capture: recentSessionsWithRawCapture,

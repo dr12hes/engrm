@@ -111,11 +111,20 @@ function mergeChanges(
       });
     }
 
+    const normalizedType = normalizeRemoteObservationType(
+      change.metadata?.type,
+      change.source_id
+    );
+    if (!normalizedType) {
+      skipped++;
+      continue;
+    }
+
     // Insert the observation
     const obs = db.insertObservation({
       session_id: (change.metadata?.session_id as string) ?? null,
       project_id: project.id,
-      type: (change.metadata?.type as string) ?? "discovery",
+      type: normalizedType,
       title: (change.metadata?.title as string) ?? change.content.split("\n")[0] ?? "Untitled",
       narrative: extractNarrative(change.content),
       facts: change.metadata?.facts
@@ -148,6 +157,39 @@ function mergeChanges(
   }
 
   return { merged, skipped };
+}
+
+function normalizeRemoteObservationType(
+  rawType: unknown,
+  sourceId: string
+): string | null {
+  const type = typeof rawType === "string" ? rawType.trim().toLowerCase() : "";
+  if (
+    type === "bugfix" ||
+    type === "discovery" ||
+    type === "decision" ||
+    type === "pattern" ||
+    type === "change" ||
+    type === "feature" ||
+    type === "refactor" ||
+    type === "digest" ||
+    type === "standard" ||
+    type === "message"
+  ) {
+    return type;
+  }
+
+  if (type === "summary") {
+    return "digest";
+  }
+
+  if (!type) {
+    if (sourceId.includes("-summary-")) return "digest";
+    if (sourceId.includes("-message-")) return "message";
+    return "standard";
+  }
+
+  return "standard";
 }
 
 /**

@@ -226,7 +226,7 @@ function formatSplashScreen(data: SplashData): string {
   const brief = formatVisibleStartupBrief(data.context);
   if (brief.length > 0) {
     lines.push("");
-    lines.push(`  ${c.bold}Startup brief${c.reset}`);
+    lines.push(`  ${c.bold}Startup context${c.reset}`);
     for (const line of brief) {
       lines.push(`  ${line}`);
     }
@@ -239,16 +239,32 @@ function formatSplashScreen(data: SplashData): string {
 
 function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const lines: string[] = [];
-  const latest = pickBestSummary(context);
+  const latest = pickPrimarySummary(context);
   const observationFallbacks = buildObservationFallbacks(context);
   const promptFallback = buildPromptFallback(context);
+  const promptLines = buildPromptLines(context);
+  const latestPromptLine = promptLines[0] ?? null;
+  const currentRequest = latest
+    ? chooseRequest(
+        latest.request,
+        promptFallback ?? sessionFallbacksFromContext(context)[0] ?? observationFallbacks.request
+      )
+    : promptFallback;
   const toolFallbacks = buildToolFallbacks(context);
-  const sessionFallbacks = buildSessionFallbacks(context);
+  const sessionFallbacks = sessionFallbacksFromContext(context);
+  const recentOutcomeLines = buildRecentOutcomeLines(context, latest);
   const projectSignals = buildProjectSignalLine(context);
+
+  if (promptLines.length > 0) {
+    lines.push(`${c.cyan}Recent Requests:${c.reset}`);
+    for (const item of promptLines) {
+      lines.push(`  - ${truncateInline(item, 160)}`);
+    }
+  }
 
   if (latest) {
     const sections: Array<[string, string | null, number]> = [
-      ["Request", chooseRequest(latest.request, promptFallback ?? observationFallbacks.request), 1],
+      ["Request", currentRequest, 1],
       ["Investigated", chooseSection(latest.investigated, observationFallbacks.investigated, "Investigated"), 2],
       ["Learned", latest.learned, 2],
       ["Completed", chooseSection(latest.completed, observationFallbacks.completed, "Completed"), 2],
@@ -264,27 +280,51 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
         }
       }
     }
-  } else if (promptFallback) {
-    lines.push(`${c.cyan}Request:${c.reset}`);
-    lines.push(`  - ${truncateInline(promptFallback, 140)}`);
+  } else if (currentRequest && !duplicatesPromptLine(currentRequest, latestPromptLine)) {
+    lines.push(`${c.cyan}Current Request:${c.reset}`);
+    lines.push(`  - ${truncateInline(currentRequest, 160)}`);
     if (toolFallbacks.length > 0) {
       lines.push(`${c.cyan}Recent Tools:${c.reset}`);
       for (const item of toolFallbacks) {
-        lines.push(`  - ${truncateInline(item, 140)}`);
+        lines.push(`  - ${truncateInline(item, 160)}`);
       }
+    }
+  }
+
+  if (
+    latest &&
+    currentRequest &&
+    !hasRequestSection(lines) &&
+    !duplicatesPromptLine(currentRequest, latestPromptLine)
+  ) {
+    lines.push(`${c.cyan}Current Request:${c.reset}`);
+    lines.push(`  - ${truncateInline(currentRequest, 160)}`);
+  }
+
+  if (recentOutcomeLines.length > 0) {
+    lines.push(`${c.cyan}Recent Work:${c.reset}`);
+    for (const item of recentOutcomeLines) {
+      lines.push(`  - ${truncateInline(item, 160)}`);
+    }
+  }
+
+  if (toolFallbacks.length > 0 && latest) {
+    lines.push(`${c.cyan}Recent Tools:${c.reset}`);
+    for (const item of toolFallbacks) {
+      lines.push(`  - ${truncateInline(item, 160)}`);
     }
   }
 
   if (sessionFallbacks.length > 0) {
     lines.push(`${c.cyan}Recent Sessions:${c.reset}`);
     for (const item of sessionFallbacks) {
-      lines.push(`  - ${truncateInline(item, 140)}`);
+      lines.push(`  - ${truncateInline(item, 160)}`);
     }
   }
 
   if (projectSignals) {
     lines.push(`${c.cyan}Project Signals:${c.reset}`);
-    lines.push(`  - ${truncateInline(projectSignals, 140)}`);
+    lines.push(`  - ${truncateInline(projectSignals, 160)}`);
   }
 
   const stale = pickRelevantStaleDecision(context, latest);
@@ -300,8 +340,9 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   if (lines.length === 0 && context.observations.length > 0) {
     const top = context.observations
       .filter((obs) => obs.type !== "digest")
+      .filter((obs) => obs.type !== "decision")
       .filter((obs) => !looksLikeFileOperationTitle(obs.title))
-      .slice(0, 2);
+      .slice(0, 3);
     for (const obs of top) {
       lines.push(
         `${c.cyan}${capitalize(obs.type)}:${c.reset} ${truncateInline(obs.title, 170)}`
@@ -309,13 +350,30 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
     }
   }
 
-  return lines.slice(0, 10);
+  return lines.slice(0, 14);
 }
 
 function buildPromptFallback(context: InjectedContext): string | null {
-  const latest = context.recentPrompts?.[0];
+  const latest = (context.recentPrompts ?? []).find((prompt) => isMeaningfulPrompt(prompt.prompt));
   if (!latest?.prompt) return null;
   return latest.prompt.replace(/\s+/g, " ").trim();
+}
+
+function buildPromptLines(context: InjectedContext): string[] {
+  return (context.recentPrompts ?? [])
+    .filter((prompt) => isMeaningfulPrompt(prompt.prompt))
+    .slice(0, 2)
+    .map((prompt) => {
+      const prefix = prompt.prompt_number > 0 ? `#${prompt.prompt_number}` : "request";
+      return `${prefix}: ${prompt.prompt.replace(/\s+/g, " ").trim()}`;
+    })
+    .filter((item) => item.length > 0);
+}
+
+function duplicatesPromptLine(request: string, promptLine: string | null): boolean {
+  if (!request || !promptLine) return false;
+  const promptBody = promptLine.replace(/^#?\d+:\s*/, "").trim();
+  return normalizeStartupItem(request) === normalizeStartupItem(promptBody);
 }
 
 function buildToolFallbacks(context: InjectedContext): string[] {
@@ -323,20 +381,73 @@ function buildToolFallbacks(context: InjectedContext): string[] {
     .slice(0, 3)
     .map((tool) => {
       const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
-      return `${tool.tool_name}: ${detail}`.trim();
+      return `${tool.tool_name}${detail ? `: ${detail}` : ""}`.trim();
     })
     .filter((item) => item.length > 0);
 }
 
-function buildSessionFallbacks(context: InjectedContext): string[] {
+function sessionFallbacksFromContext(context: InjectedContext): string[] {
   return (context.recentSessions ?? [])
     .slice(0, 2)
     .map((session) => {
-      const summary = session.request ?? session.completed ?? "";
+      const summary = chooseMeaningfulSessionSummary(session.request, session.completed);
       if (!summary) return "";
-      return `${session.session_id}: ${summary}`;
+      return `${session.session_id}: ${summary} (prompts ${session.prompt_count}, tools ${session.tool_event_count}, obs ${session.observation_count})`;
     })
     .filter((item) => item.length > 0);
+}
+
+function buildRecentOutcomeLines(
+  context: InjectedContext,
+  summary: NonNullable<InjectedContext["summaries"]>[number] | null
+): string[] {
+  const picked: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (value: string | null | undefined) => {
+    for (const line of toSplashLines(value ?? null, 2)) {
+      const normalized = normalizeStartupItem(line);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      picked.push(line.replace(/^-\s*/, ""));
+      if (picked.length >= 2) return;
+    }
+  };
+
+  push(summary?.completed);
+  push(summary?.learned);
+
+  if (picked.length < 2) {
+    for (const obs of context.observations) {
+      if (!["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type)) continue;
+      const title = stripInlineSectionLabel(obs.title);
+      if (!title || looksLikeFileOperationTitle(title)) continue;
+      const normalized = normalizeStartupItem(title);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      picked.push(title);
+      if (picked.length >= 2) break;
+    }
+  }
+
+  return picked;
+}
+
+function chooseMeaningfulSessionSummary(
+  request: string | null | undefined,
+  completed: string | null | undefined
+): string | null {
+  if (request && !looksLikeFileOperationTitle(request)) return request;
+  if (completed) {
+    const lines = completed
+      .split("\n")
+      .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+      .filter(Boolean)
+      .map((line) => stripInlineSectionLabel(line))
+      .filter((line) => !looksLikeFileOperationTitle(line));
+    if (lines.length > 0) return lines[0] ?? null;
+  }
+  return request ?? completed ?? null;
 }
 
 function buildProjectSignalLine(context: InjectedContext): string | null {
@@ -365,21 +476,29 @@ function toSplashLines(value: string | null, maxItems: number): string[] {
   return dedupeFragmentsInLines(lines);
 }
 
-function pickBestSummary(context: InjectedContext) {
+function pickPrimarySummary(context: InjectedContext) {
   const summaries = context.summaries || [];
   if (!summaries.length) return null;
-  return [...summaries].sort((a, b) => scoreSummary(b) - scoreSummary(a))[0] ?? null;
+  const meaningfulRecent = summaries.find((summary) => {
+    const request = summary.request?.trim();
+    const learned = summary.learned?.trim();
+    const completed = summary.completed?.trim();
+    return Boolean(
+      (request && !looksLikeFileOperationTitle(request)) ||
+      learned ||
+      hasMeaningfulCompleted(completed)
+    );
+  });
+  return meaningfulRecent ?? summaries[0] ?? null;
 }
 
-function scoreSummary(summary: NonNullable<InjectedContext["summaries"]>[number]): number {
-  let score = 0;
-  if (summary.request) score += 3;
-  if (summary.investigated) score += 4;
-  if (summary.learned) score += 5;
-  if (summary.completed) score += 5;
-  if (summary.next_steps) score += 4;
-  score += Math.min(4, sectionItemCount(summary.completed) + sectionItemCount(summary.learned));
-  return score;
+function hasMeaningfulCompleted(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return value
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+    .filter(Boolean)
+    .some((line) => !looksLikeFileOperationTitle(stripInlineSectionLabel(line)));
 }
 
 function sectionItemCount(value: string | null): number {
@@ -419,6 +538,26 @@ function dedupeFragmentsInLines(lines: string[]): string[] {
     deduped.push(line);
   }
   return deduped;
+}
+
+function hasRequestSection(lines: string[]): boolean {
+  return lines.some((line) => line.includes("Request:"));
+}
+
+function normalizeStartupItem(value: string): string {
+  return stripInlineSectionLabel(value)
+    .replace(/^#?\d+:\s*/, "")
+    .replace(/^-\s*/, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isMeaningfulPrompt(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (compact.length < 8) return false;
+  return /[a-z]{3,}/i.test(compact);
 }
 
 function chooseRequest(primary: string | null, fallback: string | null): string | null {
@@ -466,7 +605,9 @@ function buildObservationFallbacks(context: InjectedContext): {
   investigated: string | null;
   completed: string | null;
 } {
-  const request = context.observations.find((obs) => !looksLikeFileOperationTitle(obs.title))?.title ?? null;
+  const request = context.observations
+    .find((obs) => obs.type !== "decision" && !looksLikeFileOperationTitle(obs.title))
+    ?.title ?? null;
 
   const investigated = collectObservationTitles(
     context,
@@ -477,7 +618,7 @@ function buildObservationFallbacks(context: InjectedContext): {
   const completed = collectObservationTitles(
     context,
     (obs) =>
-      ["feature", "refactor", "change"].includes(obs.type) &&
+      ["bugfix", "feature", "refactor", "change"].includes(obs.type) &&
       !looksLikeFileOperationTitle(obs.title),
     2
   );
@@ -577,5 +718,9 @@ function capitalize(value: string): string {
   if (!value) return value;
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+export const __testables = {
+  formatVisibleStartupBrief,
+};
 
 runHook("session-start", main);

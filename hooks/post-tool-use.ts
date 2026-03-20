@@ -14,7 +14,7 @@ import { extractObservation, type ToolUseEvent } from "../src/capture/extractor.
 import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
 import { saveObservation } from "../src/tools/save.js";
 import { scanForSecrets } from "../src/capture/scanner.js";
-import { detectProject } from "../src/storage/projects.js";
+import { detectProject, detectProjectFromTouchedPaths } from "../src/storage/projects.js";
 import { detectDependencyInstalls } from "../src/capture/dependency.js";
 import { observeToolEvent, incrementObserverSaveCount } from "../src/observer/observe.js";
 import { extractErrorSignature, recallPastFix } from "../src/capture/recall.js";
@@ -33,7 +33,7 @@ async function main(): Promise<void> {
     // --- Session + Metrics tracking ---
     if (event.session_id) {
       // Ensure session row exists (upsert on first tool use)
-      const detected = detectProject(event.cwd);
+      const detected = detectProjectForEvent(event);
       const project = db.getProjectByCanonicalId(detected.canonical_id);
       db.upsertSession(
         event.session_id,
@@ -71,11 +71,11 @@ async function main(): Promise<void> {
     }
 
     // --- Security scanning ---
-    const textToScan = extractScanText(event);
-    if (textToScan) {
-      const findings = scanForSecrets(textToScan, config.scrubbing.custom_patterns);
-      if (findings.length > 0) {
-        const detected = detectProject(event.cwd);
+      const textToScan = extractScanText(event);
+      if (textToScan) {
+        const findings = scanForSecrets(textToScan, config.scrubbing.custom_patterns);
+        if (findings.length > 0) {
+        const detected = detectProjectForEvent(event);
         const project = db.getProjectByCanonicalId(detected.canonical_id);
         if (project) {
           for (const finding of findings) {
@@ -188,6 +188,26 @@ async function main(): Promise<void> {
   } finally {
     db.close();
   }
+}
+
+function detectProjectForEvent(event: ToolUseEvent) {
+  const touchedPaths = extractTouchedPaths(event);
+  return touchedPaths.length > 0
+    ? detectProjectFromTouchedPaths(touchedPaths, event.cwd)
+    : detectProject(event.cwd);
+}
+
+function extractTouchedPaths(event: ToolUseEvent): string[] {
+  const paths: string[] = [];
+  const filePath = event.tool_input["file_path"];
+  if (typeof filePath === "string" && filePath.trim().length > 0) {
+    paths.push(filePath);
+  }
+
+  const extracted = extractObservation(event);
+  if (extracted?.files_read) paths.push(...extracted.files_read);
+  if (extracted?.files_modified) paths.push(...extracted.files_modified);
+  return paths;
 }
 
 function safeSerializeToolInput(toolInput: Record<string, unknown>): string | null {

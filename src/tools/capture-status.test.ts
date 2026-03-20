@@ -71,8 +71,15 @@ describe("getCaptureStatus", () => {
     expect(result.claude_mcp_registered).toBe(true);
     expect(result.claude_hooks_registered).toBe(true);
     expect(result.claude_hook_count).toBeGreaterThanOrEqual(3);
+    expect(result.claude_session_start_hook).toBe(true);
+    expect(result.claude_user_prompt_hook).toBe(true);
+    expect(result.claude_post_tool_hook).toBe(true);
+    expect(result.claude_stop_hook).toBe(false);
     expect(result.codex_mcp_registered).toBe(true);
     expect(result.codex_hooks_registered).toBe(true);
+    expect(result.codex_session_start_hook).toBe(true);
+    expect(result.codex_stop_hook).toBe(true);
+    expect(result.codex_raw_chronology_supported).toBe(false);
     expect(result.recent_user_prompts).toBe(1);
     expect(result.recent_tool_events).toBe(1);
     expect(result.recent_sessions_with_raw_capture).toBe(1);

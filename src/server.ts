@@ -25,8 +25,11 @@ import { getRecentSessions } from "./tools/recent-sessions.js";
 import { getMemoryConsole } from "./tools/memory-console.js";
 import { getProjectMemoryIndex } from "./tools/project-memory-index.js";
 import { getWorkspaceMemoryIndex } from "./tools/workspace-memory-index.js";
+import { getProjectRelatedWork } from "./tools/project-related-work.js";
+import { reclassifyProjectMemory } from "./tools/reclassify-project-memory.js";
 import { getActivityFeed } from "./tools/activity-feed.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
+import { getSessionContext } from "./tools/session-context.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
 import {
@@ -157,7 +160,7 @@ process.on("SIGTERM", () => {
 
 const server = new McpServer({
   name: "engrm",
-  version: "0.4.6",
+  version: "0.4.8",
 });
 
 // Tool: save_observation
@@ -879,14 +882,60 @@ server.tool(
             `Schema: v${result.schema_version} (${result.schema_current ? "current" : "outdated"})\n` +
             `Claude MCP: ${result.claude_mcp_registered ? "registered" : "missing"}\n` +
             `Claude hooks: ${result.claude_hooks_registered ? `registered (${result.claude_hook_count})` : "missing"}\n` +
+            `Claude raw chronology hooks: session-start=${result.claude_session_start_hook ? "yes" : "no"}, prompt=${result.claude_user_prompt_hook ? "yes" : "no"}, post-tool=${result.claude_post_tool_hook ? "yes" : "no"}, stop=${result.claude_stop_hook ? "yes" : "no"}\n` +
             `Codex MCP: ${result.codex_mcp_registered ? "registered" : "missing"}\n` +
-            `Codex hooks: ${result.codex_hooks_registered ? "registered" : "missing"}\n\n` +
+            `Codex hooks: ${result.codex_hooks_registered ? "registered" : "missing"}\n` +
+            `Codex raw chronology: ${result.codex_raw_chronology_supported ? "supported" : "not yet supported (start/stop only)"}\n\n` +
             `Recent user prompts: ${result.recent_user_prompts}\n` +
             `Recent tool events: ${result.recent_tool_events}\n` +
             `Recent sessions with raw chronology: ${result.recent_sessions_with_raw_capture}\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n` +
             `Latest prompt: ${latestPrompt}\n` +
             `Latest tool event: ${latestTool}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: session_context
+server.tool(
+  "session_context",
+  "Preview the exact project memory context Engrm would inject at session start",
+  {
+    cwd: z.string().optional(),
+    token_budget: z.number().optional(),
+    scope: z.enum(["personal", "team", "all"]).optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getSessionContext(db, {
+      cwd: params.cwd ?? process.cwd(),
+      token_budget: params.token_budget,
+      scope: params.scope,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    if (!result) {
+      return {
+        content: [{ type: "text" as const, text: "No session context available." }],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Project: ${result.project_name}\n` +
+            `Canonical ID: ${result.canonical_id}\n` +
+            `Loaded observations: ${result.session_count}\n` +
+            `Searchable total: ${result.total_active}\n` +
+            `Recent requests: ${result.recent_requests}\n` +
+            `Recent tools: ${result.recent_tools}\n` +
+            `Recent sessions: ${result.recent_sessions}\n` +
+            `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
+            result.preview,
         },
       ],
     };
@@ -987,6 +1036,82 @@ server.tool(
             `Recent sessions:\n${sessions}\n\n` +
             `Hot files:\n${hotFiles}\n\n` +
             `Recent memory objects:\n${topTitles}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: project_related_work
+server.tool(
+  "project_related_work",
+  "Show work that looks relevant to the current repo but is currently stored under other projects",
+  {
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+    limit: z.number().optional(),
+  },
+  async (params) => {
+    const result = getProjectRelatedWork(db, {
+      cwd: params.cwd ?? process.cwd(),
+      user_id: params.user_id ?? config.user_id,
+      limit: params.limit,
+    });
+
+    const rows = result.related.length > 0
+      ? result.related.map((item) =>
+          `- #${item.id} [${item.type}] ${item.title} :: stored under ${item.source_project} (${item.matched_on})`
+        ).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Project: ${result.project}\n` +
+            `Canonical ID: ${result.canonical_id}\n\n` +
+            `Related work stored under other projects:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: reclassify_project_memory
+server.tool(
+  "reclassify_project_memory",
+  "Move repo-relevant observations currently stored under other projects into the current git project",
+  {
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+    limit: z.number().optional(),
+    dry_run: z.boolean().optional(),
+  },
+  async (params) => {
+    const result = reclassifyProjectMemory(db, {
+      cwd: params.cwd ?? process.cwd(),
+      user_id: params.user_id ?? config.user_id,
+      limit: params.limit,
+      dry_run: params.dry_run,
+    });
+
+    const rows = result.candidates.length > 0
+      ? result.candidates.map((item) =>
+          `- #${item.id} [${item.type}] ${item.title} :: from ${item.from} (${item.matched_on})${item.moved ? " -> moved" : ""}`
+        ).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Project: ${result.project}\n` +
+            `Canonical ID: ${result.canonical_id}\n` +
+            `Dry run: ${params.dry_run === true ? "yes" : "no"}\n` +
+            `Moved: ${result.moved}\n\n` +
+            `Candidates:\n${rows}`,
         },
       ],
     };
@@ -1260,9 +1385,9 @@ server.tool(
   }
 );
 
-// Tool: session_context
+// Tool: load_session_context
 server.tool(
-  "session_context",
+  "load_session_context",
   "Load project memory for this session",
   {
     max_observations: z.number().optional().describe("Max observations (default: token-budgeted)"),

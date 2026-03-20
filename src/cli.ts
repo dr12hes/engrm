@@ -656,7 +656,7 @@ function handleStatus(): void {
         `    Prompts/tools: ${capture.recent_user_prompts}/${capture.recent_tool_events} in last 24h`
       );
       console.log(
-        `    Hook state:    Claude ${capture.claude_hooks_registered ? "ok" : "missing"}, Codex ${capture.codex_hooks_registered ? "ok" : "missing"}`
+        `    Hook state:    Claude ${capture.claude_user_prompt_hook && capture.claude_post_tool_hook ? "raw-ready" : "partial"}, Codex ${capture.codex_raw_chronology_supported ? "raw-ready" : "start/stop only"}`
       );
 
       // Value signals
@@ -1015,9 +1015,17 @@ async function handleDoctor(): Promise<void> {
     if (existsSync(claudeSettings)) {
       const content = readFileSync(claudeSettings, "utf-8");
       let hookCount = 0;
+      let hasSessionStart = false;
+      let hasUserPrompt = false;
+      let hasPostToolUse = false;
+      let hasStop = false;
       try {
         const settings = JSON.parse(content);
         const hooks = settings?.hooks ?? {};
+        hasSessionStart = Array.isArray(hooks["SessionStart"]);
+        hasUserPrompt = Array.isArray(hooks["UserPromptSubmit"]);
+        hasPostToolUse = Array.isArray(hooks["PostToolUse"]);
+        hasStop = Array.isArray(hooks["Stop"]);
         for (const entries of Object.values(hooks)) {
           if (Array.isArray(entries)) {
             for (const entry of entries) {
@@ -1031,8 +1039,15 @@ async function handleDoctor(): Promise<void> {
       } catch {
         // parse error
       }
-      if (hookCount > 0) {
+      const missingCritical: string[] = [];
+      if (!hasSessionStart) missingCritical.push("SessionStart");
+      if (!hasUserPrompt) missingCritical.push("UserPromptSubmit");
+      if (!hasPostToolUse) missingCritical.push("PostToolUse");
+      if (!hasStop) missingCritical.push("Stop");
+      if (hookCount > 0 && missingCritical.length === 0) {
         pass(`Hooks registered (${hookCount} hook${hookCount === 1 ? "" : "s"})`);
+      } else if (hookCount > 0) {
+        warn(`Hooks registered but incomplete — missing ${missingCritical.join(", ")}`);
       } else {
         warn("No Engrm hooks found in Claude Code settings");
       }
@@ -1195,8 +1210,11 @@ async function handleDoctor(): Promise<void> {
         `Raw chronology active (${capture.recent_user_prompts} prompts, ${capture.recent_tool_events} tools in last 24h)`
       );
     } else if (capture.claude_hooks_registered || capture.codex_hooks_registered) {
+      const guidance = capture.claude_user_prompt_hook && capture.claude_post_tool_hook
+        ? "Claude is raw-ready; open a fresh Claude Code session and perform a few actions to verify capture."
+        : "Claude raw chronology hooks are incomplete, and Codex currently supports start/stop capture only.";
       warn(
-        "Hooks are registered, but no raw prompt/tool chronology has been captured in the last 24h"
+        `Hooks are registered, but no raw prompt/tool chronology has been captured in the last 24h. ${guidance}`
       );
     } else {
       warn("Raw chronology inactive — hook registration is incomplete");

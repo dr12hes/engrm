@@ -21,6 +21,7 @@ export interface ProjectMemoryIndexResult {
   canonical_id: string;
   observation_counts: Record<string, number>;
   recent_sessions: RecentSessionRow[];
+  recent_outcomes: string[];
   recent_requests_count: number;
   recent_tools_count: number;
   raw_capture_active: boolean;
@@ -96,12 +97,18 @@ export function getProjectMemoryIndex(
     user_id: input.user_id,
     limit: 20,
   }).tool_events.length;
+  const recentOutcomes = observations
+    .filter((obs) => ["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type))
+    .map((obs) => obs.title.trim())
+    .filter((title) => title.length > 0 && !looksLikeFileOperationTitle(title))
+    .slice(0, 8);
 
   return {
     project: project.name,
     canonical_id: project.canonical_id,
     observation_counts: counts,
     recent_sessions: recentSessions,
+    recent_outcomes: recentOutcomes,
     recent_requests_count: recentRequestsCount,
     recent_tools_count: recentToolsCount,
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
@@ -119,4 +126,10 @@ function extractPaths(value: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+function looksLikeFileOperationTitle(value: string): boolean {
+  return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
+    value.trim()
+  );
 }

@@ -1,5 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MemDatabase } from "../storage/sqlite.js";
@@ -316,6 +318,39 @@ describe("saveObservation", () => {
         expect(result.reason).not.toContain("Invalid type");
       }
     }
+  });
+
+  test("attributes observation to touched file repo instead of fallback cwd", async () => {
+    const fallbackRepo = mkdtempSync(join(tmpdir(), "engrm-save-fallback-"));
+    const targetRepo = mkdtempSync(join(tmpdir(), "engrm-save-target-"));
+
+    execSync("git init", { cwd: fallbackRepo, stdio: "pipe" });
+    execSync("git remote add origin https://github.com/dr12hes/alchemy.git", {
+      cwd: fallbackRepo,
+      stdio: "pipe",
+    });
+    execSync("git init", { cwd: targetRepo, stdio: "pipe" });
+    execSync("git remote add origin https://github.com/dr12hes/huginn.git", {
+      cwd: targetRepo,
+      stdio: "pipe",
+    });
+    mkdirSync(join(targetRepo, "AIServer", "app"), { recursive: true });
+
+    const result = await saveObservation(db, config, {
+      type: "feature",
+      title: "Implement Huginn topology endpoint improvements",
+      narrative: "Implemented a real feature in Huginn while operating from another repo context.",
+      files_modified: [join(targetRepo, "AIServer", "app", "routers.py")],
+      cwd: fallbackRepo,
+    });
+
+    expect(result.success).toBe(true);
+    const obs = db.getObservationById(result.observation_id!);
+    const project = db.getProjectById(obs!.project_id);
+    expect(project?.canonical_id).toBe("github.com/dr12hes/huginn");
+
+    rmSync(fallbackRepo, { recursive: true, force: true });
+    rmSync(targetRepo, { recursive: true, force: true });
   });
 
   test("saves plugin memory with stable provenance tags", async () => {

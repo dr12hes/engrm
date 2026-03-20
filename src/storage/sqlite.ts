@@ -459,6 +459,18 @@ export class MemDatabase {
     return row;
   }
 
+  reassignObservationProject(observationId: number, projectId: number): boolean {
+    const existing = this.getObservationById(observationId);
+    if (!existing) return false;
+    if (existing.project_id === projectId) return true;
+
+    this.db
+      .query("UPDATE observations SET project_id = ? WHERE id = ?")
+      .run(projectId, observationId);
+
+    return true;
+  }
+
   getObservationById(id: number): ObservationRow | null {
     return (
       this.db
@@ -729,7 +741,19 @@ export class MemDatabase {
       )
       .get(sessionId);
 
-    if (existing) return existing;
+    if (existing) {
+      if (existing.project_id === null && projectId !== null) {
+        this.db
+          .query("UPDATE sessions SET project_id = ? WHERE session_id = ?")
+          .run(projectId, sessionId);
+        return this.db
+          .query<SessionRow, [string]>(
+            "SELECT * FROM sessions WHERE session_id = ?"
+          )
+          .get(sessionId)!;
+      }
+      return existing;
+    }
 
     const now = Math.floor(Date.now() / 1000);
     this.db

@@ -3,13 +3,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemDatabase } from "../storage/sqlite.js";
-import { getMemoryConsole } from "./memory-console.js";
+import { getSessionContext } from "./session-context.js";
 
 let db: MemDatabase;
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "engrm-memory-console-test-"));
+  tmpDir = mkdtempSync(join(tmpdir(), "engrm-session-context-test-"));
   db = new MemDatabase(join(tmpDir, "test.db"));
 });
 
@@ -18,8 +18,8 @@ afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
-describe("getMemoryConsole", () => {
-  test("returns a combined local overview for a project", () => {
+describe("getSessionContext", () => {
+  test("previews injected context for the current project", () => {
     const project = db.upsertProject({
       canonical_id: "local/repo",
       name: "repo",
@@ -27,20 +27,10 @@ describe("getMemoryConsole", () => {
     });
 
     db.upsertSession("sess-1", project.id, "david", "laptop", "claude-code");
-    db.insertSessionSummary({
-      session_id: "sess-1",
-      project_id: project.id,
-      user_id: "david",
-      request: "Fix auth flow",
-      investigated: null,
-      learned: null,
-      completed: "Added retry",
-      next_steps: null,
-    });
     db.insertUserPrompt({
       session_id: "sess-1",
       project_id: project.id,
-      prompt: "Fix auth flow",
+      prompt: "Investigate why startup context still feels thin",
       user_id: "david",
       device_id: "laptop",
     });
@@ -48,33 +38,31 @@ describe("getMemoryConsole", () => {
       session_id: "sess-1",
       project_id: project.id,
       tool_name: "Edit",
-      file_path: "src/auth.ts",
+      file_path: "src/context.ts",
       user_id: "david",
       device_id: "laptop",
     });
     db.insertObservation({
       session_id: "sess-1",
       project_id: project.id,
-      type: "bugfix",
-      title: "Fixed auth redirect",
-      files_modified: JSON.stringify(["src/auth.ts"]),
+      type: "discovery",
+      title: "Prompt chronology was missing from startup context",
       quality: 0.8,
       user_id: "david",
       device_id: "laptop",
     });
 
-    const result = getMemoryConsole(db, {
+    const result = getSessionContext(db, {
       cwd: "/tmp/repo",
       user_id: "david",
     });
 
-    expect(result.project).toBe("repo");
-    expect(result.capture_mode).toBe("rich");
-    expect(result.sessions).toHaveLength(1);
-    expect(result.requests).toHaveLength(1);
-    expect(result.tools).toHaveLength(1);
-    expect(result.observations).toHaveLength(1);
-    expect(result.recent_outcomes).toContain("Fixed auth redirect");
-    expect(result.hot_files[0]?.path).toBe("src/auth.ts");
+    expect(result).not.toBeNull();
+    expect(result?.project_name).toBe("repo");
+    expect(result?.recent_requests).toBe(1);
+    expect(result?.recent_tools).toBe(1);
+    expect(result?.raw_capture_active).toBe(true);
+    expect(result?.preview).toContain("## Recent Requests");
+    expect(result?.preview).toContain("## Recent Tools");
   });
 });

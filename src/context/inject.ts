@@ -76,6 +76,8 @@ export interface InjectedContext {
   recentSessions?: RecentSessionRow[];
   /** Project-level counts by observation type */
   projectTypeCounts?: Record<string, number>;
+  /** Recent high-signal outcomes from this project */
+  recentOutcomes?: string[];
 }
 
 export interface ContextObservation {
@@ -93,6 +95,42 @@ export interface ContextObservation {
 }
 
 export { computeBlendedScore, computeObservationPriority, observationTypeBoost } from "../intelligence/observation-priority.js";
+
+function tokenizeProjectHint(text: string): string[] {
+  return Array.from(
+    new Set(
+      (text.toLowerCase().match(/[a-z0-9_+-]{4,}/g) ?? []).filter(Boolean)
+    )
+  );
+}
+
+function isObservationRelatedToProject(
+  obs: ObservationRow & { _source_project?: string },
+  detected: { name: string; canonical_id: string }
+): boolean {
+  const hints = new Set<string>([
+    ...tokenizeProjectHint(detected.name),
+    ...tokenizeProjectHint(detected.canonical_id),
+  ]);
+  if (hints.size === 0) return false;
+
+  const haystack = [
+    obs.title,
+    obs.narrative ?? "",
+    obs.facts ?? "",
+    obs.concepts ?? "",
+    obs.files_read ?? "",
+    obs.files_modified ?? "",
+    obs._source_project ?? "",
+  ]
+    .join(" \n ")
+    .toLowerCase();
+
+  for (const hint of hints) {
+    if (haystack.includes(hint)) return true;
+  }
+  return false;
+}
 
 /**
  * Estimate token count from text.
@@ -252,6 +290,12 @@ export function buildSessionContext(
       }
       return { ...obs, _source_project: projectNameCache.get(obs.project_id) };
     });
+
+    if (isNewProject) {
+      crossProjectCandidates = crossProjectCandidates.filter((obs) =>
+        isObservationRelatedToProject(obs, detected)
+      );
+    }
   }
 
   // Deduplicate: pinned and recent are always included, candidates fill the rest
@@ -306,6 +350,9 @@ export function buildSessionContext(
     const projectTypeCounts = isNewProject
       ? undefined
       : getProjectTypeCounts(db, projectId, opts.userId);
+    const recentOutcomes = isNewProject
+      ? undefined
+      : getRecentOutcomes(db, projectId, opts.userId);
     return {
       project_name: projectName,
       canonical_id: canonicalId,
@@ -316,6 +363,7 @@ export function buildSessionContext(
       recentToolEvents: recentToolEvents.length > 0 ? recentToolEvents : undefined,
       recentSessions: recentSessions.length > 0 ? recentSessions : undefined,
       projectTypeCounts,
+      recentOutcomes,
     };
   }
 
@@ -365,6 +413,9 @@ export function buildSessionContext(
   const projectTypeCounts = isNewProject
     ? undefined
     : getProjectTypeCounts(db, projectId, opts.userId);
+  const recentOutcomes = isNewProject
+    ? undefined
+    : getRecentOutcomes(db, projectId, opts.userId);
 
   // Fetch recent security findings (last 7 days) for risk awareness
   let securityFindings: SecurityFindingRow[] = [];
@@ -454,6 +505,7 @@ export function buildSessionContext(
     recentToolEvents: recentToolEvents.length > 0 ? recentToolEvents : undefined,
     recentSessions: recentSessions.length > 0 ? recentSessions : undefined,
     projectTypeCounts,
+    recentOutcomes,
   };
 }
 
@@ -526,14 +578,19 @@ export function formatContextForInjection(
   }
 
   if (context.recentPrompts && context.recentPrompts.length > 0) {
-    lines.push("## Recent Requests");
-    for (const prompt of context.recentPrompts.slice(0, 5)) {
-      const label = prompt.prompt_number > 0
-        ? `#${prompt.prompt_number}`
-        : new Date(prompt.created_at_epoch * 1000).toISOString().split("T")[0];
-      lines.push(`- ${label}: ${truncateText(prompt.prompt.replace(/\s+/g, " "), 160)}`);
+    const promptLines = context.recentPrompts
+      .filter((prompt) => isMeaningfulPrompt(prompt.prompt))
+      .slice(0, 5);
+    if (promptLines.length > 0) {
+      lines.push("## Recent Requests");
+      for (const prompt of promptLines) {
+        const label = prompt.prompt_number > 0
+          ? `#${prompt.prompt_number}`
+          : new Date(prompt.created_at_epoch * 1000).toISOString().split("T")[0];
+        lines.push(`- ${label}: ${truncateText(prompt.prompt.replace(/\s+/g, " "), 160)}`);
+      }
+      lines.push("");
     }
-    lines.push("");
   }
 
   if (context.recentToolEvents && context.recentToolEvents.length > 0) {
@@ -545,13 +602,26 @@ export function formatContextForInjection(
   }
 
   if (context.recentSessions && context.recentSessions.length > 0) {
-    lines.push("## Recent Sessions");
-    for (const session of context.recentSessions.slice(0, 4)) {
-      const summary = session.request ?? session.completed ?? "(no summary)";
-      lines.push(
-        `- ${session.session_id}: ${truncateText(summary.replace(/\s+/g, " "), 140)} ` +
+    const recentSessionLines = context.recentSessions
+      .slice(0, 4)
+      .map((session) => {
+      const summary = chooseMeaningfulSessionHeadline(session.request, session.completed);
+        if (summary === "(no summary)") return null;
+        return `- ${session.session_id}: ${truncateText(summary.replace(/\s+/g, " "), 140)} ` +
         `(prompts ${session.prompt_count}, tools ${session.tool_event_count}, obs ${session.observation_count})`
-      );
+      })
+      .filter((line): line is string => Boolean(line));
+    if (recentSessionLines.length > 0) {
+      lines.push("## Recent Sessions");
+      lines.push(...recentSessionLines);
+      lines.push("");
+    }
+  }
+
+  if (context.recentOutcomes && context.recentOutcomes.length > 0) {
+    lines.push("## Recent Outcomes");
+    for (const outcome of context.recentOutcomes.slice(0, 5)) {
+      lines.push(`- ${truncateText(outcome, 160)}`);
     }
     lines.push("");
   }
@@ -666,6 +736,16 @@ function formatSessionBrief(summary: SessionSummaryRow): string[] {
   return lines;
 }
 
+function chooseMeaningfulSessionHeadline(
+  request: string | null | undefined,
+  completed: string | null | undefined
+): string {
+  if (request && !looksLikeFileOperationTitle(request)) return request;
+  const completedItems = extractMeaningfulLines(completed, 1);
+  if (completedItems.length > 0) return completedItems[0]!;
+  return request ?? completed ?? "(no summary)";
+}
+
 function formatSummarySection(value: string | null, maxLen: number): string | null {
   if (!value) return null;
   const cleaned = value
@@ -689,6 +769,37 @@ function truncateMultilineText(text: string, maxLen: number): string {
 function truncateText(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen - 3) + "...";
+}
+
+function isMeaningfulPrompt(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (compact.length < 8) return false;
+  return /[a-z]{3,}/i.test(compact);
+}
+
+function looksLikeFileOperationTitle(value: string): boolean {
+  return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
+    value.trim()
+  );
+}
+
+function stripInlineSectionLabel(value: string): string {
+  return value
+    .replace(/^(request|investigated|learned|completed|next steps|digest|summary):\s*/i, "")
+    .trim();
+}
+
+function extractMeaningfulLines(value: string | null | undefined, limit: number): string[] {
+  if (!value) return [];
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map((line) => stripInlineSectionLabel(line))
+    .filter((line) => line.length > 0 && !looksLikeFileOperationTitle(line))
+    .slice(0, limit);
 }
 
 /**
@@ -834,4 +945,63 @@ function getProjectTypeCounts(
     counts[row.type] = row.count;
   }
   return counts;
+}
+
+function getRecentOutcomes(
+  db: MemDatabase,
+  projectId: number,
+  userId?: string
+): string[] {
+  const visibilityClause = userId
+    ? " AND (sensitivity != 'personal' OR user_id = ?)"
+    : "";
+  const visibilityParams = userId ? [userId] : [];
+
+  const summaries = db.db
+    .query<SessionSummaryRow, (number | string)[]>(
+      `SELECT * FROM session_summaries
+       WHERE project_id = ?
+       ORDER BY created_at_epoch DESC
+       LIMIT 6`
+    )
+    .all(projectId);
+
+  const picked: string[] = [];
+  const seen = new Set<string>();
+  for (const summary of summaries) {
+    for (const line of [
+      ...extractMeaningfulLines(summary.completed, 2),
+      ...extractMeaningfulLines(summary.learned, 1),
+    ]) {
+      const normalized = line.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      picked.push(line);
+      if (picked.length >= 5) return picked;
+    }
+  }
+
+  const rows = db.db
+    .query<ObservationRow, (number | string)[]>(
+      `SELECT * FROM observations
+       WHERE project_id = ?
+         AND lifecycle IN ('active', 'aging', 'pinned')
+         AND superseded_by IS NULL
+         ${visibilityClause}
+       ORDER BY created_at_epoch DESC
+       LIMIT 20`
+    )
+    .all(projectId, ...visibilityParams);
+
+  for (const obs of rows) {
+    if (!["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type)) continue;
+    const title = stripInlineSectionLabel(obs.title);
+    const normalized = title.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!normalized || seen.has(normalized) || looksLikeFileOperationTitle(title)) continue;
+    seen.add(normalized);
+    picked.push(title);
+    if (picked.length >= 5) break;
+  }
+
+  return picked;
 }

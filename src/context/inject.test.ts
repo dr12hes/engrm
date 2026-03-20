@@ -525,6 +525,34 @@ describe("formatContextForInjection", () => {
     expect(text).toContain("#3: Investigate why startup context feels too shallow");
   });
 
+  test("filters malformed prompt fragments from recent requests", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [],
+      session_count: 0,
+      total_active: 0,
+      recentPrompts: [
+        {
+          id: 11,
+          session_id: "sess-1",
+          project_id: 1,
+          prompt_number: 3,
+          prompt: "[;ease",
+          prompt_hash: "hash",
+          cwd: "/tmp/myproject",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          created_at_epoch: 1,
+        },
+      ],
+    });
+
+    expect(text).not.toContain("## Recent Requests");
+    expect(text).not.toContain("[;ease");
+  });
+
   test("formats recent tool chronology when available", () => {
     const text = formatContextForInjection({
       project_name: "myproject",
@@ -574,11 +602,14 @@ describe("formatContextForInjection", () => {
           started_at_epoch: 1,
           completed_at_epoch: 2,
           project_name: "myproject",
-          request: "Fix auth flow",
-          completed: "Added retry",
+          request: "Modified auth.ts",
+          completed: "Added retry logic to auth flow",
           prompt_count: 1,
           tool_event_count: 2,
         },
+      ],
+      recentOutcomes: [
+        "Added retry logic to auth flow",
       ],
       projectTypeCounts: {
         bugfix: 3,
@@ -587,9 +618,43 @@ describe("formatContextForInjection", () => {
     });
 
     expect(text).toContain("## Recent Sessions");
-    expect(text).toContain("sess-1: Fix auth flow");
+    expect(text).toContain("sess-1: Added retry logic to auth flow");
+    expect(text).toContain("## Recent Outcomes");
+    expect(text).toContain("Added retry logic to auth flow");
     expect(text).toContain("## Project Signals");
     expect(text).toContain("Top memory types: bugfix 3");
+  });
+
+  test("suppresses empty recent sessions with no request or completed summary", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [],
+      session_count: 0,
+      total_active: 0,
+      recentSessions: [
+        {
+          id: 1,
+          session_id: "sess-1",
+          project_id: 1,
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          status: "active",
+          observation_count: 0,
+          started_at_epoch: 1,
+          completed_at_epoch: 2,
+          project_name: "myproject",
+          request: null,
+          completed: null,
+          prompt_count: 1,
+          tool_event_count: 0,
+        },
+      ],
+    });
+
+    expect(text).not.toContain("## Recent Sessions");
+    expect(text).not.toContain("(no summary)");
   });
 
   test("falls back to narrative when no facts", () => {

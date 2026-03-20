@@ -61,6 +61,15 @@ describe("getProjectMemoryIndex", () => {
       user_id: "david",
       device_id: "laptop",
     });
+    db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "change",
+      title: "Modified auth.ts",
+      quality: 0.4,
+      user_id: "david",
+      device_id: "laptop",
+    });
     db.insertSessionSummary({
       session_id: "sess-1",
       project_id: project.id,
@@ -84,5 +93,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.recent_tools_count).toBe(1);
     expect(result?.raw_capture_active).toBe(true);
     expect(result?.hot_files[0]?.path).toBe("src/auth.ts");
+    expect(result?.recent_outcomes).toContain("Fixed auth redirect");
+    expect(result?.recent_outcomes).not.toContain("Modified auth.ts");
   });
 });
