@@ -30,6 +30,7 @@ import {
   computeObservationPriority,
   observationTypeBoost,
 } from "../intelligence/observation-priority.js";
+import { extractSummaryItems, formatSummaryItems } from "../intelligence/summary-sections.js";
 
 export interface ContextOptions {
   /** Max tokens for context injection (default: 3000) */
@@ -747,15 +748,7 @@ function chooseMeaningfulSessionHeadline(
 }
 
 function formatSummarySection(value: string | null, maxLen: number): string | null {
-  if (!value) return null;
-  const cleaned = value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => (line.startsWith("-") ? line : `- ${line}`))
-    .join("\n");
-  if (!cleaned) return null;
-  return truncateMultilineText(cleaned, maxLen);
+  return formatSummaryItems(value, maxLen);
 }
 
 function truncateMultilineText(text: string, maxLen: number): string {
@@ -792,11 +785,7 @@ function stripInlineSectionLabel(value: string): string {
 
 function extractMeaningfulLines(value: string | null | undefined, limit: number): string[] {
   if (!value) return [];
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^[-*]\s*/, ""))
+  return extractSummaryItems(value)
     .map((line) => stripInlineSectionLabel(line))
     .filter((line) => line.length > 0 && !looksLikeFileOperationTitle(line))
     .slice(0, limit);

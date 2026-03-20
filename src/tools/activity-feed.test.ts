@@ -69,7 +69,10 @@ describe("getActivityFeed", () => {
     });
 
     expect(result.project).toBe("repo");
-    expect(result.events.some((event) => event.kind === "summary")).toBe(true);
+    const summaryEvent = result.events.find((event) => event.kind === "summary");
+    expect(summaryEvent).toBeTruthy();
+    expect(summaryEvent?.detail).toContain("Capture: rich");
+    expect(summaryEvent?.detail).toContain("Prompts/tools: 1/1");
     expect(result.events.some((event) => event.kind === "prompt")).toBe(true);
     expect(result.events.some((event) => event.kind === "tool")).toBe(true);
     expect(result.events.some((event) => event.kind === "observation")).toBe(true);
@@ -114,6 +117,8 @@ describe("getActivityFeed", () => {
     });
 
     expect(result.events).toHaveLength(3);
+    const toolEvent = result.events.find((event) => event.kind === "tool");
+    expect(toolEvent?.detail).toBe("src/audit.ts");
     expect(result.events.some((event) => event.kind === "prompt")).toBe(true);
     expect(result.events.some((event) => event.kind === "tool")).toBe(true);
     expect(result.events.some((event) => event.kind === "observation")).toBe(true);

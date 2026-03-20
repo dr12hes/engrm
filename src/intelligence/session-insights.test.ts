@@ -78,4 +78,25 @@ describe("computeSessionInsights", () => {
     expect(result.recent_completed).toContain("Added top-context previews to search");
     expect(result.next_steps).toContain("Follow through: wire richer summaries into sync");
   });
+
+  test("dedupes repeated headed summary blobs in recent completed", () => {
+    const result = computeSessionInsights(
+      [
+        summary({
+          completed: `**Deployment:**
+- Pushed commit 5fc897c to staging branch
+- Ansible deployment completed successfully
+
+**Deployment:**
+- Pushed commit 5fc897c to staging branch`,
+        }),
+      ],
+      []
+    );
+
+    expect(result.recent_completed).toEqual([
+      "Deployment: Pushed commit 5fc897c to staging branch",
+      "Deployment: Ansible deployment completed successfully",
+    ]);
+  });
 });

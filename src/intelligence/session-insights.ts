@@ -1,4 +1,5 @@
 import type { ObservationRow, SessionSummaryRow } from "../storage/sqlite.js";
+import { extractSummaryItems } from "./summary-sections.js";
 
 export interface SessionInsightMetrics {
   summary_count: number;
@@ -74,13 +75,7 @@ function countPresentSections(summary: SessionSummaryRow): number {
 }
 
 function extractSectionItems(section: string | null): string[] {
-  if (!hasContent(section)) return [];
-  return section!
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^[-*]\s*/, "").trim())
-    .filter(Boolean);
+  return extractSummaryItems(section);
 }
 
 function extractObservationTitles(observations: ObservationRow[], types: string[]): string[] {

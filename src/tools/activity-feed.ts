@@ -78,12 +78,23 @@ function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
 
 function toSummaryEvent(
   summary: SessionSummaryRow,
-  fallbackEpoch: number = 0
+  fallbackEpoch: number = 0,
+  extras?: {
+    capture_state?: string;
+    prompt_count?: number;
+    tool_event_count?: number;
+    latest_request?: string | null;
+  }
 ): ActivityFeedEvent | null {
   const title = summary.request ?? summary.completed ?? summary.learned ?? summary.investigated;
   if (!title) return null;
 
   const detail = [
+    extras?.capture_state ? `Capture: ${extras.capture_state}` : null,
+    typeof extras?.prompt_count === "number" && typeof extras?.tool_event_count === "number"
+      ? `Prompts/tools: ${extras.prompt_count}/${extras.tool_event_count}`
+      : null,
+    extras?.latest_request && extras.latest_request !== title ? `Latest request: ${extras.latest_request}` : null,
     summary.completed && summary.completed !== title ? `Completed: ${summary.completed}` : null,
     summary.learned ? `Learned: ${summary.learned}` : null,
     summary.next_steps ? `Next: ${summary.next_steps}` : null,
@@ -134,7 +145,16 @@ export function getActivityFeed(
 
     const events = [
       ...(story.summary
-        ? [toSummaryEvent(story.summary, story.session?.completed_at_epoch ?? story.session?.started_at_epoch ?? 0)].filter(
+        ? [toSummaryEvent(
+            story.summary,
+            story.session?.completed_at_epoch ?? story.session?.started_at_epoch ?? 0,
+            {
+              capture_state: story.capture_state,
+              prompt_count: story.prompts.length,
+              tool_event_count: story.tool_events.length,
+              latest_request: story.latest_request,
+            }
+          )].filter(
             (event): event is ActivityFeedEvent => event !== null
           )
         : []),
@@ -181,7 +201,13 @@ export function getActivityFeed(
       if (!summary) return null;
       return toSummaryEvent(
         summary,
-        session.completed_at_epoch ?? session.started_at_epoch ?? 0
+        session.completed_at_epoch ?? session.started_at_epoch ?? 0,
+        {
+          capture_state: session.capture_state,
+          prompt_count: session.prompt_count,
+          tool_event_count: session.tool_event_count,
+          latest_request: summary.request,
+        }
       );
     })
     .filter((event): event is ActivityFeedEvent => event !== null);

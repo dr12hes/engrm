@@ -22,6 +22,7 @@ import {
 import { VectorClient, type VectorDocument } from "./client.js";
 import { buildSourceId } from "./auth.js";
 import { computeSessionValueSignals } from "../intelligence/value-signals.js";
+import { extractSummaryItems } from "../intelligence/summary-sections.js";
 
 export interface PushResult {
   pushed: number;
@@ -301,14 +302,7 @@ function countPresentSections(summary: SessionSummaryRow): number {
 }
 
 function extractSectionItems(section: string | null): string[] {
-  if (!section) return [];
-  return section
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^[-*]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, 4);
+  return extractSummaryItems(section, 4);
 }
 
 function buildSummaryCaptureContext(

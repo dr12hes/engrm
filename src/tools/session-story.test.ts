@@ -47,6 +47,7 @@ describe("getSessionStory", () => {
       project_id: project.id,
       type: "bugfix",
       title: "Fixed auth redirect",
+      files_modified: JSON.stringify(["src/auth.ts"]),
       quality: 0.8,
       user_id: "david",
       device_id: "laptop",
@@ -72,5 +73,9 @@ describe("getSessionStory", () => {
     expect(story.metrics?.tool_calls_count).toBe(1);
     expect(story.capture_state).toBe("rich");
     expect(story.capture_gaps).toEqual([]);
+    expect(story.project_name).toBe("repo");
+    expect(story.latest_request).toBe("Fix auth flow");
+    expect(story.recent_outcomes).toContain("Fixed auth redirect");
+    expect(story.hot_files).toEqual([{ path: "src/auth.ts", count: 1 }]);
   });
 });

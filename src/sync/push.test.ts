@@ -212,4 +212,38 @@ describe("buildSummaryVectorDocument", () => {
     expect(doc.metadata.repeated_patterns_count).toBe(1);
     expect(doc.metadata.delivery_review_ready).toBe(true);
   });
+
+  test("normalizes duplicated headed completed blobs into distinct items", () => {
+    const summary = db.insertSessionSummary({
+      session_id: "sess-blob",
+      project_id: projectId,
+      user_id: "david",
+      request: "Deactivate Bedford Hotel on staging",
+      investigated: null,
+      learned: null,
+      completed: `**Deployment:**
+- Pushed commit 5fc897c to staging branch
+- Ansible deployment completed successfully
+
+**Background processing impact:**
+- Bedford Hotel will now be skipped by intelligence_briefing_loop
+- Bedford Hotel will now be skipped by vulnerability_scheduler_loop
+
+**Deployment:**
+- Pushed commit 5fc897c to staging branch`,
+      next_steps: null,
+    });
+
+    const doc = buildSummaryVectorDocument(summary, makeConfig(), {
+      canonical_id: "github.com/test/repo",
+      name: "repo",
+    });
+
+    expect(doc.metadata.completed_items).toEqual([
+      "Deployment: Pushed commit 5fc897c to staging branch",
+      "Deployment: Ansible deployment completed successfully",
+      "Background processing impact: Bedford Hotel will now be skipped by intelligence_briefing_loop",
+      "Background processing impact: Bedford Hotel will now be skipped by vulnerability_scheduler_loop",
+    ]);
+  });
 });

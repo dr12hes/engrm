@@ -13,6 +13,7 @@ export interface SessionStoryInput {
 
 export interface SessionStoryResult {
   session: SessionRow | null;
+  project_name: string | null;
   summary: SessionSummaryRow | null;
   prompts: UserPromptRow[];
   tool_events: ToolEventRow[];
@@ -24,6 +25,9 @@ export interface SessionStoryResult {
   }) | null;
   capture_state: "rich" | "partial" | "summary-only" | "legacy";
   capture_gaps: string[];
+  latest_request: string | null;
+  recent_outcomes: string[];
+  hot_files: Array<{ path: string; count: number }>;
 }
 
 export function getSessionStory(
@@ -36,9 +40,17 @@ export function getSessionStory(
   const toolEvents = db.getSessionToolEvents(input.session_id, 100);
   const observations = db.getObservationsBySession(input.session_id);
   const metrics = db.getSessionMetrics(input.session_id);
+  const projectName =
+    session?.project_id !== null && session?.project_id !== undefined
+      ? db.getProjectById(session.project_id)?.name ?? null
+      : null;
+  const latestRequest = prompts[prompts.length - 1]?.prompt?.trim()
+    || summary?.request?.trim()
+    || null;
 
   return {
     session,
+    project_name: projectName,
     summary,
     prompts,
     tool_events: toolEvents,
@@ -53,9 +65,12 @@ export function getSessionStory(
       promptCount: prompts.length,
       toolEventCount: toolEvents.length,
       toolCallsCount: metrics?.tool_calls_count ?? 0,
-      observationCount: observations.length,
+        observationCount: observations.length,
       hasSummary: Boolean(summary?.request || summary?.completed),
     }),
+    latest_request: latestRequest,
+    recent_outcomes: collectRecentOutcomes(observations),
+    hot_files: collectHotFiles(observations),
   };
 }
 
@@ -88,4 +103,51 @@ function buildCaptureGaps(input: {
     gaps.push("summary without reusable observations");
   }
   return gaps;
+}
+
+function collectRecentOutcomes(observations: ObservationRow[]): string[] {
+  const seen = new Set<string>();
+  const outcomes: string[] = [];
+  for (const obs of observations) {
+    if (!["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type)) continue;
+    const title = obs.title.trim();
+    if (!title || looksLikeFileOperationTitle(title)) continue;
+    const normalized = title.toLowerCase().replace(/\s+/g, " ").trim();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    outcomes.push(title);
+    if (outcomes.length >= 6) break;
+  }
+  return outcomes;
+}
+
+function collectHotFiles(observations: ObservationRow[]): Array<{ path: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const obs of observations) {
+    for (const path of [...parseJsonArray(obs.files_modified), ...parseJsonArray(obs.files_read)]) {
+      counts.set(path, (counts.get(path) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([path, count]) => ({ path, count }))
+    .sort((a, b) => b.count - a.count || a.path.localeCompare(b.path))
+    .slice(0, 8);
+}
+
+function parseJsonArray(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function looksLikeFileOperationTitle(value: string): boolean {
+  return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
+    value.trim()
+  );
 }
