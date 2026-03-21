@@ -4,6 +4,25 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.16
+
+### Added
+
+- public MCP starter-set documentation and examples for:
+  - `capture_git_worktree`
+  - `capture_repo_scan`
+  - `capture_openclaw_content`
+  - `tool_memory_index`
+  - `capture_quality`
+- `MCP_EXAMPLES.md` with concrete starter flows, reducer outputs, and demo prompts
+- reusable MCP listing/submission copy in `ECOSYSTEM_LISTINGS.md`
+
+### Changed
+
+- startup handoff index now prefers fresher, stronger items instead of surfacing stale decisions too aggressively
+- startup handoff index now collapses near-duplicate titles instead of only exact string matches
+- public MCP metadata in `server.json` now matches the current package version and positioning
+
 ## 0.4.15
 
 ### Changed
