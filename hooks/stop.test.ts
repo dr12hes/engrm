@@ -52,4 +52,28 @@ Next Steps:
     expect(checkpoint).not.toBeNull();
     expect(checkpoint?.title).toBe("Event Log now uses the existing events feed");
   });
+
+  test("extracts structured assistant summary sections from rich final output", () => {
+    const sections = __testables.extractAssistantSummarySections(`Investigated: Examined the automation system architecture including:
+- State tracking and event detection mechanism
+- Manifest-based plugin architecture
+
+Learned: Key architectural insights:
+- Snapshot comparison is used for efficient state transition detection
+- ConnectorManifest enables vendor-specific datasources for UI and AI agents
+
+Completed: Phase 1:
+- Created vendor connector manifests
+- Registered all three manifests
+
+Next Steps:
+1. Users can now create threshold rules
+2. No further work required unless user requests additional features.`);
+
+    expect(sections).not.toBeNull();
+    expect(sections?.investigated).toContain("State tracking and event detection mechanism");
+    expect(sections?.learned).toContain("Snapshot comparison is used for efficient state transition detection");
+    expect(sections?.completed).toContain("Created vendor connector manifests");
+    expect(sections?.next_steps).toContain("Users can now create threshold rules");
+  });
 });

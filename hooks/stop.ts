@@ -10,6 +10,10 @@
  */
 
 import { extractRetrospective } from "../src/capture/retrospective.js";
+import {
+  normalizeSummaryRequest,
+  normalizeSummarySection,
+} from "../src/intelligence/summary-sections.js";
 import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
 import { computeRiskScore, formatRiskTrafficLight } from "../src/capture/risk-score.js";
 import { pushOnce } from "../src/sync/push-once.js";
@@ -98,9 +102,30 @@ async function main(): Promise<void> {
       if (!existing) {
         const observations = db.getObservationsBySession(event.session_id);
         const session = db.getSessionMetrics(event.session_id);
-        const summary =
-          extractRetrospective(
+        const retrospective = extractRetrospective(
             observations,
+            event.session_id,
+            session?.project_id ?? null,
+            config.user_id
+          );
+        const assistantSections = extractAssistantSummarySections(event.last_assistant_message);
+        const summary =
+          mergeSessionSummary(
+            retrospective,
+            assistantSections,
+            event.session_id,
+            session?.project_id ?? null,
+            config.user_id
+          ) ??
+          mergeSessionSummary(
+            buildFallbackSessionSummary(
+              db,
+              event.session_id,
+              session?.project_id ?? null,
+              config.user_id,
+              event.last_assistant_message
+            ),
+            assistantSections,
             event.session_id,
             session?.project_id ?? null,
             config.user_id
@@ -275,6 +300,90 @@ function buildCheckpointCompleted(checkpoint: {
     lines.push(`  - ${fact}`);
   }
   return lines.join("\n");
+}
+
+type SummarySections = Pick<
+  InsertSessionSummary,
+  "request" | "investigated" | "learned" | "completed" | "next_steps"
+>;
+
+function mergeSessionSummary(
+  base: InsertSessionSummary | null,
+  extra: SummarySections | null,
+  sessionId: string,
+  projectId: number | null,
+  userId: string
+): InsertSessionSummary | null {
+  if (!base && !extra) return null;
+  return {
+    session_id: sessionId,
+    project_id: projectId,
+    user_id: userId,
+    request: chooseRicherSummaryValue(base?.request ?? null, extra?.request ?? null, true),
+    investigated: chooseRicherSummaryValue(base?.investigated ?? null, extra?.investigated ?? null, false),
+    learned: chooseRicherSummaryValue(base?.learned ?? null, extra?.learned ?? null, false),
+    completed: chooseRicherSummaryValue(base?.completed ?? null, extra?.completed ?? null, false),
+    next_steps: chooseRicherSummaryValue(base?.next_steps ?? null, extra?.next_steps ?? null, false),
+  };
+}
+
+function chooseRicherSummaryValue(
+  base: string | null,
+  extra: string | null,
+  isRequest: boolean
+): string | null {
+  const normalizedBase = isRequest ? normalizeSummaryRequest(base) : normalizeSummarySection(base);
+  const normalizedExtra = isRequest ? normalizeSummaryRequest(extra) : normalizeSummarySection(extra);
+  if (!normalizedBase) return normalizedExtra;
+  if (!normalizedExtra) return normalizedBase;
+  if (normalizedExtra.length > normalizedBase.length + 24) return normalizedExtra;
+  if (isRequest && isGenericCheckpointLine(normalizedBase) && !isGenericCheckpointLine(normalizedExtra)) {
+    return normalizedExtra;
+  }
+  return normalizedBase;
+}
+
+function extractAssistantSummarySections(message: string): SummarySections | null {
+  const compact = message?.replace(/\r/g, "").trim();
+  if (!compact || compact.length < 80) return null;
+
+  const sections = new Map<keyof SummarySections, string[]>();
+  let current: keyof SummarySections | null = null;
+
+  for (const rawLine of compact.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const heading = parseAssistantSectionHeading(line);
+    if (heading) {
+      current = heading;
+      if (!sections.has(current)) sections.set(current, []);
+      continue;
+    }
+
+    if (!current) continue;
+    if (current === "request" && isGenericCheckpointLine(line)) continue;
+    sections.get(current)?.push(line);
+  }
+
+  const request = normalizeSummaryRequest(sections.get("request")?.join(" ") ?? null);
+  const investigated = normalizeSummarySection(sections.get("investigated")?.join("\n") ?? null);
+  const learned = normalizeSummarySection(sections.get("learned")?.join("\n") ?? null);
+  const completed = normalizeSummarySection(sections.get("completed")?.join("\n") ?? null);
+  const next_steps = normalizeSummarySection(sections.get("next_steps")?.join("\n") ?? null);
+
+  if (!request && !investigated && !learned && !completed && !next_steps) return null;
+  return { request, investigated, learned, completed, next_steps };
+}
+
+function parseAssistantSectionHeading(value: string): keyof SummarySections | null {
+  const normalized = value.toLowerCase().replace(/\*+/g, "").trim();
+  if (/^request:/.test(normalized)) return "request";
+  if (/^investigated:/.test(normalized)) return "investigated";
+  if (/^learned:/.test(normalized)) return "learned";
+  if (/^completed:/.test(normalized)) return "completed";
+  if (/^next steps?:/.test(normalized)) return "next_steps";
+  return null;
 }
 
 /**
