@@ -4,6 +4,18 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.18
+
+### Added
+
+- rolling prompt-time session summary updates, so a live session can publish what it is about before it ends
+
+### Changed
+
+- remote summary documents pulled from Vector now upsert local `session_summaries`, so summaries created on another device actually land in the local handoff path
+- repeated remote summary updates are no longer blocked just because the related observation copy was already imported
+- this improves Engrm's multi-device promise by making recent session intent and summaries more likely to appear across devices during active work, not just after a perfect local capture sequence
+
 ## 0.4.17
 
 ### Changed
