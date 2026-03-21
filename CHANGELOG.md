@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.23
+
 ### Added
 
 - explicit handoff MCP tools:
