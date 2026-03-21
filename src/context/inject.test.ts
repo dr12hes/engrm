@@ -600,6 +600,7 @@ describe("formatContextForInjection", () => {
 
     expect(text).toContain("## Recent Handoffs");
     expect(text).toContain("Finish wiring the events feed into chat actions");
+    expect(text).toContain("from laptop");
     expect(text).toContain("Current thread:");
   });
 

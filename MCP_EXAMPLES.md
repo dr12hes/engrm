@@ -45,6 +45,12 @@ Example prompts:
 - "Show my recent handoffs for this repo."
 - "Load the latest handoff so I can pick this thread back up."
 
+What makes this better than a plain summary:
+
+- the handoff stays separate from durable engineering memory
+- it can include a little chat context when the session is still thin
+- recent handoffs show which machine they came from and how fresh they are
+
 ## Demo Flow
 
 For a quick public demo or MCP listing video:

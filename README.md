@@ -289,6 +289,13 @@ For long-running work across devices, Engrm now has an explicit handoff flow:
 - `load_handoff`
   - reopen a saved handoff as a clear resume point in a new session
 
+Recent handoffs now carry:
+
+- source machine
+- freshness
+- current thread / recent outcomes
+- optional chat snippets when the session is still thin
+
 This is the deliberate version of multi-device continuity: useful when you want to move from laptop to home machine without waiting for an end-of-session summary.
 
 The separate chat lane is still kept distinct from durable observations, but it can now sync too, so recent user/assistant conversation is recoverable on another machine without polluting the main memory feed.

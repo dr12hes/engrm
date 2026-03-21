@@ -18,6 +18,7 @@ import {
   formatContextForInjection,
 } from "../src/context/inject.js";
 import type { InjectedContext } from "../src/context/inject.js";
+import { formatHandoffSource } from "../src/tools/handoffs.js";
 import { detectStacksFromProject } from "../src/telemetry/stack-detect.js";
 import { computeAndSaveFingerprint } from "../src/telemetry/config-fingerprint.js";
 import { recommendPacks } from "../src/packs/recommender.js";
@@ -445,7 +446,7 @@ function buildLatestHandoffLines(context: InjectedContext): string[] {
     .replace(/^Handoff:\s*/i, "")
     .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
     .trim();
-  if (title) lines.push(title);
+  if (title) lines.push(`${title} (${formatHandoffSource(latest)})`);
 
   const narrative = latest.narrative
     ?.split(/\n{2,}/)

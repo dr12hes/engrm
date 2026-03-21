@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Config } from "../config.js";
 import { MemDatabase } from "../storage/sqlite.js";
-import { createHandoff, getRecentHandoffs, loadHandoff } from "./handoffs.js";
+import { createHandoff, formatHandoffSource, getRecentHandoffs, loadHandoff } from "./handoffs.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -259,5 +259,16 @@ describe("handoff tools", () => {
     expect(result.success).toBe(true);
     const obs = db.getObservationById(result.observation_id!);
     expect(obs?.narrative).not.toContain("Chat snippets:");
+  });
+
+  test("formatHandoffSource shows device and recency", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const label = formatHandoffSource({
+      device_id: "laptop-abc",
+      created_at_epoch: now - 120,
+    });
+
+    expect(label).toContain("from laptop-abc");
+    expect(label).toContain("ago");
   });
 });

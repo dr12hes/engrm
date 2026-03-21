@@ -32,7 +32,7 @@ import {
   observationTypeBoost,
 } from "../intelligence/observation-priority.js";
 import { extractSummaryItems, formatSummaryItems } from "../intelligence/summary-sections.js";
-import { getRecentHandoffs, type HandoffRow } from "../tools/handoffs.js";
+import { formatHandoffSource, getRecentHandoffs, type HandoffRow } from "../tools/handoffs.js";
 
 export interface ContextOptions {
   /** Max tokens for context injection (default: 3000) */
@@ -624,7 +624,7 @@ export function formatContextForInjection(
         .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
         .trim();
       if (title) {
-        lines.push(`- ${truncateText(title, 160)}`);
+        lines.push(`- ${truncateText(`${title} (${formatHandoffSource(handoff)})`, 160)}`);
       }
       const narrative = handoff.narrative
         ?.split(/\n{2,}/)

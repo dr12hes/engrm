@@ -76,6 +76,7 @@ describe("session-start startup brief", () => {
 
     expect(lines[0]).toContain("Latest handoff:");
     expect(lines.join("\n")).toContain("Finish wiring event feed into chat actions");
+    expect(lines.join("\n")).toContain("from Laptop");
   });
 
   test("shows chat trail when recent prompts are absent", () => {

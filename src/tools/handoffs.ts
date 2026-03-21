@@ -190,6 +190,17 @@ export function loadHandoff(
   };
 }
 
+export function formatHandoffSource(handoff: Pick<HandoffRow, "device_id" | "created_at_epoch">): string {
+  const ageSeconds = Math.max(0, Math.floor(Date.now() / 1000) - handoff.created_at_epoch);
+  const ageLabel =
+    ageSeconds < 3600
+      ? `${Math.max(1, Math.floor(ageSeconds / 60) || 1)}m ago`
+      : ageSeconds < 86400
+        ? `${Math.floor(ageSeconds / 3600)}h ago`
+        : `${Math.floor(ageSeconds / 86400)}d ago`;
+  return `from ${handoff.device_id} · ${ageLabel}`;
+}
+
 function resolveTargetSession(
   db: MemDatabase,
   cwd: string | undefined,

@@ -21,7 +21,7 @@ import { getRecentActivity } from "./tools/recent.js";
 import { getRecentRequests } from "./tools/recent-prompts.js";
 import { getRecentChat } from "./tools/recent-chat.js";
 import { searchChat } from "./tools/search-chat.js";
-import { createHandoff, getRecentHandoffs, loadHandoff } from "./tools/handoffs.js";
+import { createHandoff, formatHandoffSource, getRecentHandoffs, loadHandoff } from "./tools/handoffs.js";
 import { getRecentTools } from "./tools/recent-tools.js";
 import { getSessionStory } from "./tools/session-story.js";
 import { getRecentSessions } from "./tools/recent-sessions.js";
@@ -1595,7 +1595,7 @@ server.tool(
     const rows = result.handoffs.length > 0
       ? result.handoffs.map((handoff) => {
           const stamp = new Date(handoff.created_at_epoch * 1000).toISOString().replace("T", " ").slice(0, 16);
-          return `- #${handoff.id} (${stamp}) ${handoff.title}${handoff.project_name ? ` [${handoff.project_name}]` : ""}`;
+          return `- #${handoff.id} (${stamp}) ${handoff.title}${handoff.project_name ? ` [${handoff.project_name}]` : ""} (${formatHandoffSource(handoff)})`;
         }).join("\n")
       : "- (none)";
 
@@ -1637,6 +1637,7 @@ server.tool(
       : [];
     const factLines = facts.length > 0 ? `\n\nFacts:\n${facts.map((fact) => `- ${fact}`).join("\n")}` : "";
     const projectLine = result.handoff.project_name ? `Project: ${result.handoff.project_name}\n` : "";
+    const sourceLine = `Source: ${formatHandoffSource(result.handoff)}\n`;
 
     return {
       content: [
@@ -1644,6 +1645,7 @@ server.tool(
           type: "text" as const,
           text:
             `${projectLine}Handoff #${result.handoff.id}\n` +
+            sourceLine +
             `Title: ${result.handoff.title}\n\n` +
             `${result.handoff.narrative ?? "(no handoff narrative stored)"}${factLines}`,
         },
