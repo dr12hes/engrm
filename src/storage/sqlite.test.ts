@@ -875,6 +875,34 @@ describe("MemDatabase — session summaries", () => {
     expect(db.getSessionSummary("nonexistent")).toBeNull();
   });
 
+  test("upsertSessionSummary updates request without clearing later sections", () => {
+    const first = db.insertSessionSummary({
+      session_id: "sess-upsert",
+      project_id: projectId,
+      user_id: "david",
+      request: "Initial request",
+      investigated: null,
+      learned: null,
+      completed: "- Added refresh logic",
+      next_steps: null,
+    });
+
+    const updated = db.upsertSessionSummary({
+      session_id: "sess-upsert",
+      project_id: projectId,
+      user_id: "david",
+      request: "Refined live request",
+      investigated: null,
+      learned: null,
+      completed: null,
+      next_steps: null,
+    });
+
+    expect(updated.id).toBe(first.id);
+    expect(updated.request).toBe("Refined live request");
+    expect(updated.completed).toBe("- Added refresh logic");
+  });
+
   test("getRecentSummaries returns summaries ordered by most recent", () => {
     db.insertSessionSummary({
       session_id: "sess-a",

@@ -1229,6 +1229,49 @@ export class MemDatabase {
       .get(id)!;
   }
 
+  upsertSessionSummary(summary: InsertSessionSummary): SessionSummaryRow {
+    const existing = this.getSessionSummary(summary.session_id);
+    if (!existing) {
+      return this.insertSessionSummary(summary);
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const normalized = {
+      request: normalizeSummaryRequest(summary.request ?? existing.request),
+      investigated: normalizeSummarySection(summary.investigated ?? existing.investigated),
+      learned: normalizeSummarySection(summary.learned ?? existing.learned),
+      completed: normalizeSummarySection(summary.completed ?? existing.completed),
+      next_steps: normalizeSummarySection(summary.next_steps ?? existing.next_steps),
+    };
+
+    this.db
+      .query(
+        `UPDATE session_summaries
+         SET project_id = ?,
+             user_id = ?,
+             request = ?,
+             investigated = ?,
+             learned = ?,
+             completed = ?,
+             next_steps = ?,
+             created_at_epoch = ?
+         WHERE session_id = ?`
+      )
+      .run(
+        summary.project_id ?? existing.project_id,
+        summary.user_id,
+        normalized.request,
+        normalized.investigated,
+        normalized.learned,
+        normalized.completed,
+        normalized.next_steps,
+        now,
+        summary.session_id
+      );
+
+    return this.getSessionSummary(summary.session_id)!;
+  }
+
   getSessionSummary(sessionId: string): SessionSummaryRow | null {
     return (
       this.db

@@ -53,6 +53,21 @@ async function main(): Promise<void> {
       device_id: config.device_id,
       agent: "claude-code",
     });
+
+    const compactPrompt = event.prompt.replace(/\s+/g, " ").trim();
+    if (compactPrompt.length >= 8) {
+      const summary = db.upsertSessionSummary({
+        session_id: event.session_id,
+        project_id: project.id,
+        user_id: config.user_id,
+        request: compactPrompt,
+        investigated: null,
+        learned: null,
+        completed: null,
+        next_steps: null,
+      });
+      db.addToOutbox("summary", summary.id);
+    }
   } finally {
     db.close();
   }
