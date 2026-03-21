@@ -21,6 +21,7 @@ import { detectDependencyInstalls } from "../src/capture/dependency.js";
 import { observeToolEvent, incrementObserverSaveCount } from "../src/observer/observe.js";
 import { extractErrorSignature, recallPastFix } from "../src/capture/recall.js";
 import { checkSessionFatigue } from "../src/capture/fatigue.js";
+import { buildLiveSummaryUpdate, mergeLiveSummarySections } from "../src/capture/live-summary.js";
 
 async function main(): Promise<void> {
   const raw = await readStdin();
@@ -151,7 +152,8 @@ async function main(): Promise<void> {
           1000
         );
         if (observed) {
-          await saveObservation(db, config, observed);
+          const result = await saveObservation(db, config, observed);
+          updateRollingSummaryFromObservation(db, result.observation_id, event, config.user_id);
           incrementObserverSaveCount(event.session_id);
           saved = true;
         }
@@ -164,7 +166,7 @@ async function main(): Promise<void> {
     if (!saved) {
       const extracted = extractObservation(event);
       if (extracted) {
-        await saveObservation(db, config, {
+        const result = await saveObservation(db, config, {
           type: extracted.type,
           title: extracted.title,
           narrative: extracted.narrative,
@@ -174,6 +176,7 @@ async function main(): Promise<void> {
           cwd: event.cwd,
           source_tool: event.tool_name,
         });
+        updateRollingSummaryFromObservation(db, result.observation_id, event, config.user_id);
         incrementObserverSaveCount(event.session_id);
       }
     }
@@ -257,6 +260,40 @@ function detectProjectForEvent(event: ToolUseEvent) {
   return touchedPaths.length > 0
     ? detectProjectFromTouchedPaths(touchedPaths, event.cwd)
     : detectProject(event.cwd);
+}
+
+function updateRollingSummaryFromObservation(
+  db: MemDatabase,
+  observationId: number | undefined,
+  event: ToolUseEvent,
+  userId: string
+): void {
+  if (!observationId || !event.session_id) return;
+
+  const observation = db.getObservationById(observationId);
+  if (!observation) return;
+
+  const update = buildLiveSummaryUpdate(observation);
+  if (!update) return;
+
+  const existing = db.getSessionSummary(event.session_id);
+  const merged = mergeLiveSummarySections(existing, update);
+  const currentRequest =
+    existing?.request
+    ?? db.getSessionUserPrompts(event.session_id, 1).at(-1)?.prompt
+    ?? null;
+
+  const summary = db.upsertSessionSummary({
+    session_id: event.session_id,
+    project_id: observation.project_id,
+    user_id: userId,
+    request: currentRequest,
+    investigated: merged.investigated,
+    learned: merged.learned,
+    completed: merged.completed,
+    next_steps: existing?.next_steps ?? null,
+  });
+  db.addToOutbox("summary", summary.id);
 }
 
 function extractTouchedPaths(event: ToolUseEvent): string[] {

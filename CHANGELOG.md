@@ -4,6 +4,17 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.20
+
+### Added
+
+- live high-signal observations can now update the rolling session summary during `PostToolUse`, so in-flight sessions have a better chance of sharing meaningful "what moved" context across devices before stop
+
+### Changed
+
+- rolling session summaries now ignore low-signal file-op titles like `Modified foo.ts` when promoting live observations into handoff memory
+- this improves the multi-device handoff path by letting strong `feature`, `bugfix`, `change`, `refactor`, `discovery`, and `decision` observations enrich the current session summary as work happens
+
 ## 0.4.19
 
 ### Changed
