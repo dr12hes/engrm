@@ -683,8 +683,8 @@ function pickContextIndexObservations(
   shownItems?: Set<string>
 ): InjectedContext["observations"] {
   const now = Date.now();
-  const seen = new Set<string>();
   const hidden = shownItems ?? new Set<string>();
+  const picked: InjectedContext["observations"] = [];
 
   const scoreObservation = (obs: InjectedContext["observations"][number]): number => {
     let score = 0;
@@ -711,7 +711,10 @@ function pickContextIndexObservations(
         score += 1.2;
         break;
       case "decision":
-        score += ageDays <= 14 ? 1.1 : 0.2;
+        if (ageDays <= 7) score += 1.1;
+        else if (ageDays <= 21) score += 0.2;
+        else if (ageDays <= 45) score -= 1.2;
+        else score -= 2.8;
         break;
       default:
         score += 0.4;
@@ -723,7 +726,7 @@ function pickContextIndexObservations(
     return score;
   };
 
-  return context.observations
+  for (const obs of context.observations
     .filter((obs) => obs.type !== "digest")
     .filter((obs) => {
       const normalized = normalizeStartupItem(obs.title);
@@ -734,13 +737,13 @@ function pickContextIndexObservations(
       if (scoreDiff !== 0) return scoreDiff;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     })
-    .filter((obs) => {
-      const normalized = normalizeStartupItem(obs.title);
-      if (!normalized || seen.has(normalized)) return false;
-      seen.add(normalized);
-      return true;
-    })
-    .slice(0, 6);
+  ) {
+    if (picked.some((existing) => titlesRoughlyMatch(existing.title, obs.title))) continue;
+    picked.push(obs);
+    if (picked.length >= 6) break;
+  }
+
+  return picked;
 }
 
 function parseJsonArraySafe(value: string | null | undefined): string[] {
@@ -843,9 +846,27 @@ function normalizeStartupItem(value: string): string {
   return stripInlineSectionLabel(value)
     .replace(/^#?\d+:\s*/, "")
     .replace(/^-\s*/, "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9\s]/gi, " ")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function titlesRoughlyMatch(left: string | null | undefined, right: string | null | undefined): boolean {
+  const a = normalizeStartupItem(left ?? "");
+  const b = normalizeStartupItem(right ?? "");
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+
+  const aTokens = a.split(" ").filter((token) => token.length >= 4);
+  const bTokens = b.split(" ").filter((token) => token.length >= 4);
+  if (!aTokens.length || !bTokens.length) return false;
+
+  const shared = aTokens.filter((token) => bTokens.includes(token));
+  const minSize = Math.min(aTokens.length, bTokens.length);
+  return shared.length >= Math.max(3, Math.ceil(minSize * 0.6));
 }
 
 function isMeaningfulPrompt(value: string | null | undefined): boolean {
