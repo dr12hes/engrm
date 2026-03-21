@@ -12,6 +12,7 @@ const allowedRootMarkdown = new Set([
   "CHANGELOG.md",
   "CONTRIBUTING.md",
   "ECOSYSTEM_LISTINGS.md",
+  "MCP_EXAMPLES.md",
   "PLUGIN_SPEC.md",
   "ROADMAP.md",
   "SECURITY.md",

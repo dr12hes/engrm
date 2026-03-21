@@ -153,3 +153,9 @@ That proves the full loop:
 - reduce it into durable memory
 - inspect which tool/plugin produced it
 - inspect the resulting session story
+
+Reference material:
+
+- `README.md`
+- `MCP_EXAMPLES.md`
+- `server.json`

@@ -333,6 +333,8 @@ These are the kinds of prompts Engrm's current MCP slice is designed for:
 - "Tell me whether raw prompt/tool capture is healthy on this machine."
 - "Save this OpenClaw research/posting run as reusable memory."
 
+For concrete example flows and reducer outputs, see [MCP_EXAMPLES.md](/Volumes/Data/devs/candengo-mem/MCP_EXAMPLES.md).
+
 ### Observation Types
 
 | Type | What it captures |
