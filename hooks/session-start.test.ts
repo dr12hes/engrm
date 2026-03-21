@@ -183,6 +183,40 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("Wired event data into existing event log");
   });
 
+  test("shows a compact current thread from synced session metadata", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        recentSessions: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            status: "active",
+            observation_count: 2,
+            started_at_epoch: 1,
+            completed_at_epoch: 2,
+            project_name: "huginn",
+            request: "Wire up event data",
+            completed: null,
+            current_thread: "Wired event data into existing event log · routers/events.py · Edit/Bash",
+            capture_state: "partial",
+            recent_tool_names: JSON.stringify(["Edit", "Bash"]),
+            hot_files: JSON.stringify(["AIServer/app/routers/events.py"]),
+            recent_outcomes: JSON.stringify(["Wired event data into existing event log"]),
+            prompt_count: 2,
+            tool_event_count: 0,
+          },
+        ],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Current thread:"))).toBe(true);
+    expect(lines.join("\n")).toContain("Wired event data into existing event log · routers/events.py · Edit/Bash");
+  });
+
   test("filters generic summary wrapper lines from recent work", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({

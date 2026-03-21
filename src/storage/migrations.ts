@@ -398,6 +398,13 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    version: 13,
+    description: "Add current_thread to session summaries",
+    sql: `
+      ALTER TABLE session_summaries ADD COLUMN current_thread TEXT;
+    `,
+  },
+  {
     version: 11,
     description: "Add observation provenance from tool and prompt chronology",
     sql: `
@@ -479,6 +486,9 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
     columnExists(db, "session_summaries", "recent_outcomes")
   ) {
     version = Math.max(version, 12);
+  }
+  if (columnExists(db, "session_summaries", "current_thread")) {
+    version = Math.max(version, 13);
   }
 
   return version;
@@ -598,6 +608,7 @@ export function ensureSessionSummaryColumns(db: CompatDatabase): void {
     "recent_tool_names",
     "hot_files",
     "recent_outcomes",
+    "current_thread",
   ] as const;
 
   for (const column of required) {
@@ -606,8 +617,8 @@ export function ensureSessionSummaryColumns(db: CompatDatabase): void {
   }
 
   const current = getSchemaVersion(db);
-  if (current < 12) {
-    db.exec("PRAGMA user_version = 12");
+  if (current < 13) {
+    db.exec("PRAGMA user_version = 13");
   }
 }
 

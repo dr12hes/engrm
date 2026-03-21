@@ -9,6 +9,7 @@ export interface SessionHandoffMetadata {
   tool_event_count: number;
   recent_request_prompts: string[];
   latest_request: string | null;
+  current_thread: string | null;
   recent_tool_names: string[];
   recent_tool_commands: string[];
   capture_state: "rich" | "partial" | "summary-only";
@@ -84,11 +85,19 @@ export function buildSessionHandoffMetadata(
     .filter((value): value is number => typeof value === "number")
     .sort((a, b) => b - a)[0] ?? null;
 
+  const currentThread = buildCurrentThread(
+    latestRequest,
+    recentOutcomes,
+    hotFiles,
+    recentToolNames
+  );
+
   return {
     prompt_count: prompts.length,
     tool_event_count: toolEvents.length,
     recent_request_prompts: recentRequestPrompts,
     latest_request: latestRequest,
+    current_thread: currentThread,
     recent_tool_names: recentToolNames,
     recent_tool_commands: recentToolCommands,
     capture_state: captureState,
@@ -97,6 +106,46 @@ export function buildSessionHandoffMetadata(
     observation_source_tools: observationSourceTools,
     latest_observation_prompt_number: latestObservationPromptNumber,
   };
+}
+
+function buildCurrentThread(
+  latestRequest: string | null,
+  recentOutcomes: string[],
+  hotFiles: string[],
+  recentToolNames: string[]
+): string | null {
+  const request = compactLine(latestRequest);
+  const outcome = recentOutcomes
+    .map((item) => compactLine(item))
+    .find(Boolean);
+  const file = hotFiles[0] ? compactFileHint(hotFiles[0]) : null;
+  const tools = recentToolNames.slice(0, 2).join("/");
+
+  if (outcome && file) {
+    return `${outcome} · ${file}${tools ? ` · ${tools}` : ""}`;
+  }
+  if (request && file) {
+    return `${request} · ${file}${tools ? ` · ${tools}` : ""}`;
+  }
+  if (outcome) {
+    return `${outcome}${tools ? ` · ${tools}` : ""}`;
+  }
+  if (request) {
+    return `${request}${tools ? ` · ${tools}` : ""}`;
+  }
+  return null;
+}
+
+function compactLine(value: string | null | undefined): string | null {
+  const trimmed = value?.replace(/\s+/g, " ").trim();
+  if (!trimmed) return null;
+  return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+}
+
+function compactFileHint(value: string): string {
+  const parts = value.split("/");
+  if (parts.length <= 2) return value;
+  return parts.slice(-2).join("/");
 }
 
 function parseJsonArray(value: string | null | undefined): string[] {

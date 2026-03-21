@@ -290,6 +290,7 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const toolFallbacks = buildToolFallbacks(context);
   const sessionFallbacks = sessionFallbacksFromContext(context);
   const recentOutcomeLines = buildRecentOutcomeLines(context, latest);
+  const currentThread = buildCurrentThreadLine(context, latest);
   const projectSignals = buildProjectSignalLine(context);
   const shownItems = new Set<string>();
 
@@ -341,6 +342,12 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
         }
       }
     }
+  }
+
+  if (currentThread && !shownItems.has(normalizeStartupItem(currentThread))) {
+    lines.push(`${c.cyan}Current thread:${c.reset}`);
+    lines.push(`  - ${truncateInline(currentThread, 160)}`);
+    rememberShownItem(shownItems, currentThread);
   }
 
   if (
@@ -631,6 +638,27 @@ function buildRecentOutcomeLines(
   }
 
   return picked;
+}
+
+function buildCurrentThreadLine(
+  context: InjectedContext,
+  summary: NonNullable<InjectedContext["summaries"]>[number] | null
+): string | null {
+  const explicit = summary?.current_thread ?? null;
+  if (explicit && !looksLikeFileOperationTitle(explicit)) return explicit;
+
+  for (const session of context.recentSessions ?? []) {
+    if (session.current_thread && !looksLikeFileOperationTitle(session.current_thread)) {
+      return session.current_thread;
+    }
+  }
+
+  const request = buildPromptFallback(context);
+  const outcome = buildRecentOutcomeLines(context, summary)[0] ?? null;
+  const tool = buildToolFallbacks(context)[0] ?? null;
+
+  if (outcome && tool) return `${outcome} · ${tool}`;
+  return outcome ?? request ?? null;
 }
 
 function chooseMeaningfulSessionSummary(

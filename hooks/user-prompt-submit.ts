@@ -70,6 +70,7 @@ async function main(): Promise<void> {
         learned: null,
         completed: null,
         next_steps: null,
+        current_thread: handoff.current_thread,
         capture_state: handoff.capture_state,
         recent_tool_names: JSON.stringify(handoff.recent_tool_names),
         hot_files: JSON.stringify(handoff.hot_files),

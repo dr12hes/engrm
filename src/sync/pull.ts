@@ -193,6 +193,8 @@ function mergeRemoteSummary(
     learned: typeof change.metadata?.learned === "string" ? change.metadata.learned : null,
     completed: typeof change.metadata?.completed === "string" ? change.metadata.completed : null,
     next_steps: typeof change.metadata?.next_steps === "string" ? change.metadata.next_steps : null,
+    current_thread:
+      typeof change.metadata?.current_thread === "string" ? change.metadata.current_thread : null,
     capture_state:
       typeof change.metadata?.capture_state === "string" ? change.metadata.capture_state : null,
     recent_tool_names: encodeStringArray(change.metadata?.recent_tool_names),
