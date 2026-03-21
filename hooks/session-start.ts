@@ -510,14 +510,22 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
     hints.push("session_story");
     hints.push("create_handoff");
   }
-  if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
+  if (
+    (context.recentPrompts?.length ?? 0) > 0 ||
+    (context.recentToolEvents?.length ?? 0) > 0 ||
+    (context.recentChatMessages?.length ?? 0) > 0
+  ) {
     hints.push("activity_feed");
   }
   if (context.observations.length > 0) {
     hints.push("memory_console");
   }
-  if ((context.recentSessions?.length ?? 0) > 0) {
+  if ((context.recentHandoffs?.length ?? 0) > 0) {
+    hints.push("load_handoff");
     hints.push("recent_handoffs");
+  }
+  if ((context.recentChatMessages?.length ?? 0) > 0) {
+    hints.push("recent_chat");
   }
 
   const unique = Array.from(new Set(hints)).slice(0, 4);

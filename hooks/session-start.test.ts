@@ -280,6 +280,67 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("Wired event data into existing event log · routers/events.py · Edit/Bash");
   });
 
+  test("startup inspect hints include handoff and chat tools when continuity signals exist", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 2,
+      available: 10,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 200,
+      context: makeContext({
+        recentHandoffs: [
+          {
+            id: 99,
+            session_id: "sess-handoff",
+            project_id: 1,
+            type: "message",
+            title: "Handoff: Finish wiring event feed into chat actions · 2026-03-21 21:30Z",
+            narrative: "Current thread: Finish wiring event feed into chat actions",
+            facts: null,
+            concepts: JSON.stringify(["handoff"]),
+            files_read: null,
+            files_modified: null,
+            quality: 0.8,
+            lifecycle: "active",
+            sensitivity: "shared",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "engrm-handoff",
+            created_at: "2026-03-21T21:30:00Z",
+            created_at_epoch: 1711056600,
+            archived_at_epoch: null,
+            compacted_into: null,
+            superseded_by: null,
+            remote_source_id: "other-user-other-device-obs-99",
+            source_tool: "create_handoff",
+            source_prompt_number: 3,
+            project_name: "huginn",
+          },
+        ],
+        recentChatMessages: [
+          {
+            id: 8,
+            session_id: "sess-chat",
+            project_id: 1,
+            role: "assistant",
+            content: "I have the feed plumbing in place; next I need to expose it to chat actions.",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            created_at_epoch: 1711056605,
+            remote_source_id: null,
+          },
+        ],
+      }),
+    });
+
+    expect(splash).toContain("Next look:");
+    expect(splash).toContain("load_handoff");
+    expect(splash).toContain("recent_chat");
+  });
+
   test("filters generic summary wrapper lines from recent work", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({
