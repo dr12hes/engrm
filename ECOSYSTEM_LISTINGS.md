@@ -90,11 +90,13 @@ Best fit for Engrm:
 
 Lead with:
 - shared memory across devices, sessions, and agents
+- thin tools, thick memory
 - continuity across OpenClaw, Claude Code, and Codex
 
 Then add:
-- startup briefs
+- startup handoff
 - saved session memory
+- MCP tools that create reusable memory
 - Delivery Review
 - Sentinel
 
@@ -102,3 +104,52 @@ Avoid leading with:
 - generic "AI memory"
 - raw observation counts
 - dashboard/admin terminology
+
+## Current Public MCP Starter Set
+
+This is the MCP surface we should be comfortable pointing people at first:
+
+- `capture_git_worktree`
+  - save a meaningful local diff before it disappears into commit history
+- `capture_repo_scan`
+  - capture a lightweight architecture / implementation / risk scan as reusable memory
+- `capture_openclaw_content`
+  - save posted work, research, outcomes, and next actions from OpenClaw workflows
+- `tool_memory_index`
+  - show which tools are actually producing durable memory and which plugins they exercise
+- `capture_quality`
+  - check whether raw chronology is healthy enough to trust memory quality on this machine
+
+Why this set:
+
+- thin schemas
+- local-first execution
+- durable memory output
+- easy to validate after capture
+
+## Example MCP Prompts
+
+Use prompts like these in listings, screenshots, and demos:
+
+- "Capture this current git worktree as memory before I switch tasks."
+- "Run a lightweight repo scan focused on auth and validation."
+- "Show which tools are creating durable memory in this repo."
+- "Tell me whether raw capture is healthy on this machine."
+- "Save this OpenClaw research and posting run as reusable memory."
+
+## Validation Flow To Demo Publicly
+
+Use this sequence when recording or testing Engrm for MCP directories:
+
+1. `capture_quality`
+2. `tool_memory_index`
+3. `capture_git_worktree` or `capture_repo_scan`
+4. `session_tool_memory`
+5. `session_story`
+
+That proves the full loop:
+
+- capture something meaningful
+- reduce it into durable memory
+- inspect which tool/plugin produced it
+- inspect the resulting session story
