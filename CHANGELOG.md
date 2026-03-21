@@ -4,23 +4,31 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.24
+
 ### Added
 
 - `activity_feed` now includes the separate chat lane as first-class `chat` events in both project-scoped and session-scoped chronology views
 - `refresh_handoff` MCP tool now refreshes a rolling live handoff draft for the current session without creating a new saved handoff
+- rolling cross-device handoff drafts now update throughout the session and sync as a distinct continuity layer
+- the MCP workbench now exposes saved-vs-draft handoff split in:
+  - `memory_console`
+  - `project_memory_index`
+  - `session_context`
+- `session_story` and `activity_feed` now distinguish saved handoffs from rolling draft handoffs
 
 ### Changed
 
 - MCP docs and examples now describe `activity_feed` as the merged continuity surface across prompts, tools, chat, handoffs, observations, and summaries
 - injected session context can now carry a compact `Recent Chat` section for the current project, so cross-device resume has conversational continuity as well as reduced memory
+- injected context now surfaces `Recent Handoffs`, giving the model an explicit cross-device resume lane before raw chronology
 - startup handoff can now fall back to a compact `Chat trail` when recent prompt lines are absent, so thin in-flight sessions still read like a live coworker update
 - `create_handoff` now auto-includes a few chat snippets for thin sessions, while keeping already-rich sessions terse unless chat is explicitly requested
 - startup `Next look` hints now point at `load_handoff` and `recent_chat` when Engrm already knows those continuity lanes are available
 - handoff views now show source device and freshness, so resume cues read like real cross-device handoffs instead of anonymous saved notes
 - when Engrm knows the current device, `recent_handoffs` and `load_handoff` now prefer another machine's resume point over the newest local handoff
 - prompt-time, tool-time, and stop-time updates now refresh one rolling syncable handoff draft per session so live work can move across devices before an explicit handoff is saved
-- `memory_console`, `project_memory_index`, and `session_context` now expose saved-vs-draft handoff split so rolling continuity is inspectable from the MCP workbench
-- `activity_feed` and `session_story` now label rolling handoff drafts separately from saved handoffs, so live continuity and explicit checkpoints are not conflated
+- rolling handoff drafts now stay visible across startup, injected context, workbench tools, session views, and feed views as a consistent continuity model
 
 ## 0.4.23
 
