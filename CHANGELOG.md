@@ -4,6 +4,20 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.14
+
+### Added
+
+- startup splash now behaves more like a real memory index:
+  - type legend
+  - compact context index with IDs and file hints
+  - explicit fetch-by-ID hint for deeper inspection
+
+### Changed
+
+- startup context economics now includes loaded observation count as well as estimated read cost
+- startup presentation is now better aligned with the thin-tool memory workbench and local inspection flow
+
 ## 0.4.13
 
 ### Added
