@@ -73,6 +73,27 @@ describe("getMemoryConsole", () => {
       device_id: "laptop",
       source_tool: "assistant-stop",
     });
+    db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume auth cleanup from home machine · 2026-03-21 22:25Z",
+      narrative: "Current thread: Resume auth cleanup from home machine",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.7,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "create_handoff",
+    });
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "user",
+      content: "Please leave me a clean resume point for this auth cleanup.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+    });
 
     const result = getMemoryConsole(db, {
       cwd: "/tmp/repo",
@@ -84,11 +105,17 @@ describe("getMemoryConsole", () => {
     expect(result.sessions).toHaveLength(1);
     expect(result.requests).toHaveLength(1);
     expect(result.tools).toHaveLength(1);
-    expect(result.observations).toHaveLength(2);
+    expect(result.recent_handoffs).toHaveLength(1);
+    expect(result.recent_chat).toHaveLength(1);
+    expect(result.observations).toHaveLength(3);
     expect(result.capture_summary?.rich_sessions).toBe(1);
     expect(result.recent_outcomes).toContain("Fixed auth redirect");
     expect(result.hot_files[0]?.path).toBe("src/auth.ts");
-    expect(result.provenance_summary).toEqual([{ tool: "assistant-stop", count: 1 }, { tool: "Edit", count: 1 }]);
+    expect(result.provenance_summary).toEqual([
+      { tool: "assistant-stop", count: 1 },
+      { tool: "create_handoff", count: 1 },
+      { tool: "Edit", count: 1 },
+    ]);
     expect(result.assistant_checkpoint_count).toBe(1);
     expect(result.top_types[0]).toEqual({ type: "bugfix", count: 1 });
     expect(result.estimated_read_tokens).toBeGreaterThan(0);

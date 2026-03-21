@@ -10,6 +10,8 @@ import type { MemDatabase, ObservationRow, RecentSessionRow } from "../storage/s
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
+import { getRecentChat } from "./recent-chat.js";
+import { getRecentHandoffs } from "./handoffs.js";
 import { estimateTokens } from "../context/inject.js";
 
 export interface CaptureSummary {
@@ -32,6 +34,8 @@ export interface ProjectMemoryIndexResult {
   recent_outcomes: string[];
   recent_requests_count: number;
   recent_tools_count: number;
+  recent_handoffs_count: number;
+  recent_chat_count: number;
   raw_capture_active: boolean;
   capture_summary: CaptureSummary;
   hot_files: Array<{ path: string; count: number }>;
@@ -135,6 +139,18 @@ export function getProjectMemoryIndex(
     user_id: input.user_id,
     limit: 20,
   }).tool_events.length;
+  const recentHandoffsCount = getRecentHandoffs(db, {
+    cwd,
+    project_scoped: true,
+    user_id: input.user_id,
+    limit: 10,
+  }).handoffs.length;
+  const recentChatCount = getRecentChat(db, {
+    cwd,
+    project_scoped: true,
+    user_id: input.user_id,
+    limit: 20,
+  }).messages.length;
   const recentOutcomes = observations
     .filter((obs) => ["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type))
     .map((obs) => obs.title.trim())
@@ -162,6 +178,8 @@ export function getProjectMemoryIndex(
     recent_outcomes: recentOutcomes,
     recent_requests_count: recentRequestsCount,
     recent_tools_count: recentToolsCount,
+    recent_handoffs_count: recentHandoffsCount,
+    recent_chat_count: recentChatCount,
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
     capture_summary: captureSummary,
     hot_files: hotFiles,
@@ -237,5 +255,6 @@ function buildSuggestedTools(
   if (sessions.length > 0) {
     suggested.push("create_handoff", "recent_handoffs");
   }
+  suggested.push("recent_chat");
   return Array.from(new Set(suggested)).slice(0, 4);
 }

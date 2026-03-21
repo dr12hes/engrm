@@ -1036,6 +1036,12 @@ server.tool(
           return `- ${tool.tool_name}${detail ? ` — ${detail}` : ""}`;
         }).join("\n")
       : "- (none)";
+    const handoffLines = result.recent_handoffs.length > 0
+      ? result.recent_handoffs.map((obs) => `- #${obs.id} ${obs.title}`).join("\n")
+      : "- (none)";
+    const recentChatLines = result.recent_chat.length > 0
+      ? result.recent_chat.map((msg) => `- [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 180)}`).join("\n")
+      : "- (none)";
 
     const observationLines = result.observations.length > 0
       ? result.observations.map((obs) => {
@@ -1079,8 +1085,10 @@ server.tool(
             `Assistant checkpoint types:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
             `Recent sessions:\n${sessionLines}\n\n` +
+            `Recent handoffs:\n${handoffLines}\n\n` +
             `Recent requests:\n${requestLines}\n\n` +
             `Recent tools:\n${toolLines}\n\n` +
+            `Recent chat:\n${recentChatLines}\n\n` +
             `Recent observations:\n${observationLines}`,
         },
       ],
@@ -1300,6 +1308,9 @@ server.tool(
             `Recent requests: ${result.recent_requests}\n` +
             `Recent tools: ${result.recent_tools}\n` +
             `Recent sessions: ${result.recent_sessions}\n` +
+            `Recent handoffs: ${result.recent_handoffs}\n` +
+            `Recent chat messages: ${result.recent_chat_messages}\n` +
+            `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
             result.preview,
         },
@@ -1403,6 +1414,8 @@ server.tool(
             `Canonical ID: ${result.canonical_id}\n` +
             `Recent requests captured: ${result.recent_requests_count}\n` +
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
+            `Recent handoffs captured: ${result.recent_handoffs_count}\n` +
+            `Recent chat messages captured: ${result.recent_chat_count}\n\n` +
             `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +

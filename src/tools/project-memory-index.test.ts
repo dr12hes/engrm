@@ -81,6 +81,27 @@ describe("getProjectMemoryIndex", () => {
       device_id: "laptop",
       source_tool: "assistant-stop",
     });
+    db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume auth cleanup from home machine · 2026-03-21 22:25Z",
+      narrative: "Current thread: Resume auth cleanup from home machine",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.7,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "create_handoff",
+    });
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "assistant",
+      content: "The auth cleanup is ready to resume from the latest retry work.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+    });
     db.insertSessionSummary({
       session_id: "sess-1",
       project_id: project.id,
@@ -102,12 +123,18 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.observation_counts.decision).toBe(1);
     expect(result?.recent_requests_count).toBe(1);
     expect(result?.recent_tools_count).toBe(1);
+    expect(result?.recent_handoffs_count).toBe(1);
+    expect(result?.recent_chat_count).toBe(1);
     expect(result?.raw_capture_active).toBe(true);
     expect(result?.capture_summary.rich_sessions).toBe(1);
     expect(result?.hot_files[0]?.path).toBe("src/auth.ts");
     expect(result?.recent_outcomes).toContain("Fixed auth redirect");
     expect(result?.recent_outcomes).not.toContain("Modified auth.ts");
-    expect(result?.provenance_summary).toEqual([{ tool: "assistant-stop", count: 1 }, { tool: "Edit", count: 1 }]);
+    expect(result?.provenance_summary).toEqual([
+      { tool: "assistant-stop", count: 1 },
+      { tool: "create_handoff", count: 1 },
+      { tool: "Edit", count: 1 },
+    ]);
     expect(result?.assistant_checkpoint_count).toBe(1);
     expect(result?.assistant_checkpoint_types).toEqual([{ type: "change", count: 1 }]);
     expect(result?.top_types[0]).toEqual({ type: "change", count: 2 });

@@ -12,6 +12,8 @@ import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getProjectMemoryIndex } from "./project-memory-index.js";
+import { getRecentChat } from "./recent-chat.js";
+import { getRecentHandoffs } from "./handoffs.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -26,6 +28,8 @@ export interface MemoryConsoleResult {
   sessions: ReturnType<typeof getRecentSessions>["sessions"];
   requests: ReturnType<typeof getRecentRequests>["prompts"];
   tools: ReturnType<typeof getRecentTools>["tool_events"];
+  recent_handoffs: ReturnType<typeof getRecentHandoffs>["handoffs"];
+  recent_chat: ReturnType<typeof getRecentChat>["messages"];
   observations: ReturnType<typeof getRecentActivity>["observations"];
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
@@ -70,6 +74,18 @@ export function getMemoryConsole(
       user_id: input.user_id,
       limit: 8,
     }).observations;
+  const recentHandoffs = getRecentHandoffs(db, {
+      cwd,
+      project_scoped: projectScoped,
+      user_id: input.user_id,
+      limit: 4,
+    }).handoffs;
+  const recentChat = getRecentChat(db, {
+      cwd,
+      project_scoped: projectScoped,
+      user_id: input.user_id,
+      limit: 6,
+    }).messages;
   const projectIndex = projectScoped
     ? getProjectMemoryIndex(db, {
         cwd,
@@ -83,6 +99,8 @@ export function getMemoryConsole(
     sessions,
     requests,
     tools,
+    recent_handoffs: recentHandoffs,
+    recent_chat: recentChat,
     observations,
     capture_summary: projectIndex?.capture_summary,
     recent_outcomes: projectIndex?.recent_outcomes ?? [],
@@ -92,7 +110,14 @@ export function getMemoryConsole(
     assistant_checkpoint_types: projectIndex?.assistant_checkpoint_types ?? [],
     top_types: projectIndex?.top_types ?? [],
     estimated_read_tokens: projectIndex?.estimated_read_tokens,
-    suggested_tools: projectIndex?.suggested_tools ?? buildFallbackSuggestedTools(sessions.length, requests.length, tools.length, observations.length),
+    suggested_tools: projectIndex?.suggested_tools ?? buildFallbackSuggestedTools(
+      sessions.length,
+      requests.length,
+      tools.length,
+      observations.length,
+      recentHandoffs.length,
+      recentChat.length
+    ),
   };
 }
 
@@ -100,12 +125,16 @@ function buildFallbackSuggestedTools(
   sessionCount: number,
   requestCount: number,
   toolCount: number,
-  observationCount: number
+  observationCount: number,
+  handoffCount: number,
+  chatCount: number
 ): string[] {
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");
   if (sessionCount > 0) suggested.push("create_handoff", "recent_handoffs");
+  if (handoffCount > 0) suggested.push("load_handoff");
+  if (chatCount > 0) suggested.push("recent_chat");
   return Array.from(new Set(suggested)).slice(0, 4);
 }

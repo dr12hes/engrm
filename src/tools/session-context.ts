@@ -13,6 +13,7 @@ import {
   formatContextForInjection,
   type ContextOptions,
 } from "../context/inject.js";
+import { getRecentChat } from "./recent-chat.js";
 
 export interface SessionContextInput {
   cwd?: string;
@@ -29,6 +30,9 @@ export interface SessionContextResult {
   recent_requests: number;
   recent_tools: number;
   recent_sessions: number;
+  recent_handoffs: number;
+  latest_handoff_title: string | null;
+  recent_chat_messages: number;
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
   capture_state: "rich" | "partial" | "summary-only";
@@ -55,6 +59,14 @@ export function getSessionContext(
 
   const recentRequests = context.recentPrompts?.length ?? 0;
   const recentTools = context.recentToolEvents?.length ?? 0;
+  const recentHandoffs = context.recentHandoffs?.length ?? 0;
+  const latestHandoffTitle = context.recentHandoffs?.[0]?.title ?? null;
+  const recentChatMessages = getRecentChat(db, {
+    cwd,
+    project_scoped: true,
+    user_id: input.user_id,
+    limit: 8,
+  }).messages.length;
   const captureState: SessionContextResult["capture_state"] =
     recentRequests > 0 && recentTools > 0
       ? "rich"
@@ -71,6 +83,9 @@ export function getSessionContext(
     recent_requests: recentRequests,
     recent_tools: recentTools,
     recent_sessions: context.recentSessions?.length ?? 0,
+    recent_handoffs: recentHandoffs,
+    latest_handoff_title: latestHandoffTitle,
+    recent_chat_messages: recentChatMessages,
     recent_outcomes: context.recentOutcomes ?? [],
     hot_files: hotFiles,
     capture_state: captureState,
@@ -122,5 +137,9 @@ function buildSuggestedTools(
   if ((context.recentSessions?.length ?? 0) > 0) {
     tools.push("create_handoff", "recent_handoffs");
   }
+  if ((context.recentHandoffs?.length ?? 0) > 0) {
+    tools.push("load_handoff");
+  }
+  tools.push("recent_chat", "search_chat");
   return Array.from(new Set(tools)).slice(0, 4);
 }

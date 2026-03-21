@@ -61,6 +61,27 @@ describe("getSessionContext", () => {
       user_id: "david",
       device_id: "laptop",
     });
+    db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Finish improving startup handoff quality · 2026-03-21 22:20Z",
+      narrative: "Current thread: Finish improving startup handoff quality",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.7,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "create_handoff",
+    });
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "assistant",
+      content: "We should make the explicit handoff show up ahead of raw prompt chronology.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+    });
 
     const result = getSessionContext(db, {
       cwd: "/tmp/repo",
@@ -73,14 +94,18 @@ describe("getSessionContext", () => {
     expect(result?.recent_tools).toBe(1);
     expect(result?.capture_state).toBe("rich");
     expect(result?.raw_capture_active).toBe(true);
+    expect(result?.recent_handoffs).toBe(1);
+    expect(result?.latest_handoff_title).toContain("Handoff:");
+    expect(result?.recent_chat_messages).toBe(1);
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");
-    expect(result?.suggested_tools).toContain("capture_git_worktree");
+    expect(result?.suggested_tools).toContain("tool_memory_index");
     expect(result?.recent_outcomes).toContain("Exposed project memory index in MCP");
     expect(result?.hot_files).toEqual([
       { path: "src/tools/project-memory-index.ts", count: 1 },
     ]);
+    expect(result?.preview).toContain("## Recent Handoffs");
     expect(result?.preview).toContain("## Recent Requests");
     expect(result?.preview).toContain("## Recent Tools");
   });
