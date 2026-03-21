@@ -106,6 +106,8 @@ describe("getMemoryConsole", () => {
     expect(result.requests).toHaveLength(1);
     expect(result.tools).toHaveLength(1);
     expect(result.recent_handoffs).toHaveLength(1);
+    expect(result.saved_handoffs).toBe(1);
+    expect(result.rolling_handoff_drafts).toBe(0);
     expect(result.recent_chat).toHaveLength(1);
     expect(result.observations).toHaveLength(3);
     expect(result.capture_summary?.rich_sessions).toBe(1);

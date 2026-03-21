@@ -95,6 +95,8 @@ describe("getSessionContext", () => {
     expect(result?.capture_state).toBe("rich");
     expect(result?.raw_capture_active).toBe(true);
     expect(result?.recent_handoffs).toBe(1);
+    expect(result?.saved_handoffs).toBe(1);
+    expect(result?.rolling_handoff_drafts).toBe(0);
     expect(result?.latest_handoff_title).toContain("Handoff:");
     expect(result?.recent_chat_messages).toBe(1);
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);

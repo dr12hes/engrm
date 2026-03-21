@@ -380,6 +380,7 @@ describe("handoff tools", () => {
 
     const messages = db.getObservationsBySession("sess-draft").filter((obs) => obs.type === "message");
     expect(messages).toHaveLength(1);
-    expect(messages[0]?.title).toContain("Wired the events feed into the chat action path");
+    expect(messages[0]?.title).toContain("Handoff Draft:");
+    expect(messages[0]?.narrative).toContain("Wired the events feed into the chat action path");
   });
 });

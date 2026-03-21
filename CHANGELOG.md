@@ -19,6 +19,7 @@ All notable changes to this repository should be documented here.
 - handoff views now show source device and freshness, so resume cues read like real cross-device handoffs instead of anonymous saved notes
 - when Engrm knows the current device, `recent_handoffs` and `load_handoff` now prefer another machine's resume point over the newest local handoff
 - prompt-time, tool-time, and stop-time updates now refresh one rolling syncable handoff draft per session so live work can move across devices before an explicit handoff is saved
+- `memory_console`, `project_memory_index`, and `session_context` now expose saved-vs-draft handoff split so rolling continuity is inspectable from the MCP workbench
 
 ## 0.4.23
 

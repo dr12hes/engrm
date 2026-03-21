@@ -124,6 +124,8 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.recent_requests_count).toBe(1);
     expect(result?.recent_tools_count).toBe(1);
     expect(result?.recent_handoffs_count).toBe(1);
+    expect(result?.saved_handoffs_count).toBe(1);
+    expect(result?.rolling_handoff_drafts_count).toBe(0);
     expect(result?.recent_chat_count).toBe(1);
     expect(result?.raw_capture_active).toBe(true);
     expect(result?.capture_summary.rich_sessions).toBe(1);

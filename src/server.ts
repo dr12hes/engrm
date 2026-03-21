@@ -1079,6 +1079,7 @@ server.tool(
             `${projectLine}` +
             `${captureLine}` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
+            `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             `Top types:\n${topTypes}\n\n` +
@@ -1310,6 +1311,7 @@ server.tool(
             `Recent tools: ${result.recent_tools}\n` +
             `Recent sessions: ${result.recent_sessions}\n` +
             `Recent handoffs: ${result.recent_handoffs}\n` +
+            `Handoff split: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `Recent chat messages: ${result.recent_chat_messages}\n` +
             `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
@@ -1416,6 +1418,7 @@ server.tool(
             `Recent requests captured: ${result.recent_requests_count}\n` +
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
             `Recent handoffs captured: ${result.recent_handoffs_count}\n` +
+            `Handoff split: ${result.saved_handoffs_count} saved, ${result.rolling_handoff_drafts_count} rolling drafts\n` +
             `Recent chat messages captured: ${result.recent_chat_count}\n\n` +
             `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +

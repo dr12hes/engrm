@@ -11,7 +11,7 @@ import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getRecentChat } from "./recent-chat.js";
-import { getRecentHandoffs } from "./handoffs.js";
+import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { estimateTokens } from "../context/inject.js";
 
 export interface CaptureSummary {
@@ -35,6 +35,8 @@ export interface ProjectMemoryIndexResult {
   recent_requests_count: number;
   recent_tools_count: number;
   recent_handoffs_count: number;
+  rolling_handoff_drafts_count: number;
+  saved_handoffs_count: number;
   recent_chat_count: number;
   raw_capture_active: boolean;
   capture_summary: CaptureSummary;
@@ -144,7 +146,9 @@ export function getProjectMemoryIndex(
     project_scoped: true,
     user_id: input.user_id,
     limit: 10,
-  }).handoffs.length;
+  }).handoffs;
+  const rollingHandoffDraftsCount = recentHandoffsCount.filter((handoff) => isDraftHandoff(handoff)).length;
+  const savedHandoffsCount = recentHandoffsCount.length - rollingHandoffDraftsCount;
   const recentChatCount = getRecentChat(db, {
     cwd,
     project_scoped: true,
@@ -178,7 +182,9 @@ export function getProjectMemoryIndex(
     recent_outcomes: recentOutcomes,
     recent_requests_count: recentRequestsCount,
     recent_tools_count: recentToolsCount,
-    recent_handoffs_count: recentHandoffsCount,
+    recent_handoffs_count: recentHandoffsCount.length,
+    rolling_handoff_drafts_count: rollingHandoffDraftsCount,
+    saved_handoffs_count: savedHandoffsCount,
     recent_chat_count: recentChatCount,
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
     capture_summary: captureSummary,

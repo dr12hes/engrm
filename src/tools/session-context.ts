@@ -32,6 +32,8 @@ export interface SessionContextResult {
   recent_tools: number;
   recent_sessions: number;
   recent_handoffs: number;
+  rolling_handoff_drafts: number;
+  saved_handoffs: number;
   latest_handoff_title: string | null;
   recent_chat_messages: number;
   recent_outcomes: string[];
@@ -62,6 +64,8 @@ export function getSessionContext(
   const recentRequests = context.recentPrompts?.length ?? 0;
   const recentTools = context.recentToolEvents?.length ?? 0;
   const recentHandoffs = context.recentHandoffs?.length ?? 0;
+  const rollingHandoffDrafts = (context.recentHandoffs ?? []).filter((handoff) => handoff.title.startsWith("Handoff Draft:")).length;
+  const savedHandoffs = recentHandoffs - rollingHandoffDrafts;
   const latestHandoffTitle = context.recentHandoffs?.[0]?.title ?? null;
   const recentChatMessages = getRecentChat(db, {
     cwd,
@@ -86,6 +90,8 @@ export function getSessionContext(
     recent_tools: recentTools,
     recent_sessions: context.recentSessions?.length ?? 0,
     recent_handoffs: recentHandoffs,
+    rolling_handoff_drafts: rollingHandoffDrafts,
+    saved_handoffs: savedHandoffs,
     latest_handoff_title: latestHandoffTitle,
     recent_chat_messages: recentChatMessages,
     recent_outcomes: context.recentOutcomes ?? [],

@@ -305,6 +305,11 @@ Rolling handoff drafts:
 - refresh during prompt-time and tool-time summary updates
 - let another machine resume live work even before you save a deliberate handoff
 
+The local workbench now shows handoff split too:
+
+- saved handoffs
+- rolling drafts
+
 When Engrm knows your current device, handoff tools also prefer resume points from another machine before showing the newest local handoff again.
 
 This is the deliberate version of multi-device continuity: useful when you want to move from laptop to home machine without waiting for an end-of-session summary.

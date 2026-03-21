@@ -13,7 +13,7 @@ import { getRecentTools } from "./recent-tools.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getProjectMemoryIndex } from "./project-memory-index.js";
 import { getRecentChat } from "./recent-chat.js";
-import { getRecentHandoffs } from "./handoffs.js";
+import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -29,6 +29,8 @@ export interface MemoryConsoleResult {
   requests: ReturnType<typeof getRecentRequests>["prompts"];
   tools: ReturnType<typeof getRecentTools>["tool_events"];
   recent_handoffs: ReturnType<typeof getRecentHandoffs>["handoffs"];
+  rolling_handoff_drafts: number;
+  saved_handoffs: number;
   recent_chat: ReturnType<typeof getRecentChat>["messages"];
   observations: ReturnType<typeof getRecentActivity>["observations"];
   recent_outcomes: string[];
@@ -80,6 +82,8 @@ export function getMemoryConsole(
       user_id: input.user_id,
       limit: 4,
     }).handoffs;
+  const rollingHandoffDrafts = recentHandoffs.filter((handoff) => isDraftHandoff(handoff)).length;
+  const savedHandoffs = recentHandoffs.length - rollingHandoffDrafts;
   const recentChat = getRecentChat(db, {
       cwd,
       project_scoped: projectScoped,
@@ -100,6 +104,8 @@ export function getMemoryConsole(
     requests,
     tools,
     recent_handoffs: recentHandoffs,
+    rolling_handoff_drafts: rollingHandoffDrafts,
+    saved_handoffs: savedHandoffs,
     recent_chat: recentChat,
     observations,
     capture_summary: projectIndex?.capture_summary,
