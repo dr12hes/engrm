@@ -78,6 +78,30 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("Finish wiring event feed into chat actions");
   });
 
+  test("shows chat trail when recent prompts are absent", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        recentChatMessages: [
+          {
+            id: 8,
+            session_id: "sess-chat",
+            project_id: 1,
+            role: "assistant",
+            content: "I have the event feed plumbed in; next I need to expose it to chat actions.",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            created_at_epoch: 1711056605,
+            remote_source_id: null,
+          },
+        ],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Chat trail:"))).toBe(true);
+    expect(lines.join("\n")).toContain("event feed plumbed in");
+  });
+
   test("shows recent work from summary outcomes before generic session rollups", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({

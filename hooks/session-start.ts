@@ -280,6 +280,7 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const observationFallbacks = buildObservationFallbacks(context);
   const promptFallback = buildPromptFallback(context);
   const promptLines = buildPromptLines(context);
+  const recentChatLines = buildRecentChatLines(context);
   const latestPromptLine = promptLines[0] ?? null;
   const currentRequest = latest
     ? chooseRequest(
@@ -306,6 +307,14 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   if (promptLines.length > 0) {
     lines.push(`${c.cyan}Asked recently:${c.reset}`);
     for (const item of promptLines) {
+      lines.push(`  - ${truncateInline(item, 160)}`);
+      rememberShownItem(shownItems, item);
+    }
+  }
+
+  if (promptLines.length === 0 && recentChatLines.length > 0) {
+    lines.push(`${c.cyan}Chat trail:${c.reset}`);
+    for (const item of recentChatLines) {
       lines.push(`  - ${truncateInline(item, 160)}`);
       rememberShownItem(shownItems, item);
     }
@@ -591,6 +600,17 @@ function buildPromptLines(context: InjectedContext): string[] {
       return `${prefix}: ${prompt.prompt.replace(/\s+/g, " ").trim()}`;
     })
     .filter((item) => item.length > 0);
+}
+
+function buildRecentChatLines(context: InjectedContext): string[] {
+  return (context.recentChatMessages ?? [])
+    .slice(0, 2)
+    .map((message) => {
+      const content = message.content.replace(/\s+/g, " ").trim();
+      if (!content) return null;
+      return `[${message.role}] ${content}`;
+    })
+    .filter((item): item is string => Boolean(item));
 }
 
 function duplicatesPromptLine(request: string, promptLine: string | null): boolean {
