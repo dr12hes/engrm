@@ -105,6 +105,35 @@ Avoid leading with:
 - raw observation counts
 - dashboard/admin terminology
 
+## Ready-To-Paste Listing Copy
+
+### Short Description
+
+Shared memory across devices, sessions, and agents, with thin MCP tools that turn local work into reusable memory.
+
+### Medium Description
+
+Engrm is a memory layer for coding agents and operator workflows. It captures useful work locally, reduces it into durable memory, and makes that memory reusable across Claude Code, Codex, OpenClaw, and related systems. Instead of exposing a huge MCP surface, Engrm focuses on thin tools and thick memory: small local tools like `capture_git_worktree` and `capture_repo_scan` that create reusable memory objects rather than raw transcript noise.
+
+### Long Description
+
+Engrm helps agents keep continuity across devices, sessions, and tools. It captures prompts, tool use, observations, assistant checkpoints, and reduced plugin outputs in a local memory store, then exposes that memory through startup handoff, session inspection, and MCP tools. The current public MCP surface is intentionally small: thin local tools capture meaningful git diffs, repo scans, and OpenClaw content work, while inspection tools like `tool_memory_index` and `capture_quality` show whether those tools are actually producing durable memory. The goal is not more schema in context. The goal is to preserve useful work so the next agent or session can pick up faster.
+
+### Feature Bullets
+
+- Thin MCP tools that create reusable memory instead of dumping raw output
+- Cross-device and cross-agent continuity for Claude Code, Codex, and OpenClaw
+- Local-first capture with prompt, tool, and session chronology
+- Startup handoff that tells the next agent what has been going on
+- Inspection tools that show which tools and plugins are actually producing durable memory
+
+### One-Line Positioning Variants
+
+- Thin tools, thick memory for coding agents
+- Shared memory for Claude Code, Codex, and OpenClaw
+- Durable memory from local work, not transcript spam
+- Cross-device, cross-agent memory with a small MCP surface
+
 ## Current Public MCP Starter Set
 
 This is the MCP surface we should be comfortable pointing people at first:
@@ -159,3 +188,24 @@ Reference material:
 - `README.md`
 - `MCP_EXAMPLES.md`
 - `server.json`
+
+## Demo Checklist
+
+Before recording or submitting a listing demo:
+
+- confirm `capture_quality` shows healthy raw chronology
+- use a real repo with a meaningful diff or scan target
+- capture one thin-tool example
+- show `tool_memory_index`
+- show `session_tool_memory` or `session_story`
+- keep the demo focused on memory created, not dashboard polish
+
+## Submission Checklist
+
+Before submitting to another MCP directory:
+
+- check `server.json` version matches `package.json`
+- ensure README starter-set section is current
+- ensure `MCP_EXAMPLES.md` still reflects the current tool surface
+- confirm `npm pack --dry-run` passes
+- prefer the short or medium description unless the registry has lots of room
