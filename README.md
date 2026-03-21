@@ -296,6 +296,8 @@ Recent handoffs now carry:
 - current thread / recent outcomes
 - optional chat snippets when the session is still thin
 
+When Engrm knows your current device, handoff tools also prefer resume points from another machine before showing the newest local handoff again.
+
 This is the deliberate version of multi-device continuity: useful when you want to move from laptop to home machine without waiting for an end-of-session summary.
 
 The separate chat lane is still kept distinct from durable observations, but it can now sync too, so recent user/assistant conversation is recoverable on another machine without polluting the main memory feed.

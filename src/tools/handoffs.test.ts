@@ -271,4 +271,52 @@ describe("handoff tools", () => {
     expect(label).toContain("from laptop-abc");
     expect(label).toContain("ago");
   });
+
+  test("recent and loaded handoffs prefer another device when available", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+      local_path: tmpDir,
+    });
+
+    const local = db.insertObservation({
+      session_id: "sess-local",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: local follow-up",
+      quality: 0.8,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "engrm-handoff",
+      created_at_epoch: Math.floor(Date.now() / 1000),
+      concepts: JSON.stringify(["handoff"]),
+    });
+    const remote = db.insertObservation({
+      session_id: "sess-remote",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: resume from laptop",
+      quality: 0.8,
+      user_id: config.user_id,
+      device_id: "home-laptop",
+      agent: "engrm-handoff",
+      created_at_epoch: Math.floor(Date.now() / 1000) - 60,
+      concepts: JSON.stringify(["handoff"]),
+    });
+
+    const recent = getRecentHandoffs(db, {
+      cwd: tmpDir,
+      user_id: config.user_id,
+      current_device_id: config.device_id,
+    });
+    expect(recent.handoffs[0]?.id).toBe(remote.id);
+    expect(recent.handoffs[1]?.id).toBe(local.id);
+
+    const loaded = loadHandoff(db, {
+      cwd: tmpDir,
+      user_id: config.user_id,
+      current_device_id: config.device_id,
+    });
+    expect(loaded.handoff?.id).toBe(remote.id);
+  });
 });

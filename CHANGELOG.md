@@ -16,6 +16,7 @@ All notable changes to this repository should be documented here.
 - `create_handoff` now auto-includes a few chat snippets for thin sessions, while keeping already-rich sessions terse unless chat is explicitly requested
 - startup `Next look` hints now point at `load_handoff` and `recent_chat` when Engrm already knows those continuity lanes are available
 - handoff views now show source device and freshness, so resume cues read like real cross-device handoffs instead of anonymous saved notes
+- when Engrm knows the current device, `recent_handoffs` and `load_handoff` now prefer another machine's resume point over the newest local handoff
 
 ## 0.4.23
 

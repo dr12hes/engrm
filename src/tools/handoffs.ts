@@ -30,6 +30,7 @@ export interface RecentHandoffsInput {
   project_scoped?: boolean;
   cwd?: string;
   user_id?: string;
+  current_device_id?: string;
 }
 
 export interface HandoffRow extends ObservationRow {
@@ -46,6 +47,7 @@ export interface LoadHandoffInput {
   cwd?: string;
   project_scoped?: boolean;
   user_id?: string;
+  current_device_id?: string;
 }
 
 export interface LoadHandoffResult {
@@ -112,6 +114,9 @@ export function getRecentHandoffs(
   input: RecentHandoffsInput
 ): RecentHandoffsResult {
   const limit = Math.max(1, Math.min(input.limit ?? 10, 25));
+  const queryLimit = input.current_device_id
+    ? Math.max(limit, Math.min(limit * 5, 50))
+    : limit;
   const projectScoped = input.project_scoped !== false;
 
   let projectId: number | null = null;
@@ -145,7 +150,7 @@ export function getRecentHandoffs(
     params.push(projectId);
   }
 
-  params.push(limit);
+  params.push(queryLimit);
 
   const handoffs = db.db
     .query<HandoffRow, Array<number | string>>(
@@ -153,13 +158,15 @@ export function getRecentHandoffs(
        FROM observations o
        LEFT JOIN projects p ON p.id = o.project_id
        WHERE ${conditions.join(" AND ")}
-       ORDER BY o.created_at_epoch DESC, o.id DESC
-       LIMIT ?`
+      ORDER BY o.created_at_epoch DESC, o.id DESC
+      LIMIT ?`
     )
     .all(...params);
 
+  handoffs.sort((a, b) => compareHandoffs(a, b, input.current_device_id));
+
   return {
-    handoffs,
+    handoffs: handoffs.slice(0, limit),
     project: projectName,
   };
 }
@@ -182,6 +189,7 @@ export function loadHandoff(
     project_scoped: input.project_scoped,
     cwd: input.cwd,
     user_id: input.user_id,
+    current_device_id: input.current_device_id,
   });
 
   return {
@@ -199,6 +207,24 @@ export function formatHandoffSource(handoff: Pick<HandoffRow, "device_id" | "cre
         ? `${Math.floor(ageSeconds / 3600)}h ago`
         : `${Math.floor(ageSeconds / 86400)}d ago`;
   return `from ${handoff.device_id} · ${ageLabel}`;
+}
+
+function compareHandoffs(
+  a: HandoffRow,
+  b: HandoffRow,
+  currentDeviceId?: string
+): number {
+  if (currentDeviceId) {
+    const aOther = a.device_id !== currentDeviceId ? 1 : 0;
+    const bOther = b.device_id !== currentDeviceId ? 1 : 0;
+    if (aOther !== bOther) return bOther - aOther;
+  }
+
+  if (b.created_at_epoch !== a.created_at_epoch) {
+    return b.created_at_epoch - a.created_at_epoch;
+  }
+
+  return b.id - a.id;
 }
 
 function resolveTargetSession(

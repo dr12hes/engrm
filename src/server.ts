@@ -1590,6 +1590,7 @@ server.tool(
     const result = getRecentHandoffs(db, {
       ...params,
       user_id: params.user_id ?? config.user_id,
+      current_device_id: config.device_id,
     });
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
     const rows = result.handoffs.length > 0
@@ -1618,6 +1619,7 @@ server.tool(
     const result = loadHandoff(db, {
       ...params,
       user_id: params.user_id ?? config.user_id,
+      current_device_id: config.device_id,
     });
     if (!result.handoff) {
       return {

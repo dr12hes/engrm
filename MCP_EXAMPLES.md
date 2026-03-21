@@ -50,6 +50,7 @@ What makes this better than a plain summary:
 - the handoff stays separate from durable engineering memory
 - it can include a little chat context when the session is still thin
 - recent handoffs show which machine they came from and how fresh they are
+- when the current device is known, resume tools prefer a handoff from another machine over the newest local one
 
 ## Demo Flow
 
