@@ -4,6 +4,15 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.19
+
+### Changed
+
+- final assistant output can now contribute full structured `Investigated`, `Learned`, `Completed`, and `Next Steps` sections to the session summary instead of being flattened into a thin checkpoint
+- generic assistant status phrases like `Here's where things stand` are no longer used as checkpoint titles
+- startup handoff `Pull detail` IDs now match the actual visible handoff-index rows
+- this improves the quality and trustworthiness of startup handoff by preserving richer recent work instead of showing vague status wrappers
+
 ## 0.4.18
 
 ### Added
