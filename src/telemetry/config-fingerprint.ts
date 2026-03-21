@@ -22,7 +22,7 @@ export interface ConfigFingerprint {
 }
 
 const STATE_PATH = join(homedir(), ".engrm", "config-fingerprint.json");
-const CLIENT_VERSION = "0.4.21";
+const CLIENT_VERSION = "0.4.22";
 
 function hashFile(filePath: string): string | null {
   try {

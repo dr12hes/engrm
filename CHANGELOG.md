@@ -4,6 +4,19 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.22
+
+### Added
+
+- rolling session handoff cues are now persisted during the session from both prompt-time and tool-time updates using a shared session-handoff builder
+
+### Changed
+
+- stop-hook summaries now upsert into the same session summary record instead of overwriting rolling handoff metadata
+- mixed old installs now self-heal missing `session_summaries` handoff columns on startup
+- startup and assistant checkpoint extraction now suppress more weak wrapper lines like `All clean...`, `Here's the real picture`, and `TL;DR`
+- this makes Engrm's startup handoff more resilient across upgrades and more representative of the actual current work thread
+
 ## 0.4.21
 
 ### Added
