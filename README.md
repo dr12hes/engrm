@@ -221,6 +221,9 @@ The MCP server exposes tools that supported agents can call directly:
 | `recent_tools` | Inspect captured raw tool chronology |
 | `recent_sessions` | List recent local sessions to inspect further |
 | `session_story` | Show prompts, tools, observations, and summary for one session |
+| `create_handoff` | Save an explicit syncable handoff so you can resume work on another device |
+| `recent_handoffs` | List recent saved handoffs for the current project or workspace |
+| `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `plugin_catalog` | Inspect Engrm plugin manifests for memory-aware integrations |
 | `save_plugin_memory` | Save reduced plugin output with stable Engrm provenance |
 | `capture_git_diff` | Reduce a git diff into a durable memory object and save it |
@@ -272,6 +275,21 @@ These tools are intentionally small:
 - local-first execution
 - reduced durable memory output
 - visible in Engrm's local inspection tools so we can judge tool value honestly
+
+### Explicit Handoffs
+
+For long-running work across devices, Engrm now has an explicit handoff flow:
+
+- `create_handoff`
+  - snapshot the active thread into a syncable handoff message
+- `recent_handoffs`
+  - list the latest saved handoffs
+- `load_handoff`
+  - reopen a saved handoff as a clear resume point in a new session
+
+This is the deliberate version of multi-device continuity: useful when you want to move from laptop to home machine without waiting for an end-of-session summary.
+
+The separate chat lane is still kept distinct from durable observations, but it can now sync too, so recent user/assistant conversation is recoverable on another machine without polluting the main memory feed.
 
 ### Local Memory Inspection
 

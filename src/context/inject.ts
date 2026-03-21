@@ -31,6 +31,7 @@ import {
   observationTypeBoost,
 } from "../intelligence/observation-priority.js";
 import { extractSummaryItems, formatSummaryItems } from "../intelligence/summary-sections.js";
+import { getRecentHandoffs, type HandoffRow } from "../tools/handoffs.js";
 
 export interface ContextOptions {
   /** Max tokens for context injection (default: 3000) */
@@ -79,6 +80,8 @@ export interface InjectedContext {
   projectTypeCounts?: Record<string, number>;
   /** Recent high-signal outcomes from this project */
   recentOutcomes?: string[];
+  /** Recent explicit handoffs for cross-device continuity */
+  recentHandoffs?: HandoffRow[];
 }
 
 export interface ContextObservation {
@@ -363,9 +366,15 @@ export function buildSessionContext(
     const projectTypeCounts = isNewProject
       ? undefined
       : getProjectTypeCounts(db, projectId, opts.userId);
-  const recentOutcomes = isNewProject
+    const recentOutcomes = isNewProject
       ? undefined
       : getRecentOutcomes(db, projectId, opts.userId, recentSessions);
+    const recentHandoffs = getRecentHandoffs(db, {
+      cwd,
+      project_scoped: !isNewProject,
+      user_id: opts.userId,
+      limit: 3,
+    }).handoffs;
     return {
       project_name: projectName,
       canonical_id: canonicalId,
@@ -377,6 +386,7 @@ export function buildSessionContext(
       recentSessions: recentSessions.length > 0 ? recentSessions : undefined,
       projectTypeCounts,
       recentOutcomes,
+      recentHandoffs: recentHandoffs.length > 0 ? recentHandoffs : undefined,
     };
   }
 
@@ -429,6 +439,12 @@ export function buildSessionContext(
   const recentOutcomes = isNewProject
     ? undefined
     : getRecentOutcomes(db, projectId, opts.userId, recentSessions);
+  const recentHandoffs = getRecentHandoffs(db, {
+    cwd,
+    project_scoped: !isNewProject,
+    user_id: opts.userId,
+    limit: 3,
+  }).handoffs;
 
   // Fetch recent security findings (last 7 days) for risk awareness
   let securityFindings: SecurityFindingRow[] = [];
@@ -519,6 +535,7 @@ export function buildSessionContext(
     recentSessions: recentSessions.length > 0 ? recentSessions : undefined,
     projectTypeCounts,
     recentOutcomes,
+    recentHandoffs: recentHandoffs.length > 0 ? recentHandoffs : undefined,
   };
 }
 

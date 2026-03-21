@@ -7,7 +7,8 @@ Engrm is a local-first memory layer for AI coding agents.
 1. An agent starts a session.
 2. Engrm injects relevant memory into that session when the agent exposes a supported lifecycle hook.
 3. During work, the agent can call Engrm MCP tools to search, save, inspect, and share memory.
-4. On session end, Engrm stores a session digest and syncs pending observations.
+4. During or after work, Engrm can create explicit handoffs and sync chat/session memory across devices.
+5. On session end, Engrm stores a session digest and syncs pending observations.
 
 ## Main Components
 
@@ -59,6 +60,8 @@ Engrm keeps local SQLite as the source of truth.
 - vector search is used when embeddings are available
 - sync propagates observations to remote storage for multi-device and team use
 - provenance and plugin metadata are preserved so Engrm can later explain which tools and plugins created durable memory
+- explicit handoffs are stored as syncable message observations so active work can move between machines without relying only on stop-time summaries
+- the separate chat lane is kept distinct from durable observations, but can still sync so recent conversational context is recoverable across devices
 
 ## Agent Support
 

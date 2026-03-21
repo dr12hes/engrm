@@ -119,5 +119,8 @@ function buildSuggestedTools(
   if (context.observations.length > 0) {
     tools.push("tool_memory_index", "capture_git_worktree");
   }
+  if ((context.recentSessions?.length ?? 0) > 0) {
+    tools.push("create_handoff", "recent_handoffs");
+  }
   return Array.from(new Set(tools)).slice(0, 4);
 }

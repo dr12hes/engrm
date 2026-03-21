@@ -72,6 +72,22 @@ describe("parseSourceId", () => {
       userId: "david",
       deviceId: "laptop-abc",
       localId: 42,
+      type: "obs",
+    });
+  });
+
+  test("parses chat and summary source IDs", () => {
+    expect(parseSourceId("david-laptop-abc-chat-7")).toEqual({
+      userId: "david",
+      deviceId: "laptop-abc",
+      localId: 7,
+      type: "chat",
+    });
+    expect(parseSourceId("david-laptop-abc-summary-9")).toEqual({
+      userId: "david",
+      deviceId: "laptop-abc",
+      localId: 9,
+      type: "summary",
     });
   });
 

@@ -11,7 +11,7 @@ import type { MemDatabase } from "./sqlite.js";
 
 export interface OutboxEntry {
   id: number;
-  record_type: "observation" | "summary";
+  record_type: "observation" | "summary" | "chat_message";
   record_id: number;
   status: string;
   retry_count: number;

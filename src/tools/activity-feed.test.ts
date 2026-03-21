@@ -2,15 +2,59 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Config } from "../config.js";
 import { MemDatabase } from "../storage/sqlite.js";
 import { getActivityFeed } from "./activity-feed.js";
+import { createHandoff } from "./handoffs.js";
 
 let db: MemDatabase;
 let tmpDir: string;
+let config: Config;
+
+function makeConfig(overrides?: Partial<Config>): Config {
+  return {
+    candengo_url: "https://engrm.dev",
+    candengo_api_key: "test-key",
+    site_id: "test-site",
+    namespace: "test-ns",
+    user_id: "david",
+    device_id: "laptop",
+    user_email: "",
+    teams: [],
+    sync: { enabled: true, interval_seconds: 30, batch_size: 50 },
+    search: { default_limit: 10, local_boost: 1.2, scope: "all" },
+    scrubbing: {
+      enabled: true,
+      custom_patterns: [],
+      default_sensitivity: "shared",
+    },
+    sentinel: {
+      enabled: false,
+      mode: "advisory",
+      provider: "openai",
+      model: "gpt-4o-mini",
+      api_key: "",
+      base_url: "",
+      skip_patterns: [],
+      daily_limit: 100,
+      tier: "free",
+    },
+    observer: {
+      enabled: true,
+      mode: "per_event",
+      model: "sonnet",
+    },
+    transcript_analysis: {
+      enabled: false,
+    },
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "engrm-activity-feed-test-"));
   db = new MemDatabase(join(tmpDir, "test.db"));
+  config = makeConfig();
 });
 
 afterEach(() => {
@@ -81,6 +125,57 @@ describe("getActivityFeed", () => {
     const obsEvent = result.events.find((event) => event.kind === "observation");
     expect(obsEvent?.detail).toContain("via Edit");
     expect(obsEvent?.detail).toContain("#1");
+  });
+
+  test("surfaces explicit handoffs as first-class feed events", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: tmpDir,
+    });
+
+    db.upsertSession("sess-handoff", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-handoff",
+      project_id: project.id,
+      prompt: "Finish wiring the events feed into chat actions.",
+      user_id: "david",
+      device_id: "laptop",
+      cwd: tmpDir,
+    });
+    db.insertObservation({
+      session_id: "sess-handoff",
+      project_id: project.id,
+      type: "feature",
+      title: "Wired the events feed into chat actions",
+      quality: 0.9,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "Edit",
+      source_prompt_number: 1,
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-handoff",
+      project_id: project.id,
+      user_id: "david",
+      request: "Finish wiring the events feed into chat actions.",
+      completed: "Wired the events feed into chat actions",
+      current_thread: "Events feed into chat actions",
+    });
+
+    await createHandoff(db, config, {
+      session_id: "sess-handoff",
+      cwd: tmpDir,
+    });
+
+    const result = getActivityFeed(db, {
+      session_id: "sess-handoff",
+      limit: 10,
+    });
+
+    const handoffEvent = result.events.find((event) => event.kind === "handoff");
+    expect(handoffEvent).toBeTruthy();
+    expect(handoffEvent?.title.startsWith("Handoff:")).toBe(true);
   });
 
   test("supports session-specific chronology", () => {

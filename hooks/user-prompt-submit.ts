@@ -55,7 +55,7 @@ async function main(): Promise<void> {
       agent: "claude-code",
     });
 
-    db.insertChatMessage({
+    const chatMessage = db.insertChatMessage({
       session_id: event.session_id,
       project_id: project.id,
       role: "user",
@@ -64,6 +64,7 @@ async function main(): Promise<void> {
       device_id: config.device_id,
       agent: "claude-code",
     });
+    db.addToOutbox("chat_message", chatMessage.id);
 
     const compactPrompt = event.prompt.replace(/\s+/g, " ").trim();
     if (compactPrompt.length >= 8) {

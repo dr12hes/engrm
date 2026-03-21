@@ -94,7 +94,7 @@ const MIGRATIONS: Migration[] = [
       -- Sync outbox (offline-first queue)
       CREATE TABLE sync_outbox (
           id              INTEGER PRIMARY KEY AUTOINCREMENT,
-          record_type     TEXT NOT NULL CHECK (record_type IN ('observation', 'summary')),
+          record_type     TEXT NOT NULL CHECK (record_type IN ('observation', 'summary', 'chat_message')),
           record_id       INTEGER NOT NULL,
           status          TEXT DEFAULT 'pending' CHECK (status IN (
               'pending', 'syncing', 'synced', 'failed'
@@ -388,6 +388,18 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    version: 11,
+    description: "Add observation provenance from tool and prompt chronology",
+    sql: `
+      ALTER TABLE observations ADD COLUMN source_tool TEXT;
+      ALTER TABLE observations ADD COLUMN source_prompt_number INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_observations_source_tool
+        ON observations(source_tool, created_at_epoch DESC);
+      CREATE INDEX IF NOT EXISTS idx_observations_source_prompt
+        ON observations(session_id, source_prompt_number DESC);
+    `,
+  },
+  {
     version: 12,
     description: "Add synced handoff metadata to session summaries",
     sql: `
@@ -429,15 +441,48 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
-    version: 11,
-    description: "Add observation provenance from tool and prompt chronology",
+    version: 15,
+    description: "Add remote_source_id for chat message sync deduplication",
     sql: `
-      ALTER TABLE observations ADD COLUMN source_tool TEXT;
-      ALTER TABLE observations ADD COLUMN source_prompt_number INTEGER;
-      CREATE INDEX IF NOT EXISTS idx_observations_source_tool
-        ON observations(source_tool, created_at_epoch DESC);
-      CREATE INDEX IF NOT EXISTS idx_observations_source_prompt
-        ON observations(session_id, source_prompt_number DESC);
+      ALTER TABLE chat_messages ADD COLUMN remote_source_id TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_messages_remote_source
+        ON chat_messages(remote_source_id)
+        WHERE remote_source_id IS NOT NULL;
+    `,
+  },
+  {
+    version: 16,
+    description: "Allow chat_message records in sync_outbox",
+    sql: `
+      CREATE TABLE sync_outbox_new (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          record_type     TEXT NOT NULL CHECK (record_type IN ('observation', 'summary', 'chat_message')),
+          record_id       INTEGER NOT NULL,
+          status          TEXT DEFAULT 'pending' CHECK (status IN (
+              'pending', 'syncing', 'synced', 'failed'
+          )),
+          retry_count     INTEGER DEFAULT 0,
+          max_retries     INTEGER DEFAULT 10,
+          last_error      TEXT,
+          created_at_epoch INTEGER NOT NULL,
+          synced_at_epoch  INTEGER,
+          next_retry_epoch INTEGER
+      );
+
+      INSERT INTO sync_outbox_new (
+        id, record_type, record_id, status, retry_count, max_retries,
+        last_error, created_at_epoch, synced_at_epoch, next_retry_epoch
+      )
+      SELECT
+        id, record_type, record_id, status, retry_count, max_retries,
+        last_error, created_at_epoch, synced_at_epoch, next_retry_epoch
+      FROM sync_outbox;
+
+      DROP TABLE sync_outbox;
+      ALTER TABLE sync_outbox_new RENAME TO sync_outbox;
+
+      CREATE INDEX idx_outbox_status ON sync_outbox(status, next_retry_epoch);
+      CREATE INDEX idx_outbox_record ON sync_outbox(record_type, record_id);
     `,
   },
 ];
@@ -516,6 +561,12 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
   }
   if (tableExists(db, "chat_messages")) {
     version = Math.max(version, 14);
+  }
+  if (columnExists(db, "chat_messages", "remote_source_id")) {
+    version = Math.max(version, 15);
+  }
+  if (syncOutboxSupportsChatMessages(db)) {
+    version = Math.max(version, 16);
   }
 
   return version;
@@ -647,6 +698,84 @@ export function ensureSessionSummaryColumns(db: CompatDatabase): void {
   if (current < 13) {
     db.exec("PRAGMA user_version = 13");
   }
+}
+
+export function ensureChatMessageColumns(db: CompatDatabase): void {
+  if (!tableExists(db, "chat_messages")) return;
+
+  if (!columnExists(db, "chat_messages", "remote_source_id")) {
+    db.exec("ALTER TABLE chat_messages ADD COLUMN remote_source_id TEXT");
+  }
+  db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_messages_remote_source ON chat_messages(remote_source_id) WHERE remote_source_id IS NOT NULL"
+  );
+
+  const current = getSchemaVersion(db);
+  if (current < 15) {
+    db.exec("PRAGMA user_version = 15");
+  }
+}
+
+export function ensureSyncOutboxSupportsChatMessages(db: CompatDatabase): void {
+  if (syncOutboxSupportsChatMessages(db)) {
+    const current = getSchemaVersion(db);
+    if (current < 16) {
+      db.exec("PRAGMA user_version = 16");
+    }
+    return;
+  }
+
+  db.exec("BEGIN TRANSACTION");
+  try {
+    db.exec(`
+      CREATE TABLE sync_outbox_new (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          record_type     TEXT NOT NULL CHECK (record_type IN ('observation', 'summary', 'chat_message')),
+          record_id       INTEGER NOT NULL,
+          status          TEXT DEFAULT 'pending' CHECK (status IN (
+              'pending', 'syncing', 'synced', 'failed'
+          )),
+          retry_count     INTEGER DEFAULT 0,
+          max_retries     INTEGER DEFAULT 10,
+          last_error      TEXT,
+          created_at_epoch INTEGER NOT NULL,
+          synced_at_epoch  INTEGER,
+          next_retry_epoch INTEGER
+      );
+
+      INSERT INTO sync_outbox_new (
+        id, record_type, record_id, status, retry_count, max_retries,
+        last_error, created_at_epoch, synced_at_epoch, next_retry_epoch
+      )
+      SELECT
+        id, record_type, record_id, status, retry_count, max_retries,
+        last_error, created_at_epoch, synced_at_epoch, next_retry_epoch
+      FROM sync_outbox;
+
+      DROP TABLE sync_outbox;
+      ALTER TABLE sync_outbox_new RENAME TO sync_outbox;
+
+      CREATE INDEX idx_outbox_status ON sync_outbox(status, next_retry_epoch);
+      CREATE INDEX idx_outbox_record ON sync_outbox(record_type, record_id);
+    `);
+    db.exec("PRAGMA user_version = 16");
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw new Error(
+      `sync_outbox repair failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+function syncOutboxSupportsChatMessages(db: CompatDatabase): boolean {
+  const row = db
+    .query<{ sql: string | null }, [string]>(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?"
+    )
+    .get("sync_outbox");
+  const sql = row?.sql ?? "";
+  return sql.includes("'chat_message'");
 }
 
 /**

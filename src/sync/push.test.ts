@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MemDatabase } from "../storage/sqlite.js";
 import type { Config } from "../config.js";
-import { buildSummaryVectorDocument, buildVectorDocument } from "./push.js";
+import { buildChatVectorDocument, buildSummaryVectorDocument, buildVectorDocument } from "./push.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -263,5 +263,31 @@ describe("buildSummaryVectorDocument", () => {
       "Background processing impact: Bedford Hotel will now be skipped by intelligence_briefing_loop",
       "Background processing impact: Bedford Hotel will now be skipped by vulnerability_scheduler_loop",
     ]);
+  });
+});
+
+describe("buildChatVectorDocument", () => {
+  test("produces a syncable chat document", () => {
+    const chat = db.insertChatMessage({
+      session_id: "sess-chat",
+      project_id: projectId,
+      role: "user",
+      content: "Can we make the events feed drive chat actions too?",
+      user_id: "david",
+      device_id: "laptop-abc",
+      agent: "claude-code",
+    });
+
+    const doc = buildChatVectorDocument(chat, makeConfig(), {
+      canonical_id: "github.com/test/repo",
+      name: "repo",
+    });
+
+    expect(doc.source_type).toBe("chat");
+    expect(doc.source_id).toBe(`david-laptop-abc-chat-${chat.id}`);
+    expect(doc.content).toBe("Can we make the events feed drive chat actions too?");
+    expect(doc.metadata.role).toBe("user");
+    expect(doc.metadata.session_id).toBe("sess-chat");
+    expect(doc.metadata.project_canonical).toBe("github.com/test/repo");
   });
 });

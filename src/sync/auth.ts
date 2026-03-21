@@ -61,24 +61,27 @@ export function buildSourceId(config: Config, localId: number, type: string = "o
  */
 export function parseSourceId(
   sourceId: string
-): { userId: string; deviceId: string; localId: number } | null {
-  // Format: {user_id}-{device_id}-obs-{local_id}
-  // Split on "-obs-" which is our guaranteed delimiter
-  const obsIndex = sourceId.lastIndexOf("-obs-");
-  if (obsIndex === -1) return null;
+): { userId: string; deviceId: string; localId: number; type: string } | null {
+  for (const type of ["obs", "summary", "chat"]) {
+    const marker = `-${type}-`;
+    const idx = sourceId.lastIndexOf(marker);
+    if (idx === -1) continue;
 
-  const prefix = sourceId.slice(0, obsIndex);
-  const localIdStr = sourceId.slice(obsIndex + 5); // skip "-obs-"
-  const localId = parseInt(localIdStr, 10);
-  if (isNaN(localId)) return null;
+    const prefix = sourceId.slice(0, idx);
+    const localIdStr = sourceId.slice(idx + marker.length);
+    const localId = parseInt(localIdStr, 10);
+    if (isNaN(localId)) return null;
 
-  // Split prefix on first "-" to get userId and deviceId
-  const firstDash = prefix.indexOf("-");
-  if (firstDash === -1) return null;
+    const firstDash = prefix.indexOf("-");
+    if (firstDash === -1) return null;
 
-  return {
-    userId: prefix.slice(0, firstDash),
-    deviceId: prefix.slice(firstDash + 1),
-    localId,
-  };
+    return {
+      userId: prefix.slice(0, firstDash),
+      deviceId: prefix.slice(firstDash + 1),
+      localId,
+      type,
+    };
+  }
+
+  return null;
 }

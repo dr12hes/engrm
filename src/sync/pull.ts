@@ -74,6 +74,7 @@ function mergeChanges(
   for (const change of changes) {
     const parsed = parseSourceId(change.source_id);
     const remoteSummary = isRemoteSummary(change);
+    const remoteChat = isRemoteChat(change);
 
     // Skip observations from own device
     if (parsed && parsed.deviceId === config.device_id) {
@@ -105,6 +106,16 @@ function mergeChanges(
       if (mergedSummary) {
         merged++;
       }
+    }
+
+    if (remoteChat) {
+      const mergedChat = mergeRemoteChat(db, config, change, project.id);
+      if (mergedChat) {
+        merged++;
+      } else {
+        skipped++;
+      }
+      continue;
     }
 
     // Check if already imported (by remote_source_id)
@@ -172,6 +183,11 @@ function isRemoteSummary(change: VectorSearchResult): boolean {
   return rawType === "summary" || change.source_id.includes("-summary-");
 }
 
+function isRemoteChat(change: VectorSearchResult): boolean {
+  const rawType = typeof change.metadata?.type === "string" ? change.metadata.type.toLowerCase() : "";
+  return rawType === "chat" || change.source_id.includes("-chat-");
+}
+
 function mergeRemoteSummary(
   db: MemDatabase,
   config: Config,
@@ -203,6 +219,35 @@ function mergeRemoteSummary(
   });
 
   return Boolean(summary);
+}
+
+function mergeRemoteChat(
+  db: MemDatabase,
+  config: Config,
+  change: VectorSearchResult,
+  projectId: number
+): boolean {
+  if (db.getChatMessageByRemoteSourceId(change.source_id)) return false;
+  const sessionId = typeof change.metadata?.session_id === "string" ? change.metadata.session_id : null;
+  const role = change.metadata?.role === "assistant" ? "assistant" : "user";
+  if (!sessionId || typeof change.content !== "string" || !change.content.trim()) return false;
+
+  db.insertChatMessage({
+    session_id: sessionId,
+    project_id: projectId,
+    role,
+    content: change.content,
+    user_id:
+      (typeof change.metadata?.user_id === "string" ? change.metadata.user_id : null) ??
+      config.user_id,
+    device_id:
+      (typeof change.metadata?.device_id === "string" ? change.metadata.device_id : null) ??
+      "remote",
+    agent: typeof change.metadata?.agent === "string" ? change.metadata.agent : "unknown",
+    created_at_epoch: typeof change.metadata?.created_at_epoch === "number" ? change.metadata.created_at_epoch : undefined,
+    remote_source_id: change.source_id,
+  });
+  return true;
 }
 
 function encodeStringArray(value: unknown): string | null {

@@ -1,4 +1,10 @@
-import { runMigrations, ensureObservationTypes, ensureSessionSummaryColumns } from "./migrations.js";
+import {
+  runMigrations,
+  ensureObservationTypes,
+  ensureSessionSummaryColumns,
+  ensureChatMessageColumns,
+  ensureSyncOutboxSupportsChatMessages,
+} from "./migrations.js";
 import { createHash } from "node:crypto";
 import { normalizeSummaryRequest, normalizeSummarySection } from "../intelligence/summary-sections.js";
 
@@ -244,6 +250,7 @@ export interface ChatMessageRow {
   device_id: string;
   agent: string;
   created_at_epoch: number;
+  remote_source_id: string | null;
 }
 
 export interface SecurityFindingRow {
@@ -355,6 +362,7 @@ export interface InsertChatMessage {
   device_id: string;
   agent?: string;
   created_at_epoch?: number;
+  remote_source_id?: string | null;
 }
 
 // --- Database class ---
@@ -374,6 +382,8 @@ export class MemDatabase {
     runMigrations(this.db);
     ensureObservationTypes(this.db);
     ensureSessionSummaryColumns(this.db);
+    ensureChatMessageColumns(this.db);
+    ensureSyncOutboxSupportsChatMessages(this.db);
   }
 
   private loadVecExtension(): boolean {
@@ -1089,8 +1099,8 @@ export class MemDatabase {
     const result = this.db
       .query(
         `INSERT INTO chat_messages (
-          session_id, project_id, role, content, user_id, device_id, agent, created_at_epoch
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          session_id, project_id, role, content, user_id, device_id, agent, created_at_epoch, remote_source_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.session_id,
@@ -1100,7 +1110,8 @@ export class MemDatabase {
         input.user_id,
         input.device_id,
         input.agent ?? "claude-code",
-        createdAt
+        createdAt,
+        input.remote_source_id ?? null
       );
 
     return this.getChatMessageById(Number(result.lastInsertRowid))!;
@@ -1113,6 +1124,16 @@ export class MemDatabase {
           "SELECT * FROM chat_messages WHERE id = ?"
         )
         .get(id) ?? null
+    );
+  }
+
+  getChatMessageByRemoteSourceId(remoteSourceId: string): ChatMessageRow | null {
+    return (
+      this.db
+        .query<ChatMessageRow, [string]>(
+          "SELECT * FROM chat_messages WHERE remote_source_id = ?"
+        )
+        .get(remoteSourceId) ?? null
     );
   }
 
@@ -1186,7 +1207,7 @@ export class MemDatabase {
 
   // --- Sync outbox ---
 
-  addToOutbox(recordType: "observation" | "summary", recordId: number): void {
+  addToOutbox(recordType: "observation" | "summary" | "chat_message", recordId: number): void {
     const now = Math.floor(Date.now() / 1000);
     this.db
       .query(

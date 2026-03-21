@@ -6,6 +6,7 @@
  */
 
 import type {
+  ChatMessageRow,
   MemDatabase,
   ObservationRow,
   SessionSummaryRow,
@@ -29,6 +30,33 @@ export interface PushResult {
   pushed: number;
   failed: number;
   skipped: number;
+}
+
+export function buildChatVectorDocument(
+  chat: ChatMessageRow,
+  config: Config,
+  project: { canonical_id: string; name: string }
+): VectorDocument {
+  return {
+    site_id: config.site_id,
+    namespace: config.namespace,
+    source_type: "chat",
+    source_id: buildSourceId(config, chat.id, "chat"),
+    content: chat.content,
+    metadata: {
+      project_canonical: project.canonical_id,
+      project_name: project.name,
+      user_id: chat.user_id,
+      device_id: chat.device_id,
+      device_name: require("node:os").hostname(),
+      agent: chat.agent,
+      type: "chat",
+      role: chat.role,
+      session_id: chat.session_id,
+      created_at_epoch: chat.created_at_epoch,
+      local_id: chat.id,
+    },
+  };
 }
 
 type SummaryCaptureContext = SessionHandoffMetadata;
@@ -214,6 +242,36 @@ export async function pushOutbox(
       continue;
     }
 
+    if (entry.record_type === "chat_message") {
+      const chat = db.getChatMessageById(entry.record_id);
+      if (!chat || chat.remote_source_id) {
+        markSynced(db, entry.id);
+        skipped++;
+        continue;
+      }
+
+      if (!chat.project_id) {
+        markSynced(db, entry.id);
+        skipped++;
+        continue;
+      }
+
+      const project = db.getProjectById(chat.project_id);
+      if (!project) {
+        markSynced(db, entry.id);
+        skipped++;
+        continue;
+      }
+
+      markSyncing(db, entry.id);
+      const doc = buildChatVectorDocument(chat, config, {
+        canonical_id: project.canonical_id,
+        name: project.name,
+      });
+      batch.push({ entryId: entry.id, doc });
+      continue;
+    }
+
     if (entry.record_type !== "observation") {
       skipped++;
       continue;
@@ -263,7 +321,15 @@ export async function pushOutbox(
   // Try batch ingest first
   try {
     await client.batchIngest(batch.map((b) => b.doc));
-    for (const { entryId } of batch) {
+    for (const { entryId, doc } of batch) {
+      if (doc.source_type === "chat") {
+        const localId = typeof doc.metadata?.local_id === "number" ? doc.metadata.local_id : null;
+        if (localId !== null) {
+          db.db
+            .query("UPDATE chat_messages SET remote_source_id = ? WHERE id = ?")
+            .run(doc.source_id, localId);
+        }
+      }
       markSynced(db, entryId);
       pushed++;
     }
@@ -272,6 +338,14 @@ export async function pushOutbox(
     for (const { entryId, doc } of batch) {
       try {
         await client.ingest(doc);
+        if (doc.source_type === "chat") {
+          const localId = typeof doc.metadata?.local_id === "number" ? doc.metadata.local_id : null;
+          if (localId !== null) {
+            db.db
+              .query("UPDATE chat_messages SET remote_source_id = ? WHERE id = ?")
+              .run(doc.source_id, localId);
+          }
+        }
         markSynced(db, entryId);
         pushed++;
       } catch (err) {

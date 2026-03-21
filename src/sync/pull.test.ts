@@ -251,6 +251,42 @@ describe("pullFromVector", () => {
     expect(result.merged).toBe(0);
   });
 
+  test("imports remote chat messages into the separate chat lane", async () => {
+    const chatChange: VectorSearchResult = {
+      source_id: "other-user-other-device-chat-7",
+      content: "We should reuse the existing events feed before inventing a new path.",
+      score: 1,
+      metadata: {
+        project_canonical: "github.com/test/repo",
+        project_name: "repo",
+        type: "chat",
+        role: "assistant",
+        session_id: "sess-chat",
+        user_id: "other-user",
+        device_id: "other-device",
+        agent: "claude-code",
+        created_at_epoch: 1710000000,
+      },
+    };
+
+    const client = mockClient([
+      {
+        changes: [chatChange],
+        cursor: "chat-1",
+        has_more: false,
+      },
+    ]);
+
+    const result = await pullFromVector(db, client, makeConfig());
+    expect(result.merged).toBe(1);
+
+    const messages = db.getSessionChatMessages("sess-chat", 10);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.content).toContain("existing events feed");
+    expect(messages[0]?.role).toBe("assistant");
+    expect(messages[0]?.remote_source_id).toBe("other-user-other-device-chat-7");
+  });
+
   test("skips changes without project_canonical", async () => {
     const noProject: VectorSearchResult = {
       source_id: "other-other-obs-1",

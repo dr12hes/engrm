@@ -106,5 +106,6 @@ function buildFallbackSuggestedTools(
   if (sessionCount > 0) suggested.push("recent_sessions");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");
+  if (sessionCount > 0) suggested.push("create_handoff", "recent_handoffs");
   return Array.from(new Set(suggested)).slice(0, 4);
 }

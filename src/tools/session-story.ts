@@ -6,6 +6,7 @@
  */
 
 import type { ChatMessageRow, MemDatabase, ObservationRow, SessionRow, SessionSummaryRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
+import { looksLikeHandoff } from "./handoffs.js";
 
 export interface SessionStoryInput {
   session_id: string;
@@ -19,6 +20,7 @@ export interface SessionStoryResult {
   chat_messages: ChatMessageRow[];
   tool_events: ToolEventRow[];
   observations: ObservationRow[];
+  handoffs: ObservationRow[];
   metrics: (SessionRow & {
     files_touched_count: number;
     searches_performed: number;
@@ -41,7 +43,9 @@ export function getSessionStory(
   const prompts = db.getSessionUserPrompts(input.session_id, 50);
   const chatMessages = db.getSessionChatMessages(input.session_id, 50);
   const toolEvents = db.getSessionToolEvents(input.session_id, 100);
-  const observations = db.getObservationsBySession(input.session_id);
+  const allObservations = db.getObservationsBySession(input.session_id);
+  const handoffs = allObservations.filter((obs) => looksLikeHandoff(obs));
+  const observations = allObservations.filter((obs) => !looksLikeHandoff(obs));
   const metrics = db.getSessionMetrics(input.session_id);
   const projectName =
     session?.project_id !== null && session?.project_id !== undefined
@@ -59,6 +63,7 @@ export function getSessionStory(
     chat_messages: chatMessages,
     tool_events: toolEvents,
     observations,
+    handoffs,
     metrics,
     capture_state: classifyCaptureState({
       hasSummary: Boolean(summary?.request || summary?.completed),

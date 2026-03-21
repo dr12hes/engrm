@@ -4,6 +4,23 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Added
+
+- explicit handoff MCP tools:
+  - `create_handoff`
+  - `recent_handoffs`
+  - `load_handoff`
+- explicit handoffs are stored as syncable `message` observations so they can move across devices immediately
+- `session_story` now separates explicit handoffs from reusable observations
+- `activity_feed` now surfaces explicit handoffs as first-class feed events
+
+### Changed
+
+- startup handoff can now surface the latest explicit saved handoff as a resume cue
+- the local workbench now suggests handoff tools alongside the existing inspection flow
+- chat lane messages are now queued for sync and can be pulled into another device's local chat store
+- fresh and mixed installs now self-heal chat sync support, including `chat_messages.remote_source_id` and `sync_outbox` support for `chat_message` records
+
 ## 0.4.22
 
 ### Added

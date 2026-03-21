@@ -234,5 +234,8 @@ function buildSuggestedTools(
   if (observationCount > 0) {
     suggested.push("tool_memory_index", "capture_git_worktree");
   }
+  if (sessions.length > 0) {
+    suggested.push("create_handoff", "recent_handoffs");
+  }
   return Array.from(new Set(suggested)).slice(0, 4);
 }

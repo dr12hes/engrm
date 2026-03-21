@@ -101,7 +101,7 @@ async function main(): Promise<void> {
             });
           const compactAssistant = event.last_assistant_message.replace(/\s+/g, " ").trim();
           if (compactAssistant.length >= 24) {
-            db.insertChatMessage({
+            const chatMessage = db.insertChatMessage({
               session_id: event.session_id,
               project_id: project.id,
               role: "assistant",
@@ -110,6 +110,7 @@ async function main(): Promise<void> {
               device_id: config.device_id,
               agent: "claude-code",
             });
+            db.addToOutbox("chat_message", chatMessage.id);
           }
           createAssistantCheckpoint(db, event.session_id, event.cwd, event.last_assistant_message);
         } catch {

@@ -293,6 +293,15 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const currentThread = buildCurrentThreadLine(context, latest);
   const projectSignals = buildProjectSignalLine(context);
   const shownItems = new Set<string>();
+  const latestHandoffLines = buildLatestHandoffLines(context);
+
+  if (latestHandoffLines.length > 0) {
+    lines.push(`${c.cyan}Latest handoff:${c.reset}`);
+    for (const item of latestHandoffLines) {
+      lines.push(`  - ${truncateInline(item, 160)}`);
+      rememberShownItem(shownItems, item);
+    }
+  }
 
   if (promptLines.length > 0) {
     lines.push(`${c.cyan}Asked recently:${c.reset}`);
@@ -418,6 +427,28 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   return lines.slice(0, 14);
 }
 
+function buildLatestHandoffLines(context: InjectedContext): string[] {
+  const latest = context.recentHandoffs?.[0];
+  if (!latest) return [];
+
+  const lines: string[] = [];
+  const title = latest.title
+    .replace(/^Handoff:\s*/i, "")
+    .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
+    .trim();
+  if (title) lines.push(title);
+
+  const narrative = latest.narrative
+    ?.split(/\n{2,}/)
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .find((part) => /^(Current thread:|Completed:|Next Steps:)/i.test(part));
+  if (narrative) {
+    lines.push(narrative.replace(/^(Current thread:|Completed:|Next Steps:)\s*/i, ""));
+  }
+
+  return Array.from(new Set(lines.filter(Boolean))).slice(0, 2);
+}
+
 function formatContextEconomics(data: SplashData): string[] {
   const totalMemories = Math.max(0, data.loaded + data.available);
   const parts: string[] = [];
@@ -468,12 +499,16 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
   if ((context.recentSessions?.length ?? 0) > 0) {
     hints.push("recent_sessions");
     hints.push("session_story");
+    hints.push("create_handoff");
   }
   if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
     hints.push("activity_feed");
   }
   if (context.observations.length > 0) {
     hints.push("memory_console");
+  }
+  if ((context.recentSessions?.length ?? 0) > 0) {
+    hints.push("recent_handoffs");
   }
 
   const unique = Array.from(new Set(hints)).slice(0, 4);

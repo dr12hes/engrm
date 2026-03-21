@@ -2,15 +2,59 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Config } from "../config.js";
 import { MemDatabase } from "../storage/sqlite.js";
 import { getSessionStory } from "./session-story.js";
+import { createHandoff } from "./handoffs.js";
 
 let db: MemDatabase;
 let tmpDir: string;
+let config: Config;
+
+function makeConfig(overrides?: Partial<Config>): Config {
+  return {
+    candengo_url: "https://engrm.dev",
+    candengo_api_key: "test-key",
+    site_id: "test-site",
+    namespace: "test-ns",
+    user_id: "david",
+    device_id: "laptop",
+    user_email: "",
+    teams: [],
+    sync: { enabled: true, interval_seconds: 30, batch_size: 50 },
+    search: { default_limit: 10, local_boost: 1.2, scope: "all" },
+    scrubbing: {
+      enabled: true,
+      custom_patterns: [],
+      default_sensitivity: "shared",
+    },
+    sentinel: {
+      enabled: false,
+      mode: "advisory",
+      provider: "openai",
+      model: "gpt-4o-mini",
+      api_key: "",
+      base_url: "",
+      skip_patterns: [],
+      daily_limit: 100,
+      tier: "free",
+    },
+    observer: {
+      enabled: true,
+      mode: "per_event",
+      model: "sonnet",
+    },
+    transcript_analysis: {
+      enabled: false,
+    },
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "engrm-session-story-test-"));
   db = new MemDatabase(join(tmpDir, "test.db"));
+  config = makeConfig();
 });
 
 afterEach(() => {
@@ -80,5 +124,55 @@ describe("getSessionStory", () => {
     expect(story.recent_outcomes).toContain("Fixed auth redirect");
     expect(story.hot_files).toEqual([{ path: "src/auth.ts", count: 1 }]);
     expect(story.provenance_summary).toEqual([{ tool: "Edit", count: 1 }]);
+    expect(story.handoffs).toEqual([]);
+  });
+
+  test("separates explicit handoffs from reusable observations", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: tmpDir,
+    });
+
+    db.upsertSession("sess-2", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-2",
+      project_id: project.id,
+      prompt: "Get the events feed plumbed into chat actions.",
+      cwd: tmpDir,
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.insertObservation({
+      session_id: "sess-2",
+      project_id: project.id,
+      type: "feature",
+      title: "Plumbed the events feed into the chat action path",
+      quality: 0.9,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "Edit",
+      source_prompt_number: 1,
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-2",
+      project_id: project.id,
+      user_id: "david",
+      request: "Get the events feed plumbed into chat actions.",
+      completed: "Plumbed the events feed into the chat action path.",
+      current_thread: "Events feed into chat actions",
+    });
+
+    const handoff = await createHandoff(db, config, {
+      session_id: "sess-2",
+      cwd: tmpDir,
+    });
+
+    expect(handoff.success).toBe(true);
+
+    const story = getSessionStory(db, { session_id: "sess-2" });
+    expect(story.observations).toHaveLength(1);
+    expect(story.handoffs).toHaveLength(1);
+    expect(story.handoffs[0]?.title.startsWith("Handoff:")).toBe(true);
   });
 });

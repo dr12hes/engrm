@@ -31,6 +31,20 @@ The goal is to turn useful local work into durable memory that can be recalled l
 - `tool_memory_index`
 - `capture_quality`
 
+## Explicit Handoff Flow
+
+Use this when you are moving between machines and want a reliable resume point:
+
+1. `create_handoff`
+2. `recent_handoffs`
+3. `load_handoff`
+
+Example prompts:
+
+- "Create a handoff for what I am working on before I leave this laptop."
+- "Show my recent handoffs for this repo."
+- "Load the latest handoff so I can pick this thread back up."
+
 ## Demo Flow
 
 For a quick public demo or MCP listing video:

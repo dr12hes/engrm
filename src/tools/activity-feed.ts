@@ -19,6 +19,7 @@ import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getSessionStory } from "./session-story.js";
+import { looksLikeHandoff } from "./handoffs.js";
 
 export interface ActivityFeedInput {
   limit?: number;
@@ -29,7 +30,7 @@ export interface ActivityFeedInput {
 }
 
 export interface ActivityFeedEvent {
-  kind: "prompt" | "tool" | "observation" | "summary";
+  kind: "prompt" | "tool" | "observation" | "summary" | "handoff";
   created_at_epoch: number;
   session_id: string | null;
   title: string;
@@ -66,6 +67,17 @@ function toToolEvent(tool: ToolEventRow): ActivityFeedEvent {
 }
 
 function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
+  if (looksLikeHandoff(obs)) {
+    return {
+      kind: "handoff",
+      created_at_epoch: obs.created_at_epoch,
+      session_id: obs.session_id,
+      id: obs.id,
+      title: obs.title,
+      detail: obs.narrative?.replace(/\s+/g, " ").trim().slice(0, 220),
+      observation_type: obs.type,
+    };
+  }
   const detailBits: string[] = [];
   if (obs.source_tool) detailBits.push(`via ${obs.source_tool}`);
   if (typeof obs.source_prompt_number === "number") {
@@ -125,9 +137,10 @@ function compareEvents(a: ActivityFeedEvent, b: ActivityFeedEvent): number {
 
   const kindOrder: Record<ActivityFeedEvent["kind"], number> = {
     summary: 0,
-    observation: 1,
-    tool: 2,
-    prompt: 3,
+    handoff: 1,
+    observation: 2,
+    tool: 3,
+    prompt: 4,
   };
   if (kindOrder[a.kind] !== kindOrder[b.kind]) {
     return kindOrder[a.kind] - kindOrder[b.kind];
@@ -166,6 +179,7 @@ export function getActivityFeed(
         : []),
       ...story.prompts.map(toPromptEvent),
       ...story.tool_events.map(toToolEvent),
+      ...story.handoffs.map(toObservationEvent),
       ...story.observations.map(toObservationEvent),
     ]
       .sort(compareEvents)

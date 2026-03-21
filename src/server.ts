@@ -21,6 +21,7 @@ import { getRecentActivity } from "./tools/recent.js";
 import { getRecentRequests } from "./tools/recent-prompts.js";
 import { getRecentChat } from "./tools/recent-chat.js";
 import { searchChat } from "./tools/search-chat.js";
+import { createHandoff, getRecentHandoffs, loadHandoff } from "./tools/handoffs.js";
 import { getRecentTools } from "./tools/recent-tools.js";
 import { getSessionStory } from "./tools/session-story.js";
 import { getRecentSessions } from "./tools/recent-sessions.js";
@@ -1535,6 +1536,111 @@ server.tool(
 
 // Tool: recent_requests
 server.tool(
+  "create_handoff",
+  "Capture an explicit cross-device handoff from the current or specified session into syncable memory",
+  {
+    session_id: z.string().optional().describe("Optional session ID to hand off; defaults to the latest recent session"),
+    cwd: z.string().optional().describe("Repo path used to scope the handoff when no session ID is provided"),
+    title: z.string().optional().describe("Optional short handoff title"),
+    include_chat: z.boolean().optional().describe("Include a few recent chat snippets in the handoff"),
+    chat_limit: z.number().optional().describe("How many recent chat snippets to include when include_chat is true"),
+  },
+  async (params) => {
+    const result = await createHandoff(db, config, params);
+    if (!result.success) {
+      return {
+        content: [{ type: "text" as const, text: `Handoff not created: ${result.reason}` }],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Created handoff #${result.observation_id} for session ${result.session_id}\nTitle: ${result.title}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "recent_handoffs",
+  "List recent explicit handoffs so you can resume work on another device or in a new session",
+  {
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getRecentHandoffs(db, {
+      ...params,
+      user_id: params.user_id ?? config.user_id,
+    });
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.handoffs.length > 0
+      ? result.handoffs.map((handoff) => {
+          const stamp = new Date(handoff.created_at_epoch * 1000).toISOString().replace("T", " ").slice(0, 16);
+          return `- #${handoff.id} (${stamp}) ${handoff.title}${handoff.project_name ? ` [${handoff.project_name}]` : ""}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [{ type: "text" as const, text: `${projectLine}Recent handoffs:\n${rows}` }],
+    };
+  }
+);
+
+server.tool(
+  "load_handoff",
+  "Open a saved handoff and turn it back into a clear resume point for a new session",
+  {
+    id: z.number().optional().describe("Optional handoff observation ID; defaults to the latest recent handoff"),
+    cwd: z.string().optional(),
+    project_scoped: z.boolean().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = loadHandoff(db, {
+      ...params,
+      user_id: params.user_id ?? config.user_id,
+    });
+    if (!result.handoff) {
+      return {
+        content: [{ type: "text" as const, text: "No matching handoff found" }],
+      };
+    }
+
+    const facts = result.handoff.facts
+      ? (() => {
+          try {
+            const parsed = JSON.parse(result.handoff.facts);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+    const factLines = facts.length > 0 ? `\n\nFacts:\n${facts.map((fact) => `- ${fact}`).join("\n")}` : "";
+    const projectLine = result.handoff.project_name ? `Project: ${result.handoff.project_name}\n` : "";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${projectLine}Handoff #${result.handoff.id}\n` +
+            `Title: ${result.handoff.title}\n\n` +
+            `${result.handoff.narrative ?? "(no handoff narrative stored)"}${factLines}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: recent_requests
+server.tool(
   "recent_chat",
   "Inspect recently captured chat messages in the separate chat lane",
   {
@@ -1743,6 +1849,9 @@ server.tool(
           return `- #${obs.id} [${obs.type}] ${obs.title}${provenance.length ? ` (${provenance.join(" · ")})` : ""}`;
         }).join("\n")
       : "- (none)";
+    const handoffLines = result.handoffs.length > 0
+      ? result.handoffs.slice(-8).map((obs) => `- #${obs.id} ${obs.title}`).join("\n")
+      : "- (none)";
 
     const metrics = result.metrics
       ? `files=${result.metrics.files_touched_count}, searches=${result.metrics.searches_performed}, tools=${result.metrics.tool_calls_count}, observations=${result.metrics.observation_count}`
@@ -1767,6 +1876,7 @@ server.tool(
             `Prompts:\n${promptLines}\n\n` +
             `Chat:\n${chatLines}\n\n` +
             `Tools:\n${toolLines}\n\n` +
+            `Handoffs:\n${handoffLines}\n\n` +
             `Provenance:\n${provenanceSummary}\n\n` +
             `Capture gaps:\n${captureGaps}\n\n` +
             `Observations:\n${observationLines}`,
