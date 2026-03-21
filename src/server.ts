@@ -54,6 +54,7 @@ import { listPluginManifests } from "./plugins/registry.js";
 import { savePluginMemory } from "./plugins/save.js";
 import { reduceGitDiffToMemory } from "./plugins/git-diff.js";
 import { reduceRepoScanToMemory } from "./plugins/repo-scan.js";
+import { reduceOpenClawContentToMemory } from "./plugins/openclaw-content.js";
 
 // --- Bootstrap ---
 
@@ -544,6 +545,52 @@ server.tool(
             `Saved repo scan as observation #${result.observation_id} ` +
             `(${reduced.type}: ${reduced.title})` +
             `${findingSummary ? `\nFindings: ${findingSummary}` : ""}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: capture_openclaw_content
+server.tool(
+  "capture_openclaw_content",
+  "Reduce OpenClaw content/research activity into durable memory and save it with plugin provenance",
+  {
+    title: z.string().optional().describe("Short content or campaign title"),
+    posted: z.array(z.string()).optional().describe("Concrete posted items or shipped content outcomes"),
+    researched: z.array(z.string()).optional().describe("Research or discovery items"),
+    outcomes: z.array(z.string()).optional().describe("Meaningful outcomes from the run"),
+    next_actions: z.array(z.string()).optional().describe("Real follow-up actions"),
+    links: z.array(z.string()).optional().describe("Thread or source URLs"),
+    session_id: z.string().optional(),
+    cwd: z.string().optional(),
+  },
+  async (params) => {
+    const reduced = reduceOpenClawContentToMemory({
+      ...params,
+      cwd: params.cwd ?? process.cwd(),
+      agent: getDetectedAgent(),
+    });
+
+    const result = await savePluginMemory(db, config, reduced);
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Not saved: ${result.reason}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Saved OpenClaw content memory as observation #${result.observation_id} ` +
+            `(${reduced.type}: ${reduced.title})`,
         },
       ],
     };
