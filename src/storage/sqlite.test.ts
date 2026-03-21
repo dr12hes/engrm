@@ -885,6 +885,10 @@ describe("MemDatabase — session summaries", () => {
       learned: null,
       completed: "- Added refresh logic",
       next_steps: null,
+      capture_state: "partial",
+      recent_tool_names: JSON.stringify(["Edit"]),
+      hot_files: JSON.stringify(["app/live.ts"]),
+      recent_outcomes: JSON.stringify(["Added refresh logic"]),
     });
 
     const updated = db.upsertSessionSummary({
@@ -896,11 +900,17 @@ describe("MemDatabase — session summaries", () => {
       learned: null,
       completed: null,
       next_steps: null,
+      capture_state: null,
+      recent_tool_names: null,
+      hot_files: null,
+      recent_outcomes: null,
     });
 
     expect(updated.id).toBe(first.id);
     expect(updated.request).toBe("Refined live request");
     expect(updated.completed).toBe("- Added refresh logic");
+    expect(updated.capture_state).toBe("partial");
+    expect(updated.recent_tool_names).toBe(JSON.stringify(["Edit"]));
   });
 
   test("getRecentSummaries returns summaries ordered by most recent", () => {

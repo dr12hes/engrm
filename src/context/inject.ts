@@ -105,6 +105,18 @@ function tokenizeProjectHint(text: string): string[] {
   );
 }
 
+function parseSummaryJsonList(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 function isObservationRelatedToProject(
   obs: ObservationRow & { _source_project?: string },
   detected: { name: string; canonical_id: string }
@@ -351,9 +363,9 @@ export function buildSessionContext(
     const projectTypeCounts = isNewProject
       ? undefined
       : getProjectTypeCounts(db, projectId, opts.userId);
-    const recentOutcomes = isNewProject
+  const recentOutcomes = isNewProject
       ? undefined
-      : getRecentOutcomes(db, projectId, opts.userId);
+      : getRecentOutcomes(db, projectId, opts.userId, recentSessions);
     return {
       project_name: projectName,
       canonical_id: canonicalId,
@@ -416,7 +428,7 @@ export function buildSessionContext(
     : getProjectTypeCounts(db, projectId, opts.userId);
   const recentOutcomes = isNewProject
     ? undefined
-    : getRecentOutcomes(db, projectId, opts.userId);
+    : getRecentOutcomes(db, projectId, opts.userId, recentSessions);
 
   // Fetch recent security findings (last 7 days) for risk awareness
   let securityFindings: SecurityFindingRow[] = [];
@@ -939,7 +951,8 @@ function getProjectTypeCounts(
 function getRecentOutcomes(
   db: MemDatabase,
   projectId: number,
-  userId?: string
+  userId?: string,
+  recentSessions?: RecentSessionRow[]
 ): string[] {
   const visibilityClause = userId
     ? " AND (sensitivity != 'personal' OR user_id = ?)"
@@ -958,6 +971,13 @@ function getRecentOutcomes(
   const picked: string[] = [];
   const seen = new Set<string>();
   for (const summary of summaries) {
+    for (const item of parseSummaryJsonList(summary.recent_outcomes)) {
+      const normalized = item.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      picked.push(item);
+      if (picked.length >= 5) return picked;
+    }
     for (const line of [
       ...extractMeaningfulLines(summary.completed, 2),
       ...extractMeaningfulLines(summary.learned, 1),
@@ -966,6 +986,16 @@ function getRecentOutcomes(
       if (!normalized || seen.has(normalized)) continue;
       seen.add(normalized);
       picked.push(line);
+      if (picked.length >= 5) return picked;
+    }
+  }
+
+  for (const session of recentSessions ?? []) {
+    for (const item of parseSummaryJsonList(session.recent_outcomes)) {
+      const normalized = item.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      picked.push(item);
       if (picked.length >= 5) return picked;
     }
   }

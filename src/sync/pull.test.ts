@@ -333,6 +333,10 @@ describe("pullFromVector", () => {
               session_id: "sess-remote-1",
               request: "Investigate auth regression",
               completed: "- Added auth guard",
+              capture_state: "partial",
+              recent_tool_names: ["Edit", "Bash"],
+              hot_files: ["app/auth.py"],
+              recent_outcomes: ["Added auth guard"],
             },
           }),
         ],
@@ -347,6 +351,10 @@ describe("pullFromVector", () => {
     expect(summary).not.toBeNull();
     expect(summary?.request).toBe("Investigate auth regression");
     expect(summary?.completed).toBe("- Added auth guard");
+    expect(summary?.capture_state).toBe("partial");
+    expect(summary?.recent_tool_names).toBe(JSON.stringify(["Edit", "Bash"]));
+    expect(summary?.hot_files).toBe(JSON.stringify(["app/auth.py"]));
+    expect(summary?.recent_outcomes).toBe(JSON.stringify(["Added auth guard"]));
   });
 
   test("updates local session summary when remote summary doc changes", async () => {

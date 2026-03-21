@@ -168,6 +168,10 @@ export interface RecentSessionRow extends SessionRow {
   project_name: string | null;
   request: string | null;
   completed: string | null;
+  capture_state?: string | null;
+  recent_tool_names?: string | null;
+  hot_files?: string | null;
+  recent_outcomes?: string | null;
   prompt_count: number;
   tool_event_count: number;
 }
@@ -192,6 +196,10 @@ export interface SessionSummaryRow {
   learned: string | null;
   completed: string | null;
   next_steps: string | null;
+  capture_state?: string | null;
+  recent_tool_names?: string | null;
+  hot_files?: string | null;
+  recent_outcomes?: string | null;
   created_at_epoch: number | null;
 }
 
@@ -279,6 +287,10 @@ export interface InsertSessionSummary {
   learned: string | null;
   completed: string | null;
   next_steps: string | null;
+  capture_state?: string | null;
+  recent_tool_names?: string | null;
+  hot_files?: string | null;
+  recent_outcomes?: string | null;
 }
 
 export interface InsertSecurityFinding {
@@ -820,6 +832,10 @@ export class MemDatabase {
              p.name AS project_name,
              ss.request AS request,
              ss.completed AS completed,
+             ss.capture_state AS capture_state,
+             ss.recent_tool_names AS recent_tool_names,
+             ss.hot_files AS hot_files,
+             ss.recent_outcomes AS recent_outcomes,
              (SELECT COUNT(*) FROM user_prompts up WHERE up.session_id = s.session_id) AS prompt_count,
              (SELECT COUNT(*) FROM tool_events te WHERE te.session_id = s.session_id) AS tool_event_count
            FROM sessions s
@@ -839,6 +855,10 @@ export class MemDatabase {
            p.name AS project_name,
            ss.request AS request,
            ss.completed AS completed,
+           ss.capture_state AS capture_state,
+           ss.recent_tool_names AS recent_tool_names,
+           ss.hot_files AS hot_files,
+           ss.recent_outcomes AS recent_outcomes,
            (SELECT COUNT(*) FROM user_prompts up WHERE up.session_id = s.session_id) AS prompt_count,
            (SELECT COUNT(*) FROM tool_events te WHERE te.session_id = s.session_id) AS tool_event_count
          FROM sessions s
@@ -1206,8 +1226,11 @@ export class MemDatabase {
     };
     const result = this.db
       .query(
-        `INSERT INTO session_summaries (session_id, project_id, user_id, request, investigated, learned, completed, next_steps, created_at_epoch)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO session_summaries (
+          session_id, project_id, user_id, request, investigated, learned, completed, next_steps,
+          capture_state, recent_tool_names, hot_files, recent_outcomes, created_at_epoch
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         summary.session_id,
@@ -1218,6 +1241,10 @@ export class MemDatabase {
         normalized.learned,
         normalized.completed,
         normalized.next_steps,
+        summary.capture_state ?? null,
+        summary.recent_tool_names ?? null,
+        summary.hot_files ?? null,
+        summary.recent_outcomes ?? null,
         now
       );
 
@@ -1242,6 +1269,10 @@ export class MemDatabase {
       learned: normalizeSummarySection(summary.learned ?? existing.learned),
       completed: normalizeSummarySection(summary.completed ?? existing.completed),
       next_steps: normalizeSummarySection(summary.next_steps ?? existing.next_steps),
+      capture_state: summary.capture_state ?? existing.capture_state,
+      recent_tool_names: summary.recent_tool_names ?? existing.recent_tool_names,
+      hot_files: summary.hot_files ?? existing.hot_files,
+      recent_outcomes: summary.recent_outcomes ?? existing.recent_outcomes,
     };
 
     this.db
@@ -1254,6 +1285,10 @@ export class MemDatabase {
              learned = ?,
              completed = ?,
              next_steps = ?,
+             capture_state = ?,
+             recent_tool_names = ?,
+             hot_files = ?,
+             recent_outcomes = ?,
              created_at_epoch = ?
          WHERE session_id = ?`
       )
@@ -1265,6 +1300,10 @@ export class MemDatabase {
         normalized.learned,
         normalized.completed,
         normalized.next_steps,
+        normalized.capture_state,
+        normalized.recent_tool_names,
+        normalized.hot_files,
+        normalized.recent_outcomes,
         now,
         summary.session_id
       );

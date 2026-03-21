@@ -558,12 +558,19 @@ function duplicatesPromptLine(request: string, promptLine: string | null): boole
 }
 
 function buildToolFallbacks(context: InjectedContext): string[] {
-  return (context.recentToolEvents ?? [])
+  const fromEvents = (context.recentToolEvents ?? [])
     .slice(0, 3)
     .map((tool) => {
       const detail = tool.file_path ?? tool.command ?? tool.tool_response_preview ?? "";
       return `${tool.tool_name}${detail ? `: ${detail}` : ""}`.trim();
     })
+    .filter((item) => item.length > 0);
+
+  if (fromEvents.length > 0) return fromEvents;
+
+  return (context.recentSessions ?? [])
+    .flatMap((session) => parseSessionJsonList(session.recent_tool_names))
+    .slice(0, 3)
     .filter((item) => item.length > 0);
 }
 
@@ -599,6 +606,18 @@ function buildRecentOutcomeLines(
   push(summary?.learned);
 
   if (picked.length < 2) {
+    for (const session of context.recentSessions ?? []) {
+      for (const item of parseSessionJsonList(session.recent_outcomes)) {
+        const normalized = normalizeStartupItem(item);
+        if (!normalized || seen.has(normalized)) continue;
+        seen.add(normalized);
+        picked.push(item);
+        if (picked.length >= 2) return picked;
+      }
+    }
+  }
+
+  if (picked.length < 2) {
     for (const obs of context.observations) {
       if (!["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type)) continue;
       const title = stripInlineSectionLabel(obs.title);
@@ -629,6 +648,18 @@ function chooseMeaningfulSessionSummary(
     if (lines.length > 0) return lines[0] ?? null;
   }
   return request ?? completed ?? null;
+}
+
+function parseSessionJsonList(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function buildProjectSignalLine(context: InjectedContext): string | null {

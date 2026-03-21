@@ -389,6 +389,16 @@ const MIGRATIONS: Migration[] = [
   },
   {
     version: 11,
+    description: "Add synced handoff metadata to session summaries",
+    sql: `
+      ALTER TABLE session_summaries ADD COLUMN capture_state TEXT;
+      ALTER TABLE session_summaries ADD COLUMN recent_tool_names TEXT;
+      ALTER TABLE session_summaries ADD COLUMN hot_files TEXT;
+      ALTER TABLE session_summaries ADD COLUMN recent_outcomes TEXT;
+    `,
+  },
+  {
+    version: 11,
     description: "Add observation provenance from tool and prompt chronology",
     sql: `
       ALTER TABLE observations ADD COLUMN source_tool TEXT;

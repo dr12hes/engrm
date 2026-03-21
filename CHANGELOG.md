@@ -4,6 +4,22 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.21
+
+### Added
+
+- synced session summaries now retain lightweight handoff metadata:
+  - `capture_state`
+  - `recent_tool_names`
+  - `hot_files`
+  - `recent_outcomes`
+
+### Changed
+
+- remote summary docs pulled from another device now hydrate local handoff cues instead of only the plain `request / completed` text
+- startup handoff can now fall back to synced `recent_tool_names` and `recent_outcomes` when local raw tool chronology is missing
+- this improves live-ish multi-device continuity by making another machine feel more current even before it has the originating device's raw local tool/event tables
+
 ## 0.4.20
 
 ### Added

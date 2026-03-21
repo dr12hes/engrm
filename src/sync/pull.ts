@@ -193,9 +193,23 @@ function mergeRemoteSummary(
     learned: typeof change.metadata?.learned === "string" ? change.metadata.learned : null,
     completed: typeof change.metadata?.completed === "string" ? change.metadata.completed : null,
     next_steps: typeof change.metadata?.next_steps === "string" ? change.metadata.next_steps : null,
+    capture_state:
+      typeof change.metadata?.capture_state === "string" ? change.metadata.capture_state : null,
+    recent_tool_names: encodeStringArray(change.metadata?.recent_tool_names),
+    hot_files: encodeStringArray(change.metadata?.hot_files),
+    recent_outcomes: encodeStringArray(change.metadata?.recent_outcomes),
   });
 
   return Boolean(summary);
+}
+
+function encodeStringArray(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const normalized = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return normalized.length > 0 ? JSON.stringify(normalized) : null;
 }
 
 function normalizeRemoteObservationType(
