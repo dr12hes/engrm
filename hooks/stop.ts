@@ -91,6 +91,26 @@ async function main(): Promise<void> {
 
       if (event.last_assistant_message) {
         try {
+          const detected = detectProject(event.cwd);
+          const project = db.getProjectByCanonicalId(detected.canonical_id)
+            ?? db.upsertProject({
+              canonical_id: detected.canonical_id,
+              name: detected.name,
+              local_path: event.cwd,
+              remote_url: detected.remote_url ?? null,
+            });
+          const compactAssistant = event.last_assistant_message.replace(/\s+/g, " ").trim();
+          if (compactAssistant.length >= 24) {
+            db.insertChatMessage({
+              session_id: event.session_id,
+              project_id: project.id,
+              role: "assistant",
+              content: event.last_assistant_message,
+              user_id: config.user_id,
+              device_id: config.device_id,
+              agent: "claude-code",
+            });
+          }
           createAssistantCheckpoint(db, event.session_id, event.cwd, event.last_assistant_message);
         } catch {
           // Assistant checkpoint is optional — don't block shutdown

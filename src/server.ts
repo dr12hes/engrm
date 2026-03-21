@@ -19,6 +19,8 @@ import { getTimeline } from "./tools/timeline.js";
 import { pinObservation } from "./tools/pin.js";
 import { getRecentActivity } from "./tools/recent.js";
 import { getRecentRequests } from "./tools/recent-prompts.js";
+import { getRecentChat } from "./tools/recent-chat.js";
+import { searchChat } from "./tools/search-chat.js";
 import { getRecentTools } from "./tools/recent-tools.js";
 import { getSessionStory } from "./tools/session-story.js";
 import { getRecentSessions } from "./tools/recent-sessions.js";
@@ -1533,6 +1535,69 @@ server.tool(
 
 // Tool: recent_requests
 server.tool(
+  "recent_chat",
+  "Inspect recently captured chat messages in the separate chat lane",
+  {
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    session_id: z.string().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = getRecentChat(db, params);
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.messages.length > 0
+      ? result.messages.map((msg) => {
+          const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
+          return `- ${stamp} [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}Recent chat:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "search_chat",
+  "Search the separate chat lane without mixing it into durable memory observations",
+  {
+    query: z.string().describe("Text to search for in captured chat"),
+    limit: z.number().optional(),
+    project_scoped: z.boolean().optional(),
+    cwd: z.string().optional(),
+    user_id: z.string().optional(),
+  },
+  async (params) => {
+    const result = searchChat(db, params);
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.messages.length > 0
+      ? result.messages.map((msg) => {
+          const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
+          return `- ${stamp} [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}Chat search for "${params.query}":\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: recent_requests
+server.tool(
   "recent_requests",
   "Inspect recently captured raw user requests and prompt chronology",
   {
@@ -1659,6 +1724,9 @@ server.tool(
     const promptLines = result.prompts.length > 0
       ? result.prompts.map((prompt) => `- #${prompt.prompt_number} ${prompt.prompt.replace(/\s+/g, " ").trim()}`).join("\n")
       : "- (none)";
+    const chatLines = result.chat_messages.length > 0
+      ? result.chat_messages.slice(-12).map((msg) => `- [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`).join("\n")
+      : "- (none)";
 
     const toolLines = result.tool_events.length > 0
       ? result.tool_events.slice(-15).map((tool) => {
@@ -1697,6 +1765,7 @@ server.tool(
             `Metrics: ${metrics}\n\n` +
             `Summary:\n${summaryLines}\n\n` +
             `Prompts:\n${promptLines}\n\n` +
+            `Chat:\n${chatLines}\n\n` +
             `Tools:\n${toolLines}\n\n` +
             `Provenance:\n${provenanceSummary}\n\n` +
             `Capture gaps:\n${captureGaps}\n\n` +

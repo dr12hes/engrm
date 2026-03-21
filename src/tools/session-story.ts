@@ -5,7 +5,7 @@
  * observations, summary, and metrics.
  */
 
-import type { MemDatabase, ObservationRow, SessionRow, SessionSummaryRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
+import type { ChatMessageRow, MemDatabase, ObservationRow, SessionRow, SessionSummaryRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
 
 export interface SessionStoryInput {
   session_id: string;
@@ -16,6 +16,7 @@ export interface SessionStoryResult {
   project_name: string | null;
   summary: SessionSummaryRow | null;
   prompts: UserPromptRow[];
+  chat_messages: ChatMessageRow[];
   tool_events: ToolEventRow[];
   observations: ObservationRow[];
   metrics: (SessionRow & {
@@ -38,6 +39,7 @@ export function getSessionStory(
   const session = db.getSessionById(input.session_id);
   const summary = db.getSessionSummary(input.session_id);
   const prompts = db.getSessionUserPrompts(input.session_id, 50);
+  const chatMessages = db.getSessionChatMessages(input.session_id, 50);
   const toolEvents = db.getSessionToolEvents(input.session_id, 100);
   const observations = db.getObservationsBySession(input.session_id);
   const metrics = db.getSessionMetrics(input.session_id);
@@ -54,6 +56,7 @@ export function getSessionStory(
     project_name: projectName,
     summary,
     prompts,
+    chat_messages: chatMessages,
     tool_events: toolEvents,
     observations,
     metrics,

@@ -234,6 +234,18 @@ export interface ToolEventRow {
   created_at_epoch: number;
 }
 
+export interface ChatMessageRow {
+  id: number;
+  session_id: string;
+  project_id: number | null;
+  role: "user" | "assistant";
+  content: string;
+  user_id: string;
+  device_id: string;
+  agent: string;
+  created_at_epoch: number;
+}
+
 export interface SecurityFindingRow {
   id: number;
   session_id: string | null;
@@ -328,6 +340,17 @@ export interface InsertToolEvent {
   tool_response_preview?: string | null;
   file_path?: string | null;
   command?: string | null;
+  user_id: string;
+  device_id: string;
+  agent?: string;
+  created_at_epoch?: number;
+}
+
+export interface InsertChatMessage {
+  session_id: string;
+  project_id: number | null;
+  role: "user" | "assistant";
+  content: string;
   user_id: string;
   device_id: string;
   agent?: string;
@@ -1056,6 +1079,109 @@ export class MemDatabase {
          LIMIT ?`
       )
       .all(...(userId ? [userId] : []), limit);
+  }
+
+  // --- Chat messages ---
+
+  insertChatMessage(input: InsertChatMessage): ChatMessageRow {
+    const createdAt = input.created_at_epoch ?? Math.floor(Date.now() / 1000);
+    const content = input.content.trim();
+    const result = this.db
+      .query(
+        `INSERT INTO chat_messages (
+          session_id, project_id, role, content, user_id, device_id, agent, created_at_epoch
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        input.session_id,
+        input.project_id,
+        input.role,
+        content,
+        input.user_id,
+        input.device_id,
+        input.agent ?? "claude-code",
+        createdAt
+      );
+
+    return this.getChatMessageById(Number(result.lastInsertRowid))!;
+  }
+
+  getChatMessageById(id: number): ChatMessageRow | null {
+    return (
+      this.db
+        .query<ChatMessageRow, [number]>(
+          "SELECT * FROM chat_messages WHERE id = ?"
+        )
+        .get(id) ?? null
+    );
+  }
+
+  getSessionChatMessages(sessionId: string, limit: number = 50): ChatMessageRow[] {
+    return this.db
+      .query<ChatMessageRow, [string, number]>(
+        `SELECT * FROM chat_messages
+         WHERE session_id = ?
+         ORDER BY created_at_epoch ASC, id ASC
+         LIMIT ?`
+      )
+      .all(sessionId, limit);
+  }
+
+  getRecentChatMessages(
+    projectId: number | null,
+    limit: number = 20,
+    userId?: string
+  ): ChatMessageRow[] {
+    const visibilityClause = userId ? " AND user_id = ?" : "";
+    if (projectId !== null) {
+      return this.db
+        .query<ChatMessageRow, (number | string)[]>(
+          `SELECT * FROM chat_messages
+           WHERE project_id = ?${visibilityClause}
+           ORDER BY created_at_epoch DESC, id DESC
+           LIMIT ?`
+        )
+        .all(projectId, ...(userId ? [userId] : []), limit);
+    }
+
+    return this.db
+      .query<ChatMessageRow, (number | string)[]>(
+        `SELECT * FROM chat_messages
+         WHERE 1 = 1${visibilityClause}
+         ORDER BY created_at_epoch DESC, id DESC
+         LIMIT ?`
+      )
+      .all(...(userId ? [userId] : []), limit);
+  }
+
+  searchChatMessages(
+    query: string,
+    projectId: number | null,
+    limit: number = 20,
+    userId?: string
+  ): ChatMessageRow[] {
+    const needle = `%${query.toLowerCase()}%`;
+    const visibilityClause = userId ? " AND user_id = ?" : "";
+    if (projectId !== null) {
+      return this.db
+        .query<ChatMessageRow, (number | string)[]>(
+          `SELECT * FROM chat_messages
+           WHERE project_id = ?
+             AND lower(content) LIKE ?${visibilityClause}
+           ORDER BY created_at_epoch DESC, id DESC
+           LIMIT ?`
+        )
+        .all(projectId, needle, ...(userId ? [userId] : []), limit);
+    }
+
+    return this.db
+      .query<ChatMessageRow, (number | string)[]>(
+        `SELECT * FROM chat_messages
+         WHERE lower(content) LIKE ?${visibilityClause}
+         ORDER BY created_at_epoch DESC, id DESC
+         LIMIT ?`
+      )
+      .all(needle, ...(userId ? [userId] : []), limit);
   }
 
   // --- Sync outbox ---

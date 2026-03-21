@@ -405,6 +405,30 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    version: 14,
+    description: "Add chat_messages lane for raw conversation recall",
+    sql: `
+      CREATE TABLE IF NOT EXISTS chat_messages (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id        TEXT NOT NULL,
+          project_id        INTEGER REFERENCES projects(id),
+          role              TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+          content           TEXT NOT NULL,
+          user_id           TEXT NOT NULL,
+          device_id         TEXT NOT NULL,
+          agent             TEXT DEFAULT 'claude-code',
+          created_at_epoch  INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_session
+        ON chat_messages(session_id, created_at_epoch DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_project
+        ON chat_messages(project_id, created_at_epoch DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_created
+        ON chat_messages(created_at_epoch DESC, id DESC);
+    `,
+  },
+  {
     version: 11,
     description: "Add observation provenance from tool and prompt chronology",
     sql: `
@@ -489,6 +513,9 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
   }
   if (columnExists(db, "session_summaries", "current_thread")) {
     version = Math.max(version, 13);
+  }
+  if (tableExists(db, "chat_messages")) {
+    version = Math.max(version, 14);
   }
 
   return version;

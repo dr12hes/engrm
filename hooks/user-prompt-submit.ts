@@ -55,6 +55,16 @@ async function main(): Promise<void> {
       agent: "claude-code",
     });
 
+    db.insertChatMessage({
+      session_id: event.session_id,
+      project_id: project.id,
+      role: "user",
+      content: event.prompt,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+
     const compactPrompt = event.prompt.replace(/\s+/g, " ").trim();
     if (compactPrompt.length >= 8) {
       const sessionPrompts = db.getSessionUserPrompts(event.session_id, 20);
