@@ -388,7 +388,7 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
-    version: 11,
+    version: 12,
     description: "Add synced handoff metadata to session summaries",
     sql: `
       ALTER TABLE session_summaries ADD COLUMN capture_state TEXT;
