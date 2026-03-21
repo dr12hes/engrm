@@ -139,7 +139,7 @@ async function main(): Promise<void> {
           );
 
         if (summary) {
-          const row = db.insertSessionSummary(summary);
+          const row = db.upsertSessionSummary(summary);
           db.addToOutbox("summary", row.id);
 
           // Compute risk score

@@ -10,6 +10,7 @@
 
 import { detectProject } from "../src/storage/projects.js";
 import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
+import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
 
 interface UserPromptSubmitEvent {
   session_id: string;
@@ -56,6 +57,10 @@ async function main(): Promise<void> {
 
     const compactPrompt = event.prompt.replace(/\s+/g, " ").trim();
     if (compactPrompt.length >= 8) {
+      const sessionPrompts = db.getSessionUserPrompts(event.session_id, 20);
+      const sessionToolEvents = db.getSessionToolEvents(event.session_id, 20);
+      const sessionObservations = db.getObservationsBySession(event.session_id);
+      const handoff = buildSessionHandoffMetadata(sessionPrompts, sessionToolEvents, sessionObservations);
       const summary = db.upsertSessionSummary({
         session_id: event.session_id,
         project_id: project.id,
@@ -65,6 +70,10 @@ async function main(): Promise<void> {
         learned: null,
         completed: null,
         next_steps: null,
+        capture_state: handoff.capture_state,
+        recent_tool_names: JSON.stringify(handoff.recent_tool_names),
+        hot_files: JSON.stringify(handoff.hot_files),
+        recent_outcomes: JSON.stringify(handoff.recent_outcomes),
       });
       db.addToOutbox("summary", summary.id);
     }

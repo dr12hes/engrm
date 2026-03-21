@@ -22,6 +22,7 @@ import { observeToolEvent, incrementObserverSaveCount } from "../src/observer/ob
 import { extractErrorSignature, recallPastFix } from "../src/capture/recall.js";
 import { checkSessionFatigue } from "../src/capture/fatigue.js";
 import { buildLiveSummaryUpdate, mergeLiveSummarySections } from "../src/capture/live-summary.js";
+import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
 
 async function main(): Promise<void> {
   const raw = await readStdin();
@@ -277,11 +278,12 @@ function updateRollingSummaryFromObservation(
   if (!update) return;
 
   const existing = db.getSessionSummary(event.session_id);
+  const sessionPrompts = db.getSessionUserPrompts(event.session_id, 20);
+  const sessionToolEvents = db.getSessionToolEvents(event.session_id, 20);
+  const sessionObservations = db.getObservationsBySession(event.session_id);
   const merged = mergeLiveSummarySections(existing, update);
-  const currentRequest =
-    existing?.request
-    ?? db.getSessionUserPrompts(event.session_id, 1).at(-1)?.prompt
-    ?? null;
+  const handoff = buildSessionHandoffMetadata(sessionPrompts, sessionToolEvents, sessionObservations);
+  const currentRequest = existing?.request ?? handoff.latest_request ?? null;
 
   const summary = db.upsertSessionSummary({
     session_id: event.session_id,
@@ -292,6 +294,10 @@ function updateRollingSummaryFromObservation(
     learned: merged.learned,
     completed: merged.completed,
     next_steps: existing?.next_steps ?? null,
+    capture_state: handoff.capture_state,
+    recent_tool_names: JSON.stringify(handoff.recent_tool_names),
+    hot_files: JSON.stringify(handoff.hot_files),
+    recent_outcomes: JSON.stringify(handoff.recent_outcomes),
   });
   db.addToOutbox("summary", summary.id);
 }
