@@ -11,6 +11,7 @@
 import { detectProject } from "../src/storage/projects.js";
 import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
 import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
+import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 interface UserPromptSubmitEvent {
   session_id: string;
@@ -88,6 +89,11 @@ async function main(): Promise<void> {
         recent_outcomes: JSON.stringify(handoff.recent_outcomes),
       });
       db.addToOutbox("summary", summary.id);
+
+      await upsertRollingHandoff(db, config, {
+        session_id: event.session_id,
+        cwd: event.cwd,
+      });
     }
   } finally {
     db.close();

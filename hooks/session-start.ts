@@ -67,6 +67,7 @@ async function main(): Promise<void> {
       tokenBudget: 800,
       scope: config.search.scope,
       userId: config.user_id,
+      currentDeviceId: config.device_id,
     });
     // Persist context metrics for the beacon (stop hook reads this)
     if (context) {
@@ -443,7 +444,7 @@ function buildLatestHandoffLines(context: InjectedContext): string[] {
 
   const lines: string[] = [];
   const title = latest.title
-    .replace(/^Handoff:\s*/i, "")
+    .replace(/^Handoff(?: Draft)?:\s*/i, "")
     .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
     .trim();
   if (title) lines.push(`${title} (${formatHandoffSource(latest)})`);

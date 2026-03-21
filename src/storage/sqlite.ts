@@ -547,6 +547,45 @@ export class MemDatabase {
     );
   }
 
+  updateObservationContent(
+    id: number,
+    update: {
+      title: string;
+      narrative?: string | null;
+      facts?: string | null;
+      concepts?: string | null;
+      created_at_epoch?: number;
+    }
+  ): ObservationRow | null {
+    const existing = this.getObservationById(id);
+    if (!existing) return null;
+
+    const createdAtEpoch = update.created_at_epoch ?? existing.created_at_epoch;
+    const createdAt = new Date(createdAtEpoch * 1000).toISOString();
+
+    this.db
+      .query(
+        `UPDATE observations
+         SET title = ?, narrative = ?, facts = ?, concepts = ?, created_at = ?, created_at_epoch = ?
+         WHERE id = ?`
+      )
+      .run(
+        update.title,
+        update.narrative ?? null,
+        update.facts ?? null,
+        update.concepts ?? null,
+        createdAt,
+        createdAtEpoch,
+        id
+      );
+
+    this.ftsDelete(existing);
+    const refreshed = this.getObservationById(id);
+    if (!refreshed) return null;
+    this.ftsInsert(refreshed);
+    return refreshed;
+  }
+
   getObservationsByIds(ids: number[], userId?: string): ObservationRow[] {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => "?").join(",");

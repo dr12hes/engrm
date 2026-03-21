@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Config } from "../config.js";
 import { MemDatabase } from "../storage/sqlite.js";
-import { createHandoff, formatHandoffSource, getRecentHandoffs, loadHandoff } from "./handoffs.js";
+import { createHandoff, formatHandoffSource, getRecentHandoffs, loadHandoff, upsertRollingHandoff } from "./handoffs.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -318,5 +318,68 @@ describe("handoff tools", () => {
       current_device_id: config.device_id,
     });
     expect(loaded.handoff?.id).toBe(remote.id);
+  });
+
+  test("upsertRollingHandoff creates and then updates one draft for a session", async () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+      local_path: tmpDir,
+    });
+    db.upsertSession("sess-draft", project.id, config.user_id, config.device_id, "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-draft",
+      project_id: project.id,
+      prompt: "Plumb the events feed into chat actions.",
+      cwd: tmpDir,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-draft",
+      project_id: project.id,
+      user_id: config.user_id,
+      request: "Plumb the events feed into chat actions.",
+      completed: null,
+      next_steps: null,
+      current_thread: "Events feed into chat actions",
+      capture_state: "partial",
+      recent_tool_names: JSON.stringify([]),
+      hot_files: JSON.stringify([]),
+      recent_outcomes: JSON.stringify([]),
+    });
+
+    const first = await upsertRollingHandoff(db, config, {
+      session_id: "sess-draft",
+      cwd: tmpDir,
+    });
+    expect(first.success).toBe(true);
+    const firstObs = db.getObservationById(first.observation_id!);
+    expect(firstObs?.title.startsWith("Handoff Draft:")).toBe(true);
+
+    db.insertObservation({
+      session_id: "sess-draft",
+      project_id: project.id,
+      type: "feature",
+      title: "Wired the events feed into the chat action path",
+      quality: 0.9,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+      source_tool: "Edit",
+      source_prompt_number: 1,
+    });
+
+    const second = await upsertRollingHandoff(db, config, {
+      session_id: "sess-draft",
+      cwd: tmpDir,
+    });
+    expect(second.success).toBe(true);
+    expect(second.observation_id).toBe(first.observation_id);
+
+    const messages = db.getObservationsBySession("sess-draft").filter((obs) => obs.type === "message");
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.title).toContain("Wired the events feed into the chat action path");
   });
 });

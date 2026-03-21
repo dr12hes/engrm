@@ -7,6 +7,7 @@ All notable changes to this repository should be documented here.
 ### Added
 
 - `activity_feed` now includes the separate chat lane as first-class `chat` events in both project-scoped and session-scoped chronology views
+- `refresh_handoff` MCP tool now refreshes a rolling live handoff draft for the current session without creating a new saved handoff
 
 ### Changed
 
@@ -17,6 +18,7 @@ All notable changes to this repository should be documented here.
 - startup `Next look` hints now point at `load_handoff` and `recent_chat` when Engrm already knows those continuity lanes are available
 - handoff views now show source device and freshness, so resume cues read like real cross-device handoffs instead of anonymous saved notes
 - when Engrm knows the current device, `recent_handoffs` and `load_handoff` now prefer another machine's resume point over the newest local handoff
+- prompt-time, tool-time, and stop-time updates now refresh one rolling syncable handoff draft per session so live work can move across devices before an explicit handoff is saved
 
 ## 0.4.23
 

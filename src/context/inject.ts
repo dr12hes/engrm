@@ -45,6 +45,8 @@ export interface ContextOptions {
   scope?: "personal" | "team" | "all";
   /** Current user for visibility filtering */
   userId?: string;
+  /** Current device so cross-device handoffs can prefer another machine */
+  currentDeviceId?: string;
 }
 
 export interface RecentProject {
@@ -376,6 +378,7 @@ export function buildSessionContext(
       cwd,
       project_scoped: !isNewProject,
       user_id: opts.userId,
+      current_device_id: opts.currentDeviceId,
       limit: 3,
     }).handoffs;
     const recentChatMessages =
@@ -449,6 +452,7 @@ export function buildSessionContext(
     cwd,
     project_scoped: !isNewProject,
     user_id: opts.userId,
+    current_device_id: opts.currentDeviceId,
     limit: 3,
   }).handoffs;
   const recentChatMessages =
@@ -620,7 +624,7 @@ export function formatContextForInjection(
     lines.push("## Recent Handoffs");
     for (const handoff of context.recentHandoffs.slice(0, 3)) {
       const title = handoff.title
-        .replace(/^Handoff:\s*/i, "")
+        .replace(/^Handoff(?: Draft)?:\s*/i, "")
         .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
         .trim();
       if (title) {

@@ -222,6 +222,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `recent_sessions` | List recent local sessions to inspect further |
 | `session_story` | Show prompts, tools, observations, and summary for one session |
 | `create_handoff` | Save an explicit syncable handoff so you can resume work on another device |
+| `refresh_handoff` | Refresh the rolling live handoff draft for the current session without creating a new saved handoff |
 | `recent_handoffs` | List recent saved handoffs for the current project or workspace |
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
@@ -284,6 +285,8 @@ For long-running work across devices, Engrm now has an explicit handoff flow:
 
 - `create_handoff`
   - snapshot the active thread into a syncable handoff message
+- `refresh_handoff`
+  - refresh the rolling live handoff draft for the current session
 - `recent_handoffs`
   - list the latest saved handoffs
 - `load_handoff`
@@ -295,6 +298,12 @@ Recent handoffs now carry:
 - freshness
 - current thread / recent outcomes
 - optional chat snippets when the session is still thin
+
+Rolling handoff drafts:
+
+- are kept as one updatable syncable draft per session
+- refresh during prompt-time and tool-time summary updates
+- let another machine resume live work even before you save a deliberate handoff
 
 When Engrm knows your current device, handoff tools also prefer resume points from another machine before showing the newest local handoff again.
 

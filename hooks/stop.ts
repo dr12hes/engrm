@@ -25,6 +25,7 @@ import {
   analyzeTranscript,
   saveTranscriptResults,
 } from "../src/capture/transcript.js";
+import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 import type { InsertSessionSummary, ObservationRow, UserPromptRow } from "../src/storage/sqlite.js";
 
@@ -162,6 +163,10 @@ async function main(): Promise<void> {
         if (summary) {
           const row = db.upsertSessionSummary(summary);
           db.addToOutbox("summary", row.id);
+          await upsertRollingHandoff(db, config, {
+            session_id: event.session_id,
+            cwd: event.cwd,
+          });
 
           // Compute risk score
           let securityFindings: import("../src/storage/sqlite.js").SecurityFindingRow[] = [];

@@ -17,6 +17,13 @@ export interface CreateHandoffInput {
   chat_limit?: number;
 }
 
+export interface RollingHandoffInput {
+  session_id: string;
+  cwd?: string;
+  include_chat?: boolean;
+  chat_limit?: number;
+}
+
 export interface CreateHandoffResult {
   success: boolean;
   observation_id?: number;
@@ -98,6 +105,102 @@ export async function createHandoff(
     cwd: input.cwd,
     agent: "engrm-handoff",
     source_tool: "create_handoff",
+  });
+
+  return {
+    success: result.success,
+    observation_id: result.observation_id,
+    session_id: story.session.session_id,
+    title,
+    reason: result.reason,
+  };
+}
+
+export async function upsertRollingHandoff(
+  db: MemDatabase,
+  config: Config,
+  input: RollingHandoffInput
+): Promise<CreateHandoffResult> {
+  const resolved = resolveTargetSession(db, input.cwd, config.user_id, input.session_id);
+  if (!resolved.session) {
+    return {
+      success: false,
+      reason: "No recent session found to draft a handoff yet",
+    };
+  }
+
+  const story = getSessionStory(db, { session_id: resolved.session.session_id });
+  if (!story.session) {
+    return {
+      success: false,
+      reason: `Session ${resolved.session.session_id} not found`,
+    };
+  }
+
+  const includeChat = input.include_chat === true
+    || (input.include_chat !== false && shouldAutoIncludeChat(story));
+  const chatLimit = Math.max(1, Math.min(input.chat_limit ?? 3, 6));
+  const title = `Handoff Draft: ${buildHandoffTitle(story.summary, story.latest_request)}`;
+  const narrative = buildHandoffNarrative(story.summary, story, {
+    includeChat,
+    chatLimit,
+  });
+  const facts = buildHandoffFacts(story.summary, story);
+  const concepts = buildDraftHandoffConcepts(story.project_name, story.capture_state);
+  const existing = getSessionRollingHandoff(db, story.session.session_id);
+  const now = Math.floor(Date.now() / 1000);
+
+  if (existing) {
+    const nextFacts = JSON.stringify(facts);
+    const nextConcepts = JSON.stringify(concepts);
+    const shouldRefresh =
+      existing.title !== title ||
+      (existing.narrative ?? null) !== narrative ||
+      (existing.facts ?? null) !== nextFacts ||
+      (existing.concepts ?? null) !== nextConcepts ||
+      now - existing.created_at_epoch >= 120;
+
+    if (!shouldRefresh) {
+      return {
+        success: true,
+        observation_id: existing.id,
+        session_id: story.session.session_id,
+        title: existing.title,
+      };
+    }
+
+    const updated = db.updateObservationContent(existing.id, {
+      title,
+      narrative,
+      facts: nextFacts,
+      concepts: nextConcepts,
+      created_at_epoch: now,
+    });
+    if (!updated) {
+      return {
+        success: false,
+        reason: "Failed to update rolling handoff draft",
+      };
+    }
+    db.addToOutbox("observation", updated.id);
+    return {
+      success: true,
+      observation_id: updated.id,
+      session_id: story.session.session_id,
+      title: updated.title,
+    };
+  }
+
+  const result = await saveObservation(db, config, {
+    type: "message",
+    title,
+    narrative,
+    facts,
+    concepts,
+    session_id: story.session.session_id,
+    cwd: input.cwd,
+    agent: "engrm-handoff",
+    source_tool: "rolling_handoff",
   });
 
   return {
@@ -209,11 +312,38 @@ export function formatHandoffSource(handoff: Pick<HandoffRow, "device_id" | "cre
   return `from ${handoff.device_id} · ${ageLabel}`;
 }
 
+export function isDraftHandoff(obs: Pick<ObservationRow, "title" | "concepts">): boolean {
+  if (obs.title.startsWith("Handoff Draft:")) return true;
+  const concepts = parseJsonArray(obs.concepts);
+  return concepts.includes("draft-handoff") || concepts.includes("auto-handoff");
+}
+
+function getSessionRollingHandoff(db: MemDatabase, sessionId: string): HandoffRow | null {
+  return db.db
+    .query<HandoffRow, [string]>(
+      `SELECT o.*, p.name AS project_name
+       FROM observations o
+       LEFT JOIN projects p ON p.id = o.project_id
+       WHERE o.session_id = ?
+         AND o.type = 'message'
+         AND o.lifecycle IN ('active', 'aging', 'pinned')
+         AND o.superseded_by IS NULL
+         AND (o.title LIKE 'Handoff Draft:%' OR o.concepts LIKE '%"draft-handoff"%')
+       ORDER BY o.created_at_epoch DESC, o.id DESC
+       LIMIT 1`
+    )
+    .get(sessionId) ?? null;
+}
+
 function compareHandoffs(
   a: HandoffRow,
   b: HandoffRow,
   currentDeviceId?: string
 ): number {
+  const aDraft = isDraftHandoff(a) ? 1 : 0;
+  const bDraft = isDraftHandoff(b) ? 1 : 0;
+  if (aDraft !== bDraft) return aDraft - bDraft;
+
   if (currentDeviceId) {
     const aOther = a.device_id !== currentDeviceId ? 1 : 0;
     const bOther = b.device_id !== currentDeviceId ? 1 : 0;
@@ -356,10 +486,20 @@ function buildHandoffConcepts(projectName: string | null, captureState: string):
   ];
 }
 
+function buildDraftHandoffConcepts(projectName: string | null, captureState: string): string[] {
+  return [
+    "handoff",
+    "draft-handoff",
+    "auto-handoff",
+    `capture:${captureState}`,
+    ...(projectName ? [projectName] : []),
+  ];
+}
+
 export function looksLikeHandoff(obs: ObservationRow): boolean {
-  if (obs.title.startsWith("Handoff:")) return true;
+  if (obs.title.startsWith("Handoff:") || obs.title.startsWith("Handoff Draft:")) return true;
   const concepts = parseJsonArray(obs.concepts);
-  return concepts.includes("handoff") || concepts.includes("session-handoff");
+  return concepts.includes("handoff") || concepts.includes("session-handoff") || concepts.includes("draft-handoff");
 }
 
 function parseJsonArray(value: string | null | undefined): string[] {

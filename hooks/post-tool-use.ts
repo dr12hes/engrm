@@ -10,6 +10,7 @@
  * from executing (it already did). We just observe and record.
  */
 
+import type { Config } from "../src/config.js";
 import { extractObservation, type ToolUseEvent } from "../src/capture/extractor.js";
 import { readStdin, bootstrapHook, runHook } from "../src/hooks/common.js";
 import { getDbPath } from "../src/config.js";
@@ -23,6 +24,7 @@ import { extractErrorSignature, recallPastFix } from "../src/capture/recall.js";
 import { checkSessionFatigue } from "../src/capture/fatigue.js";
 import { buildLiveSummaryUpdate, mergeLiveSummarySections } from "../src/capture/live-summary.js";
 import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
+import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 async function main(): Promise<void> {
   const raw = await readStdin();
@@ -154,7 +156,7 @@ async function main(): Promise<void> {
         );
         if (observed) {
           const result = await saveObservation(db, config, observed);
-          updateRollingSummaryFromObservation(db, result.observation_id, event, config.user_id);
+          await updateRollingSummaryFromObservation(db, result.observation_id, event, config.user_id, config);
           incrementObserverSaveCount(event.session_id);
           saved = true;
         }
@@ -177,7 +179,7 @@ async function main(): Promise<void> {
           cwd: event.cwd,
           source_tool: event.tool_name,
         });
-        updateRollingSummaryFromObservation(db, result.observation_id, event, config.user_id);
+        await updateRollingSummaryFromObservation(db, result.observation_id, event, config.user_id, config);
         incrementObserverSaveCount(event.session_id);
       }
     }
@@ -263,12 +265,13 @@ function detectProjectForEvent(event: ToolUseEvent) {
     : detectProject(event.cwd);
 }
 
-function updateRollingSummaryFromObservation(
+async function updateRollingSummaryFromObservation(
   db: MemDatabase,
   observationId: number | undefined,
   event: ToolUseEvent,
-  userId: string
-): void {
+  userId: string,
+  config: Config
+): Promise<void> {
   if (!observationId || !event.session_id) return;
 
   const observation = db.getObservationById(observationId);
@@ -301,6 +304,11 @@ function updateRollingSummaryFromObservation(
     recent_outcomes: JSON.stringify(handoff.recent_outcomes),
   });
   db.addToOutbox("summary", summary.id);
+
+  await upsertRollingHandoff(db, config, {
+    session_id: event.session_id,
+    cwd: event.cwd,
+  });
 }
 
 function extractTouchedPaths(event: ToolUseEvent): string[] {

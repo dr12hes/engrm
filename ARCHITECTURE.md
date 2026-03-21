@@ -61,6 +61,7 @@ Engrm keeps local SQLite as the source of truth.
 - sync propagates observations to remote storage for multi-device and team use
 - provenance and plugin metadata are preserved so Engrm can later explain which tools and plugins created durable memory
 - explicit handoffs are stored as syncable message observations so active work can move between machines without relying only on stop-time summaries
+- rolling handoff drafts now update one syncable resume object during the session, so cross-device continuity does not depend entirely on a manual end-of-session checkpoint
 - the separate chat lane is kept distinct from durable observations, but can still sync so recent conversational context is recoverable across devices
 
 ## Agent Support

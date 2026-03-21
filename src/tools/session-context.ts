@@ -20,6 +20,7 @@ export interface SessionContextInput {
   token_budget?: number;
   scope?: ContextOptions["scope"];
   user_id?: string;
+  current_device_id?: string;
 }
 
 export interface SessionContextResult {
@@ -51,6 +52,7 @@ export function getSessionContext(
     tokenBudget: input.token_budget,
     scope: input.scope,
     userId: input.user_id,
+    currentDeviceId: input.current_device_id,
   });
 
   if (!context) return null;

@@ -21,7 +21,7 @@ import { getRecentActivity } from "./tools/recent.js";
 import { getRecentRequests } from "./tools/recent-prompts.js";
 import { getRecentChat } from "./tools/recent-chat.js";
 import { searchChat } from "./tools/search-chat.js";
-import { createHandoff, formatHandoffSource, getRecentHandoffs, loadHandoff } from "./tools/handoffs.js";
+import { createHandoff, formatHandoffSource, getRecentHandoffs, isDraftHandoff, loadHandoff, upsertRollingHandoff } from "./tools/handoffs.js";
 import { getRecentTools } from "./tools/recent-tools.js";
 import { getSessionStory } from "./tools/session-story.js";
 import { getRecentSessions } from "./tools/recent-sessions.js";
@@ -1288,6 +1288,7 @@ server.tool(
       token_budget: params.token_budget,
       scope: params.scope,
       user_id: params.user_id ?? config.user_id,
+      current_device_id: config.device_id,
     });
 
     if (!result) {
@@ -1578,8 +1579,36 @@ server.tool(
 );
 
 server.tool(
+  "refresh_handoff",
+  "Refresh the rolling live handoff draft for the current or specified session without creating a new saved handoff",
+  {
+    session_id: z.string().optional().describe("Optional session ID to refresh; defaults to the latest recent session"),
+    cwd: z.string().optional().describe("Repo path used to scope the rolling handoff when no session ID is provided"),
+    include_chat: z.boolean().optional().describe("Include a few recent chat snippets in the rolling handoff draft"),
+    chat_limit: z.number().optional().describe("How many recent chat snippets to include when include_chat is true"),
+  },
+  async (params) => {
+    const result = await upsertRollingHandoff(db, config, params);
+    if (!result.success) {
+      return {
+        content: [{ type: "text" as const, text: `Rolling handoff not refreshed: ${result.reason}` }],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Rolling handoff draft #${result.observation_id} refreshed for session ${result.session_id}\nTitle: ${result.title}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
   "recent_handoffs",
-  "List recent explicit handoffs so you can resume work on another device or in a new session",
+  "List recent saved handoffs and rolling handoff drafts so you can resume work on another device or in a new session",
   {
     limit: z.number().optional(),
     project_scoped: z.boolean().optional(),
@@ -1596,7 +1625,8 @@ server.tool(
     const rows = result.handoffs.length > 0
       ? result.handoffs.map((handoff) => {
           const stamp = new Date(handoff.created_at_epoch * 1000).toISOString().replace("T", " ").slice(0, 16);
-          return `- #${handoff.id} (${stamp}) ${handoff.title}${handoff.project_name ? ` [${handoff.project_name}]` : ""} (${formatHandoffSource(handoff)})`;
+          const kind = isDraftHandoff(handoff) ? "draft" : "saved";
+          return `- #${handoff.id} (${stamp}) [${kind}] ${handoff.title}${handoff.project_name ? ` [${handoff.project_name}]` : ""} (${formatHandoffSource(handoff)})`;
         }).join("\n")
       : "- (none)";
 
@@ -1608,7 +1638,7 @@ server.tool(
 
 server.tool(
   "load_handoff",
-  "Open a saved handoff and turn it back into a clear resume point for a new session",
+  "Open the best saved handoff or rolling draft and turn it back into a clear resume point for a new session",
   {
     id: z.number().optional().describe("Optional handoff observation ID; defaults to the latest recent handoff"),
     cwd: z.string().optional(),
@@ -1997,8 +2027,8 @@ server.tool(
       db,
       process.cwd(),
       params.max_observations
-        ? { maxCount: params.max_observations, userId: config.user_id }
-        : { tokenBudget: 800, userId: config.user_id }
+        ? { maxCount: params.max_observations, userId: config.user_id, currentDeviceId: config.device_id }
+        : { tokenBudget: 800, userId: config.user_id, currentDeviceId: config.device_id }
     );
 
     if (!context || context.observations.length === 0) {

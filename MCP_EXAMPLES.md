@@ -36,18 +36,21 @@ The goal is to turn useful local work into durable memory that can be recalled l
 Use this when you are moving between machines and want a reliable resume point:
 
 1. `create_handoff`
-2. `recent_handoffs`
-3. `load_handoff`
+2. `refresh_handoff`
+3. `recent_handoffs`
+4. `load_handoff`
 
 Example prompts:
 
 - "Create a handoff for what I am working on before I leave this laptop."
+- "Refresh the rolling handoff draft for this current session."
 - "Show my recent handoffs for this repo."
 - "Load the latest handoff so I can pick this thread back up."
 
 What makes this better than a plain summary:
 
 - the handoff stays separate from durable engineering memory
+- there is a rolling draft handoff during the session, not just an end snapshot
 - it can include a little chat context when the session is still thin
 - recent handoffs show which machine they came from and how fresh they are
 - when the current device is known, resume tools prefer a handoff from another machine over the newest local one

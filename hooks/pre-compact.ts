@@ -88,6 +88,7 @@ async function main(): Promise<void> {
     const context = buildSessionContext(db, event.cwd, {
       tokenBudget: 800,
       scope: config.search.scope,
+      currentDeviceId: config.device_id,
     });
     if (context && context.observations.length > 0) {
       // stdout → injected into compacted context for Claude
