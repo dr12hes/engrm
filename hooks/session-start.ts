@@ -254,14 +254,14 @@ function formatSplashScreen(data: SplashData): string {
   }
 
   const contextIndex = formatContextIndex(data.context, handoffShownItems);
-  if (contextIndex.length > 0) {
+  if (contextIndex.lines.length > 0) {
     lines.push("");
-    for (const line of contextIndex) {
+    for (const line of contextIndex.lines) {
       lines.push(`  ${line}`);
     }
   }
 
-  const inspectHints = formatInspectHints(data.context);
+  const inspectHints = formatInspectHints(data.context, contextIndex.observationIds);
   if (inspectHints.length > 0) {
     lines.push("");
     for (const line of inspectHints) {
@@ -433,22 +433,29 @@ function formatLegend(): string[] {
   ];
 }
 
-function formatContextIndex(context: InjectedContext, shownItems?: Set<string>): string[] {
-  const rows = pickContextIndexObservations(context, shownItems)
+function formatContextIndex(
+  context: InjectedContext,
+  shownItems?: Set<string>
+): { lines: string[]; observationIds: number[] } {
+  const selected = pickContextIndexObservations(context, shownItems);
+  const rows = selected
     .map((obs) => {
       const icon = observationIcon(obs.type);
       const fileHint = extractPrimaryFileHint(obs);
       return `${icon} #${obs.id} ${truncateInline(obs.title, 110)}${fileHint ? ` ${c.dim}(${fileHint})${c.reset}` : ""}`;
     });
 
-  if (rows.length === 0) return [];
-  return [
-    `${c.dim}Handoff index:${c.reset} use IDs when you want the deeper thread`,
-    ...rows,
-  ];
+  if (rows.length === 0) return { lines: [], observationIds: [] };
+  return {
+    lines: [
+      `${c.dim}Handoff index:${c.reset} use IDs when you want the deeper thread`,
+      ...rows,
+    ],
+    observationIds: selected.map((obs) => obs.id),
+  };
 }
 
-function formatInspectHints(context: InjectedContext): string[] {
+function formatInspectHints(context: InjectedContext, visibleObservationIds: number[] = []): string[] {
   const hints: string[] = [];
 
   if ((context.recentSessions?.length ?? 0) > 0) {
@@ -464,7 +471,7 @@ function formatInspectHints(context: InjectedContext): string[] {
 
   const unique = Array.from(new Set(hints)).slice(0, 4);
   if (unique.length === 0) return [];
-  const ids = context.observations.slice(0, 5).map((obs) => obs.id);
+  const ids = visibleObservationIds.slice(0, 5);
   const fetchHint = ids.length > 0 ? `get_observations([${ids.join(", ")}])` : null;
   return [
     `${c.dim}Next look:${c.reset} ${unique.join(" · ")}`,

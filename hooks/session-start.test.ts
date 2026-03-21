@@ -254,4 +254,48 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("◇");
     expect(splash).toContain("docs/connectors/manifest-guide.md");
   });
+
+  test("pull detail ids match the visible handoff index rows", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 2,
+      available: 10,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 220,
+      context: makeContext({
+        observations: [
+          {
+            id: 2001,
+            type: "feature",
+            title: "Added event log plumbing for nav item",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: JSON.stringify(["admin/src/nav.tsx"]),
+            quality: 0.9,
+            created_at: "2026-03-21T10:35:00Z",
+            source_project: undefined,
+          },
+          {
+            id: 2002,
+            type: "change",
+            title: "Requested events now feed the existing event log",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: JSON.stringify(["admin/src/pages/events.tsx"]),
+            quality: 0.8,
+            created_at: "2026-03-21T10:36:00Z",
+            source_project: undefined,
+          },
+        ],
+      }),
+    });
+
+    expect(splash).toContain("#2001");
+    expect(splash).toContain("#2002");
+    expect(splash).toContain("get_observations([2001, 2002])");
+  });
 });

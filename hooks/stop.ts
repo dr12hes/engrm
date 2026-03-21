@@ -522,10 +522,28 @@ function pickAssistantCheckpointTitle(
   const candidates = [...bulletLines, ...substantiveLines]
     .map((line) => line.replace(/^Completed:\s*/i, "").trim())
     .filter((line) => line.length > 20)
+    .filter((line) => !isGenericCheckpointLine(line))
     .filter((line) => !/^Next Steps?:/i.test(line))
     .filter((line) => !/^Investigated:/i.test(line))
     .filter((line) => !/^Learned:/i.test(line));
   return candidates[0] ?? null;
+}
+
+function isGenericCheckpointLine(value: string): boolean {
+  const normalized = value
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  return (
+    normalized === "here's where things stand:" ||
+    normalized === "here's where things stand" ||
+    normalized === "where things stand:" ||
+    normalized === "where things stand" ||
+    normalized === "current status:" ||
+    normalized === "current status" ||
+    normalized === "status update:" ||
+    normalized === "status update"
+  );
 }
 
 /**

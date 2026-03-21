@@ -38,4 +38,18 @@ Next Steps:
     expect(checkpoint).not.toBeNull();
     expect(checkpoint?.type).toBe("decision");
   });
+
+  test("does not use generic status phrases as the checkpoint title", () => {
+    const checkpoint = __testables.extractAssistantCheckpoint(`Here's where things stand:
+
+Completed:
+- Event Log now uses the existing events feed
+- Requested events are now plumbed into the nav item
+
+Next Steps:
+- Make the data available to chat for offline alerts`);
+
+    expect(checkpoint).not.toBeNull();
+    expect(checkpoint?.title).toBe("Event Log now uses the existing events feed");
+  });
 });
