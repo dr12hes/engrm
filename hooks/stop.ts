@@ -22,7 +22,7 @@ import {
   saveTranscriptResults,
 } from "../src/capture/transcript.js";
 
-import type { InsertSessionSummary, ObservationRow } from "../src/storage/sqlite.js";
+import type { InsertSessionSummary, ObservationRow, UserPromptRow } from "../src/storage/sqlite.js";
 
 function printRetrospective(summary: InsertSessionSummary): void {
   const lines: string[] = [];
@@ -85,58 +85,7 @@ async function main(): Promise<void> {
     if (event.session_id) {
       db.completeSession(event.session_id);
 
-      // Generate retrospective — only if we haven't already for this session
-      const existing = db.getSessionSummary(event.session_id);
-      if (!existing) {
-        const observations = db.getObservationsBySession(event.session_id);
-        if (observations.length > 0) {
-          const session = db.getSessionMetrics(event.session_id);
-          const summary = extractRetrospective(
-            observations,
-            event.session_id,
-            session?.project_id ?? null,
-            config.user_id
-          );
-
-          if (summary) {
-            const row = db.insertSessionSummary(summary);
-            db.addToOutbox("summary", row.id);
-
-            // Compute risk score
-            let securityFindings: import("../src/storage/sqlite.js").SecurityFindingRow[] = [];
-            try {
-              if (session?.project_id) {
-                securityFindings = db.getSecurityFindings(session.project_id, { limit: 100 })
-                  .filter((f) => f.session_id === event.session_id);
-              }
-            } catch {
-              // security_findings table may not exist
-            }
-
-            const riskResult = computeRiskScore({
-              observations,
-              securityFindings,
-              filesTouchedCount: session?.files_touched_count ?? 0,
-              toolCallsCount: session?.tool_calls_count ?? 0,
-            });
-
-            // Store risk score
-            try {
-              db.setSessionRiskScore(event.session_id, riskResult.score);
-            } catch {
-              // risk_score column may not exist on old schema
-            }
-
-            // Display session retrospective to the user
-            printRetrospective(summary);
-            console.log(formatRiskTrafficLight(riskResult));
-          }
-        }
-      }
-    }
-    // Detect unsaved plans/decisions in the final assistant message
-    if (event.last_assistant_message) {
-      if (event.session_id) {
+      if (event.last_assistant_message) {
         try {
           createAssistantCheckpoint(db, event.session_id, event.cwd, event.last_assistant_message);
         } catch {
@@ -144,6 +93,63 @@ async function main(): Promise<void> {
         }
       }
 
+      // Generate retrospective — only if we haven't already for this session
+      const existing = db.getSessionSummary(event.session_id);
+      if (!existing) {
+        const observations = db.getObservationsBySession(event.session_id);
+        const session = db.getSessionMetrics(event.session_id);
+        const summary =
+          extractRetrospective(
+            observations,
+            event.session_id,
+            session?.project_id ?? null,
+            config.user_id
+          ) ??
+          buildFallbackSessionSummary(
+            db,
+            event.session_id,
+            session?.project_id ?? null,
+            config.user_id,
+            event.last_assistant_message
+          );
+
+        if (summary) {
+          const row = db.insertSessionSummary(summary);
+          db.addToOutbox("summary", row.id);
+
+          // Compute risk score
+          let securityFindings: import("../src/storage/sqlite.js").SecurityFindingRow[] = [];
+          try {
+            if (session?.project_id) {
+              securityFindings = db.getSecurityFindings(session.project_id, { limit: 100 })
+                .filter((f) => f.session_id === event.session_id);
+            }
+          } catch {
+            // security_findings table may not exist
+          }
+
+          const riskResult = computeRiskScore({
+            observations,
+            securityFindings,
+            filesTouchedCount: session?.files_touched_count ?? 0,
+            toolCallsCount: session?.tool_calls_count ?? 0,
+          });
+
+          // Store risk score
+          try {
+            db.setSessionRiskScore(event.session_id, riskResult.score);
+          } catch {
+            // risk_score column may not exist on old schema
+          }
+
+          // Display session retrospective to the user
+          printRetrospective(summary);
+          console.log(formatRiskTrafficLight(riskResult));
+        }
+      }
+    }
+    // Detect unsaved plans/decisions in the final assistant message
+    if (event.last_assistant_message) {
       const unsaved = detectUnsavedPlans(event.last_assistant_message);
       if (unsaved.length > 0) {
         console.error("");
@@ -213,6 +219,62 @@ async function main(): Promise<void> {
 
   // Exit 0 — allow Claude to stop
   process.exit(0);
+}
+
+function buildFallbackSessionSummary(
+  db: MemDatabase,
+  sessionId: string,
+  projectId: number | null,
+  userId: string,
+  lastAssistantMessage: string
+): InsertSessionSummary | null {
+  const prompts = db
+    .getSessionUserPrompts(sessionId, 10)
+    .filter((prompt) => isMeaningfulSummaryPrompt(prompt));
+  const checkpoint = lastAssistantMessage
+    ? extractAssistantCheckpoint(lastAssistantMessage)
+    : null;
+
+  const request = selectFallbackRequest(prompts);
+  const completed = checkpoint ? buildCheckpointCompleted(checkpoint) : null;
+
+  if (!request && !completed) return null;
+
+  return {
+    session_id: sessionId,
+    project_id: projectId,
+    user_id: userId,
+    request,
+    investigated: null,
+    learned: null,
+    completed,
+    next_steps: null,
+  };
+}
+
+function selectFallbackRequest(prompts: UserPromptRow[]): string | null {
+  const preferred = [...prompts]
+    .reverse()
+    .find((prompt) => !/^\[;ease$/i.test(prompt.prompt.trim()));
+  return preferred?.prompt?.replace(/\s+/g, " ").trim() ?? null;
+}
+
+function isMeaningfulSummaryPrompt(prompt: UserPromptRow): boolean {
+  const compact = prompt.prompt.replace(/\s+/g, " ").trim();
+  if (compact.length < 8) return false;
+  if (/^\[;ease$/i.test(compact)) return false;
+  return /[a-z]{3,}/i.test(compact);
+}
+
+function buildCheckpointCompleted(checkpoint: {
+  title: string;
+  facts: string[];
+}): string {
+  const lines = [`- ${checkpoint.title}`];
+  for (const fact of checkpoint.facts.slice(0, 2)) {
+    lines.push(`  - ${fact}`);
+  }
+  return lines.join("\n");
 }
 
 /**
