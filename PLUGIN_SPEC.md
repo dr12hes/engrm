@@ -259,6 +259,27 @@ This spec is compatible with MCP and with thin-tool patterns such as runtime CLI
 
 Engrm should not try to replace those systems.
 
+## Current First-Party Thin Tools
+
+The spec is now backed by shipped first-party thin tools:
+
+- `capture_git_worktree`
+  - reads the current repo diff locally
+  - reduces it through `engrm.git-diff`
+- `capture_repo_scan`
+  - runs a lightweight repo scan
+  - reduces it through `engrm.repo-scan`
+- `capture_openclaw_content`
+  - reduces OpenClaw posted/researched/outcome work
+  - saves it through `engrm.openclaw-content`
+
+These are useful reference implementations for external plugin authors because they show the intended shape:
+
+- thin MCP surface
+- reducer-backed memory output
+- plugin provenance preserved in memory
+- visible through local inspection tools like `tool_memory_index` and `session_tool_memory`
+
 Instead:
 
 - MCP or CLI runtimes provide access

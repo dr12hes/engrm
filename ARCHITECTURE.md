@@ -13,9 +13,27 @@ Engrm is a local-first memory layer for AI coding agents.
 
 - CLI: setup, configuration, status, and diagnostics
 - MCP server: shared tool interface for supported agents
+- thin tool layer: small local capture tools that reduce repo/workflow state into memory
 - Local database: SQLite with FTS5 and optional `sqlite-vec`
 - Sync engine: pushes and pulls observations across devices and teams
 - Hooks: agent-specific lifecycle integrations for Claude Code and Codex
+
+## Thin Tool Layer
+
+Engrm now uses a `thin tools, thick memory` approach for new integrations.
+
+Current first-party thin tools:
+
+- `capture_git_worktree`
+- `capture_repo_scan`
+- `capture_openclaw_content`
+
+These tools intentionally keep the live MCP surface small:
+
+- the tool reads local repo/workflow state
+- a reducer turns that state into a memory-worthy object
+- Engrm stores the reduced result with plugin provenance
+- local inspection tools can then show which tool/plugin combinations are producing durable value
 
 ## Storage Model
 
@@ -25,6 +43,7 @@ Engrm keeps local SQLite as the source of truth.
 - full-text search is always available offline
 - vector search is used when embeddings are available
 - sync propagates observations to remote storage for multi-device and team use
+- provenance and plugin metadata are preserved so Engrm can later explain which tools and plugins created durable memory
 
 ## Agent Support
 

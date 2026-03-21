@@ -39,6 +39,7 @@ That means OpenClaw can use Engrm's MCP and workflow guidance today, but it does
 | Cross-device/team notes (`send_message`) | ✓ | ✓ | ✓ | Shared via MCP |
 | Capture visibility (`recent_activity`) | ✓ | ✓ | ✓ | Shared via MCP |
 | Memory health stats (`memory_stats`) | ✓ | ✓ | ✓ | Shared via MCP |
+| Thin capture tools (`capture_git_worktree`, `capture_repo_scan`, `capture_openclaw_content`) | ✓ | ✓ | Via skills / MCP | Same MCP tools, different workflow entry points |
 | Per-tool automatic observation capture | ✓ | Partial | Partial | Full in Claude hooks; others rely on public surfaces |
 | Sentinel pre-write auditing | ✓ | No | No | Public hook surfaces do not expose pre-write interception |
 | Pre-compact memory reinjection | ✓ | No | No | Not exposed outside Claude Code today |

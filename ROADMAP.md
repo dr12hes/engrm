@@ -22,6 +22,28 @@ The product value underneath it becomes clearer:
 
 ## Next Sprint
 
+### Thin Tool Milestone Reached
+
+The first thin-tool phase is now real, not speculative.
+
+Shipped first-party thin tools:
+
+- `capture_git_worktree`
+- `capture_repo_scan`
+- `capture_openclaw_content`
+
+Shipped inspection support around them:
+
+- `tool_memory_index`
+- `session_tool_memory`
+- plugin-aware provenance in local memory tools
+
+That means the next roadmap steps should focus less on "should we do thin tools?" and more on:
+
+- which additional thin tools are worth adding
+- which current tools are producing durable value
+- how to improve reducers and memory quality from those tools
+
 ### 1. Make Local SQLite Memory The Primary Product Experience
 
 Most real users will judge Engrm by the local memory feel before they care about cloud sync architecture.

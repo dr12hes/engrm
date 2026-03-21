@@ -215,6 +215,8 @@ The MCP server exposes tools that supported agents can call directly:
 | `memory_console` | Show a high-signal local memory console for the current project |
 | `project_memory_index` | Show typed local memory by project, including hot files and recent sessions |
 | `workspace_memory_index` | Show cross-project local memory coverage across the whole workspace |
+| `tool_memory_index` | Show which source tools and plugins are creating durable memory |
+| `session_tool_memory` | Show which tools in one session produced reusable memory and which produced none |
 | `recent_requests` | Inspect captured raw user prompt chronology |
 | `recent_tools` | Inspect captured raw tool chronology |
 | `recent_sessions` | List recent local sessions to inspect further |
@@ -222,6 +224,32 @@ The MCP server exposes tools that supported agents can call directly:
 | `plugin_catalog` | Inspect Engrm plugin manifests for memory-aware integrations |
 | `save_plugin_memory` | Save reduced plugin output with stable Engrm provenance |
 | `capture_git_diff` | Reduce a git diff into a durable memory object and save it |
+| `capture_git_worktree` | Read the current git worktree diff and save reduced memory directly |
+| `capture_repo_scan` | Run a lightweight repo scan and save reduced findings as memory |
+| `capture_openclaw_content` | Save OpenClaw content, research, and follow-up work as plugin memory |
+
+### Thin Tools, Thick Memory
+
+Engrm now has a real thin-tool layer, not just a plugin spec.
+
+Current first-party thin tools:
+
+- `capture_git_worktree`
+  - reads the current repo diff directly
+  - reduces it through `engrm.git-diff`
+- `capture_repo_scan`
+  - runs a lightweight repo scan
+  - reduces it through `engrm.repo-scan`
+- `capture_openclaw_content`
+  - captures posted/researched/outcome-style OpenClaw work
+  - reduces it through `engrm.openclaw-content`
+
+These tools are intentionally small:
+
+- tiny input surface
+- local-first execution
+- reduced durable memory output
+- visible in Engrm's local inspection tools so we can judge tool value honestly
 
 ### Local Memory Inspection
 
@@ -236,8 +264,10 @@ Recommended flow:
 3. activity_feed
 4. recent_sessions
 5. session_story
-6. project_memory_index
-7. workspace_memory_index
+6. tool_memory_index
+7. session_tool_memory
+8. project_memory_index
+9. workspace_memory_index
 ```
 
 What each tool is good for:
@@ -247,8 +277,29 @@ What each tool is good for:
 - `activity_feed` shows the merged chronology across prompts, tools, observations, and summaries
 - `recent_sessions` helps you pick a session worth opening
 - `session_story` reconstructs one session in detail
+- `tool_memory_index` shows which tools and plugins are actually producing durable memory
+- `session_tool_memory` shows which tool calls in one session turned into reusable memory and which did not
 - `project_memory_index` shows typed memory by repo
 - `workspace_memory_index` shows coverage across all repos on the machine
+
+### Thin Tool Workflow
+
+The current practical flow for thin tools is:
+
+```text
+1. memory_console / project_memory_index
+2. tool_memory_index
+3. capture_git_worktree or capture_repo_scan
+4. session_tool_memory
+5. session_story
+```
+
+That lets you:
+
+- see what Engrm already knows
+- see which tools/plugins are producing value
+- capture the current repo state with a thin tool
+- verify whether that tool produced reusable memory
 
 ### Observation Types
 

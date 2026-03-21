@@ -4,6 +4,26 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.13
+
+### Added
+
+- lightweight thin-tool MCP capture flows for:
+  - `capture_git_worktree`
+  - `capture_repo_scan`
+  - `capture_openclaw_content`
+- tool-centric local inspection:
+  - `tool_memory_index`
+  - `session_tool_memory`
+- plugin-aware inspection in local memory tools so Engrm can show which plugins are actually producing durable memory
+- assistant checkpoint typing in local capture quality views so `assistant-stop` memory is separated into decisions, delivered changes, and generic changes more honestly
+
+### Changed
+
+- local workbench suggestions now point users toward thin capture tools when a repo has enough signal to justify them
+- `capture_quality`, `project_memory_index`, `memory_console`, and `session_context` now expose a much clearer picture of which tools and plugins are paying their way
+- plugin-produced memory is now visible in both workspace-level and session-level tool inspection, not just buried in observation concepts
+
 ## 0.4.12
 
 ### Changed
