@@ -400,12 +400,12 @@ server.tool(
 // Tool: capture_git_worktree
 server.tool(
   "capture_git_worktree",
-  "Read the current git worktree diff, reduce it into durable memory, and save it with plugin provenance",
+  "Capture the current git worktree as durable memory. Best for saving a meaningful local diff before context is lost.",
   {
-    cwd: z.string().optional().describe("Git repo path; defaults to the current working directory"),
-    staged: z.boolean().optional().describe("Capture staged changes instead of unstaged worktree changes"),
-    summary: z.string().optional().describe("Optional human summary or commit-style title"),
-    session_id: z.string().optional(),
+    cwd: z.string().optional().describe("Git repo path. Defaults to the current working directory."),
+    staged: z.boolean().optional().describe("If true, capture staged changes instead of unstaged worktree changes."),
+    summary: z.string().optional().describe("Optional human summary or commit-style title to steer the saved memory."),
+    session_id: z.string().optional().describe("Optional session ID to link this capture to active work."),
   },
   async (params) => {
     let worktree;
@@ -474,13 +474,13 @@ server.tool(
 // Tool: capture_repo_scan
 server.tool(
   "capture_repo_scan",
-  "Run a lightweight repository scan, reduce the findings into durable memory, and save it with plugin provenance",
+  "Run a lightweight repository scan and save reduced findings as durable memory. Best for quick architecture, risk, or implementation scans.",
   {
-    cwd: z.string().optional().describe("Repo path to scan; defaults to the current working directory"),
-    focus: z.array(z.string()).optional().describe("Optional extra topics to search for, like 'billing' or 'validation'"),
-    max_findings: z.number().optional().describe("Maximum findings to keep"),
-    summary: z.string().optional().describe("Optional human summary for the scan"),
-    session_id: z.string().optional(),
+    cwd: z.string().optional().describe("Repo path to scan. Defaults to the current working directory."),
+    focus: z.array(z.string()).optional().describe("Optional topics to bias the scan toward, for example 'billing', 'auth', or 'validation'."),
+    max_findings: z.number().optional().describe("Maximum findings to keep before reduction."),
+    summary: z.string().optional().describe("Optional human summary for the saved memory."),
+    session_id: z.string().optional().describe("Optional session ID to link this scan to active work."),
   },
   async (params) => {
     let scan;
@@ -554,16 +554,16 @@ server.tool(
 // Tool: capture_openclaw_content
 server.tool(
   "capture_openclaw_content",
-  "Reduce OpenClaw content/research activity into durable memory and save it with plugin provenance",
+  "Capture OpenClaw content, research, and follow-up work as durable memory. Best for preserving posted outcomes, discoveries, and next actions.",
   {
-    title: z.string().optional().describe("Short content or campaign title"),
-    posted: z.array(z.string()).optional().describe("Concrete posted items or shipped content outcomes"),
-    researched: z.array(z.string()).optional().describe("Research or discovery items"),
-    outcomes: z.array(z.string()).optional().describe("Meaningful outcomes from the run"),
-    next_actions: z.array(z.string()).optional().describe("Real follow-up actions"),
-    links: z.array(z.string()).optional().describe("Thread or source URLs"),
-    session_id: z.string().optional(),
-    cwd: z.string().optional(),
+    title: z.string().optional().describe("Short content, campaign, or research title."),
+    posted: z.array(z.string()).optional().describe("Concrete posted items or shipped content outcomes."),
+    researched: z.array(z.string()).optional().describe("Research or discovery items worth retaining."),
+    outcomes: z.array(z.string()).optional().describe("Meaningful outcomes from the run."),
+    next_actions: z.array(z.string()).optional().describe("Real follow-up actions that remain."),
+    links: z.array(z.string()).optional().describe("Thread or source URLs tied to the work."),
+    session_id: z.string().optional().describe("Optional session ID to link this memory to active work."),
+    cwd: z.string().optional().describe("Optional project path for attribution."),
   },
   async (params) => {
     const reduced = reduceOpenClawContentToMemory({
@@ -1137,10 +1137,10 @@ server.tool(
 // Tool: capture_quality
 server.tool(
   "capture_quality",
-  "Show workspace-wide capture richness, checkpoints, and provenance across projects",
+  "Show how healthy Engrm capture is across the workspace: raw chronology coverage, checkpoints, and provenance by tool.",
   {
-    limit: z.number().optional(),
-    user_id: z.string().optional(),
+    limit: z.number().optional().describe("Maximum projects to include in the top-projects section."),
+    user_id: z.string().optional().describe("Optional user override; defaults to the configured user."),
   },
   async (params) => {
     const result = getCaptureQuality(db, {
@@ -1181,12 +1181,12 @@ server.tool(
 // Tool: tool_memory_index
 server.tool(
   "tool_memory_index",
-  "Show which source tools are producing durable memory and what kinds of memory they create",
+  "Show which tools are actually producing durable memory, which plugins they exercise, and what memory types they create.",
   {
-    cwd: z.string().optional(),
-    project_scoped: z.boolean().optional(),
-    limit: z.number().optional(),
-    user_id: z.string().optional(),
+    cwd: z.string().optional().describe("Project path to inspect. Defaults to the current working directory."),
+    project_scoped: z.boolean().optional().describe("If true, limit results to the current project instead of the whole workspace."),
+    limit: z.number().optional().describe("Maximum tools to include."),
+    user_id: z.string().optional().describe("Optional user override; defaults to the configured user."),
   },
   async (params) => {
     const result = getToolMemoryIndex(db, {

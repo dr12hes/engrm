@@ -228,6 +228,28 @@ The MCP server exposes tools that supported agents can call directly:
 | `capture_repo_scan` | Run a lightweight repo scan and save reduced findings as memory |
 | `capture_openclaw_content` | Save OpenClaw content, research, and follow-up work as plugin memory |
 
+### Public MCP Starter Set
+
+If you are evaluating Engrm as an MCP server, start with this small set first:
+
+- `capture_git_worktree`
+  - save a meaningful local git diff before it disappears into commit history
+- `capture_repo_scan`
+  - capture a quick architecture, implementation, or risk scan as reusable memory
+- `capture_openclaw_content`
+  - save posted content, research, outcomes, and next actions from OpenClaw work
+- `tool_memory_index`
+  - verify which tools are actually producing durable memory and which plugins they exercise
+- `capture_quality`
+  - check whether raw chronology is healthy across the workspace before judging memory quality
+
+These are the tools we should be comfortable pointing people to publicly first:
+
+- thin input surface
+- local-first execution
+- durable memory output instead of raw transcript dumping
+- easy local inspection after capture
+
 ### Thin Tools, Thick Memory
 
 Engrm now has a real thin-tool layer, not just a plugin spec.
@@ -300,6 +322,16 @@ That lets you:
 - see which tools/plugins are producing value
 - capture the current repo state with a thin tool
 - verify whether that tool produced reusable memory
+
+### MCP Examples
+
+These are the kinds of prompts Engrm's current MCP slice is designed for:
+
+- "Capture this current git worktree as memory before I switch tasks."
+- "Run a lightweight repo scan focused on auth and validation."
+- "Show which tools are actually creating durable memory in this repo."
+- "Tell me whether raw prompt/tool capture is healthy on this machine."
+- "Save this OpenClaw research/posting run as reusable memory."
 
 ### Observation Types
 

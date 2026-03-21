@@ -28,6 +28,21 @@ Current first-party thin tools:
 - `capture_repo_scan`
 - `capture_openclaw_content`
 
+Current public MCP starter set:
+
+- `capture_git_worktree`
+- `capture_repo_scan`
+- `capture_openclaw_content`
+- `tool_memory_index`
+- `capture_quality`
+
+These tools are the current recommended public surface because they:
+
+- keep schemas small
+- run locally
+- produce durable memory instead of raw output blobs
+- are easy to validate through Engrm's inspection tools
+
 These tools intentionally keep the live MCP surface small:
 
 - the tool reads local repo/workflow state
