@@ -4,6 +4,29 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.15
+
+### Changed
+
+- startup splash now reads more like a teammate handoff than a memory banner
+- startup labels are more conversational and work-oriented:
+  - `Handoff`
+  - `Asked recently`
+  - `What you're on`
+  - `What's moved`
+  - `Tool trail`
+  - `Recent threads`
+  - `Signal mix`
+  - `Next look`
+  - `Pull detail`
+- startup glyphs now use a more console-like Engrm style instead of emoji-style markers:
+  - `■` bugfix
+  - `▲` feature
+  - `≈` refactor
+  - `●` change
+  - `□` discovery
+  - `◇` decision
+
 ## 0.4.14
 
 ### Added
