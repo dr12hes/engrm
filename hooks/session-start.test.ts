@@ -35,8 +35,8 @@ describe("session-start startup brief", () => {
       })
     );
 
-    expect(lines.some((line) => line.includes("Recent Requests:"))).toBe(true);
-    expect(lines.some((line) => line.includes("Current Request:"))).toBe(false);
+    expect(lines.some((line) => line.includes("Asked recently:"))).toBe(true);
+    expect(lines.some((line) => line.includes("What you're on:"))).toBe(false);
   });
 
   test("shows recent work from summary outcomes before generic session rollups", () => {
@@ -78,8 +78,8 @@ describe("session-start startup brief", () => {
       })
     );
 
-    const recentWorkIndex = lines.findIndex((line) => line.includes("Recent Work:"));
-    const recentSessionsIndex = lines.findIndex((line) => line.includes("Recent Sessions:"));
+    const recentWorkIndex = lines.findIndex((line) => line.includes("What's moved:"));
+    const recentSessionsIndex = lines.findIndex((line) => line.includes("Recent threads:"));
 
     expect(recentWorkIndex).toBeGreaterThan(-1);
     expect(lines.join("\n")).toContain("Replaced broken ELK edge rendering with ReactFlow path computation");
@@ -145,7 +145,7 @@ describe("session-start startup brief", () => {
       })
     );
 
-    expect(lines.some((line) => line.includes("Recent Tools:"))).toBe(true);
+    expect(lines.some((line) => line.includes("Tool trail:"))).toBe(true);
     expect(lines.join("\n")).toContain("pytest tests/test_mem_insights.py");
   });
 
@@ -199,10 +199,11 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("Context economics:");
     expect(splash).toContain("89 total memories");
     expect(splash).toContain("read now ~420t");
+    expect(splash).toContain("Handoff");
     expect(splash).toContain("Legend:");
-    expect(splash).toContain("Context index:");
-    expect(splash).toContain("Inspect:");
-    expect(splash).toContain("Fetch by ID:");
+    expect(splash).toContain("Handoff index:");
+    expect(splash).toContain("Next look:");
+    expect(splash).toContain("Pull detail:");
     expect(splash).toContain("recent_sessions");
     expect(splash).toContain("activity_feed");
   });
@@ -247,10 +248,10 @@ describe("session-start startup brief", () => {
     });
 
     expect(splash).toContain("#12833");
-    expect(splash).toContain("✅");
+    expect(splash).toContain("●");
     expect(splash).toContain("docs/plugins/README.md");
     expect(splash).toContain("#12834");
-    expect(splash).toContain("⚖️");
+    expect(splash).toContain("◇");
     expect(splash).toContain("docs/connectors/manifest-guide.md");
   });
 });

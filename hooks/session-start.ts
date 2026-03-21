@@ -229,7 +229,7 @@ function formatSplashScreen(data: SplashData): string {
   const brief = formatVisibleStartupBrief(data.context);
   if (brief.length > 0) {
     lines.push("");
-    lines.push(`  ${c.bold}Startup context${c.reset}`);
+    lines.push(`  ${c.bold}Handoff${c.reset}`);
     for (const line of brief) {
       lines.push(`  ${line}`);
     }
@@ -292,7 +292,7 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const shownItems = new Set<string>();
 
   if (promptLines.length > 0) {
-    lines.push(`${c.cyan}Recent Requests:${c.reset}`);
+    lines.push(`${c.cyan}Asked recently:${c.reset}`);
     for (const item of promptLines) {
       lines.push(`  - ${truncateInline(item, 160)}`);
       rememberShownItem(shownItems, item);
@@ -326,13 +326,13 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
       }
     }
   } else if (currentRequest && !duplicatesPromptLine(currentRequest, latestPromptLine)) {
-    lines.push(`${c.cyan}Current Request:${c.reset}`);
+    lines.push(`${c.cyan}What you're on:${c.reset}`);
     lines.push(`  - ${truncateInline(currentRequest, 160)}`);
     rememberShownItem(shownItems, currentRequest);
     if (toolFallbacks.length > 0) {
       const additiveTools = filterAdditiveToolFallbacks(toolFallbacks, shownItems);
       if (additiveTools.length > 0) {
-        lines.push(`${c.cyan}Recent Tools:${c.reset}`);
+        lines.push(`${c.cyan}Tool trail:${c.reset}`);
         for (const item of additiveTools) {
           lines.push(`  - ${truncateInline(item, 160)}`);
           rememberShownItem(shownItems, item);
@@ -347,13 +347,13 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
     !hasRequestSection(lines) &&
     !duplicatesPromptLine(currentRequest, latestPromptLine)
   ) {
-    lines.push(`${c.cyan}Current Request:${c.reset}`);
+    lines.push(`${c.cyan}What you're on:${c.reset}`);
     lines.push(`  - ${truncateInline(currentRequest, 160)}`);
     rememberShownItem(shownItems, currentRequest);
   }
 
   if (recentOutcomeLines.length > 0) {
-    lines.push(`${c.cyan}Recent Work:${c.reset}`);
+    lines.push(`${c.cyan}What's moved:${c.reset}`);
     for (const item of recentOutcomeLines) {
       lines.push(`  - ${truncateInline(item, 160)}`);
       rememberShownItem(shownItems, item);
@@ -363,7 +363,7 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   if (toolFallbacks.length > 0 && latest) {
     const additiveTools = filterAdditiveToolFallbacks(toolFallbacks, shownItems);
     if (additiveTools.length > 0) {
-      lines.push(`${c.cyan}Recent Tools:${c.reset}`);
+      lines.push(`${c.cyan}Tool trail:${c.reset}`);
       for (const item of additiveTools) {
         lines.push(`  - ${truncateInline(item, 160)}`);
         rememberShownItem(shownItems, item);
@@ -372,14 +372,14 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   }
 
   if (sessionFallbacks.length > 0) {
-    lines.push(`${c.cyan}Recent Sessions:${c.reset}`);
+    lines.push(`${c.cyan}Recent threads:${c.reset}`);
     for (const item of sessionFallbacks) {
       lines.push(`  - ${truncateInline(item, 160)}`);
     }
   }
 
   if (projectSignals) {
-    lines.push(`${c.cyan}Project Signals:${c.reset}`);
+    lines.push(`${c.cyan}Signal mix:${c.reset}`);
     lines.push(`  - ${truncateInline(projectSignals, 160)}`);
   }
 
@@ -427,7 +427,7 @@ function formatContextEconomics(data: SplashData): string[] {
 
 function formatLegend(): string[] {
   return [
-    `${c.dim}Legend:${c.reset} #id | 🔴 bugfix | 🟣 feature | 🔄 refactor | ✅ change | 🔵 discovery | ⚖️ decision`,
+    `${c.dim}Legend:${c.reset} #id | ■ bugfix | ▲ feature | ≈ refactor | ● change | □ discovery | ◇ decision`,
   ];
 }
 
@@ -443,7 +443,7 @@ function formatContextIndex(context: InjectedContext): string[] {
 
   if (rows.length === 0) return [];
   return [
-    `${c.dim}Context index:${c.reset} use IDs to fetch deeper detail when needed`,
+    `${c.dim}Handoff index:${c.reset} use IDs when you want the deeper thread`,
     ...rows,
   ];
 }
@@ -467,8 +467,8 @@ function formatInspectHints(context: InjectedContext): string[] {
   const ids = context.observations.slice(0, 5).map((obs) => obs.id);
   const fetchHint = ids.length > 0 ? `get_observations([${ids.join(", ")}])` : null;
   return [
-    `${c.dim}Inspect:${c.reset} ${unique.join(" · ")}`,
-    ...(fetchHint ? [`${c.dim}Fetch by ID:${c.reset} ${fetchHint}`] : []),
+    `${c.dim}Next look:${c.reset} ${unique.join(" · ")}`,
+    ...(fetchHint ? [`${c.dim}Pull detail:${c.reset} ${fetchHint}`] : []),
   ];
 }
 
@@ -629,25 +629,44 @@ function buildProjectSignalLine(context: InjectedContext): string | null {
   const top = Object.entries(context.projectTypeCounts)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, 4)
-    .map(([type, count]) => `${type} ${count}`)
+    .map(([type, count]) => `${signalGlyph(type)} ${type} ${count}`)
     .join("; ");
   return top || null;
+}
+
+function signalGlyph(type: string): string {
+  switch (type) {
+    case "bugfix":
+      return "■";
+    case "feature":
+      return "▲";
+    case "refactor":
+      return "≈";
+    case "change":
+      return "●";
+    case "discovery":
+      return "□";
+    case "decision":
+      return "◇";
+    default:
+      return "·";
+  }
 }
 
 function observationIcon(type: string): string {
   switch (type) {
     case "bugfix":
-      return "🔴";
+      return "■";
     case "feature":
-      return "🟣";
+      return "▲";
     case "refactor":
-      return "🔄";
+      return "≈";
     case "change":
-      return "✅";
+      return "●";
     case "discovery":
-      return "🔵";
+      return "□";
     case "decision":
-      return "⚖️";
+      return "◇";
     default:
       return "•";
   }
