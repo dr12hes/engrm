@@ -227,11 +227,13 @@ function formatSplashScreen(data: SplashData): string {
   lines.push(`  ${c.dim}Dashboard: https://engrm.dev/dashboard${c.reset}`);
 
   const brief = formatVisibleStartupBrief(data.context);
+  const handoffShownItems = new Set<string>();
   if (brief.length > 0) {
     lines.push("");
     lines.push(`  ${c.bold}Handoff${c.reset}`);
     for (const line of brief) {
       lines.push(`  ${line}`);
+      rememberShownItem(handoffShownItems, line);
     }
   }
 
@@ -251,7 +253,7 @@ function formatSplashScreen(data: SplashData): string {
     }
   }
 
-  const contextIndex = formatContextIndex(data.context);
+  const contextIndex = formatContextIndex(data.context, handoffShownItems);
   if (contextIndex.length > 0) {
     lines.push("");
     for (const line of contextIndex) {
@@ -431,10 +433,8 @@ function formatLegend(): string[] {
   ];
 }
 
-function formatContextIndex(context: InjectedContext): string[] {
-  const rows = context.observations
-    .filter((obs) => obs.type !== "digest")
-    .slice(0, 6)
+function formatContextIndex(context: InjectedContext, shownItems?: Set<string>): string[] {
+  const rows = pickContextIndexObservations(context, shownItems)
     .map((obs) => {
       const icon = observationIcon(obs.type);
       const fileHint = extractPrimaryFileHint(obs);
@@ -676,6 +676,71 @@ function extractPrimaryFileHint(obs: InjectedContext["observations"][number]): s
   const firstRead = parseJsonArraySafe(obs.files_read)[0];
   const firstModified = parseJsonArraySafe(obs.files_modified)[0];
   return firstModified ?? firstRead ?? null;
+}
+
+function pickContextIndexObservations(
+  context: InjectedContext,
+  shownItems?: Set<string>
+): InjectedContext["observations"] {
+  const now = Date.now();
+  const seen = new Set<string>();
+  const hidden = shownItems ?? new Set<string>();
+
+  const scoreObservation = (obs: InjectedContext["observations"][number]): number => {
+    let score = 0;
+    const ageMs = Math.max(0, now - new Date(obs.created_at).getTime());
+    const ageDays = ageMs / 86400000;
+
+    score += Math.max(0, 30 - ageDays) * 0.2;
+    score += obs.quality * 2;
+
+    switch (obs.type) {
+      case "bugfix":
+        score += 2.4;
+        break;
+      case "feature":
+        score += 2.2;
+        break;
+      case "change":
+        score += 1.6;
+        break;
+      case "discovery":
+        score += 1.4;
+        break;
+      case "refactor":
+        score += 1.2;
+        break;
+      case "decision":
+        score += ageDays <= 14 ? 1.1 : 0.2;
+        break;
+      default:
+        score += 0.4;
+        break;
+    }
+
+    if (extractPrimaryFileHint(obs)) score += 0.4;
+    if (context.recentOutcomes?.some((item) => titlesRoughlyMatch(item, obs.title))) score += 2.5;
+    return score;
+  };
+
+  return context.observations
+    .filter((obs) => obs.type !== "digest")
+    .filter((obs) => {
+      const normalized = normalizeStartupItem(obs.title);
+      return normalized && !hidden.has(normalized);
+    })
+    .sort((a, b) => {
+      const scoreDiff = scoreObservation(b) - scoreObservation(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })
+    .filter((obs) => {
+      const normalized = normalizeStartupItem(obs.title);
+      if (!normalized || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    })
+    .slice(0, 6);
 }
 
 function parseJsonArraySafe(value: string | null | undefined): string[] {
