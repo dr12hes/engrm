@@ -1,4 +1,4 @@
-import { runMigrations, ensureObservationTypes } from "./migrations.js";
+import { runMigrations, ensureObservationTypes, ensureSessionSummaryColumns } from "./migrations.js";
 import { createHash } from "node:crypto";
 import { normalizeSummaryRequest, normalizeSummarySection } from "../intelligence/summary-sections.js";
 
@@ -347,6 +347,7 @@ export class MemDatabase {
 
     runMigrations(this.db);
     ensureObservationTypes(this.db);
+    ensureSessionSummaryColumns(this.db);
   }
 
   private loadVecExtension(): boolean {

@@ -472,6 +472,14 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
   if (tableExists(db, "user_prompts")) version = Math.max(version, 9);
   if (tableExists(db, "tool_events")) version = Math.max(version, 10);
   if (columnExists(db, "observations", "source_tool")) version = Math.max(version, 11);
+  if (
+    columnExists(db, "session_summaries", "capture_state") &&
+    columnExists(db, "session_summaries", "recent_tool_names") &&
+    columnExists(db, "session_summaries", "hot_files") &&
+    columnExists(db, "session_summaries", "recent_outcomes")
+  ) {
+    version = Math.max(version, 12);
+  }
 
   return version;
 }
@@ -577,6 +585,29 @@ export function ensureObservationTypes(db: CompatDatabase): void {
       db.exec("ROLLBACK");
       // Non-fatal — message type just won't work
     }
+  }
+}
+
+/**
+ * Verify the session_summaries table has the synced handoff metadata columns.
+ * This self-heals mixed installs where user_version drifted past the real schema.
+ */
+export function ensureSessionSummaryColumns(db: CompatDatabase): void {
+  const required = [
+    "capture_state",
+    "recent_tool_names",
+    "hot_files",
+    "recent_outcomes",
+  ] as const;
+
+  for (const column of required) {
+    if (columnExists(db, "session_summaries", column)) continue;
+    db.exec(`ALTER TABLE session_summaries ADD COLUMN ${column} TEXT`);
+  }
+
+  const current = getSchemaVersion(db);
+  if (current < 12) {
+    db.exec("PRAGMA user_version = 12");
   }
 }
 

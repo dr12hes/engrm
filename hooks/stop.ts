@@ -651,7 +651,13 @@ function isGenericCheckpointLine(value: string): boolean {
     normalized === "current status:" ||
     normalized === "current status" ||
     normalized === "status update:" ||
-    normalized === "status update"
+    normalized === "status update" ||
+    normalized.startsWith("all clean. here's a summary of what was fixed") ||
+    normalized.startsWith("all clean, here's a summary of what was fixed") ||
+    normalized.startsWith("now i have enough to give a clear, accurate assessment") ||
+    normalized.startsWith("here's the real picture") ||
+    normalized === "tl;dr:" ||
+    normalized.startsWith("tl;dr:")
   );
 }
 

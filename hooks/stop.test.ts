@@ -53,6 +53,20 @@ Next Steps:
     expect(checkpoint?.title).toBe("Event Log now uses the existing events feed");
   });
 
+  test("skips weak summary-wrapper phrases when picking checkpoint titles", () => {
+    const checkpoint = __testables.extractAssistantCheckpoint(`All clean. Here's a summary of what was fixed:
+
+Completed:
+- IFTTT actions now actually execute
+- Alert rules now use the correct event feed
+
+Next Steps:
+- Validate on staging`);
+
+    expect(checkpoint).not.toBeNull();
+    expect(checkpoint?.title).toBe("IFTTT actions now actually execute");
+  });
+
   test("extracts structured assistant summary sections from rich final output", () => {
     const sections = __testables.extractAssistantSummarySections(`Investigated: Examined the automation system architecture including:
 - State tracking and event detection mechanism

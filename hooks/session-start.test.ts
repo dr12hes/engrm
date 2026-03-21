@@ -183,6 +183,42 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("Wired event data into existing event log");
   });
 
+  test("filters generic summary wrapper lines from recent work", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        observations: [
+          {
+            id: 1,
+            type: "change",
+            title: "All clean. Here's a summary of what was fixed:",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: null,
+            quality: 0.8,
+            created_at: "2026-03-21T18:00:00Z",
+            source_project: undefined,
+          },
+          {
+            id: 2,
+            type: "feature",
+            title: "IFTTT actions now actually execute",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: null,
+            quality: 0.8,
+            created_at: "2026-03-21T18:01:00Z",
+            source_project: undefined,
+          },
+        ],
+      })
+    );
+
+    expect(lines.join("\n")).not.toContain("All clean. Here's a summary of what was fixed:");
+    expect(lines.join("\n")).toContain("IFTTT actions now actually execute");
+  });
+
   test("startup splash shows context economics and inspect hints", () => {
     const splash = __testables.formatSplashScreen({
       projectName: "huginn",

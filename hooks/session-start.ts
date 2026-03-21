@@ -941,8 +941,26 @@ function isWeakCompletedSection(value: string): boolean {
 }
 
 function looksLikeFileOperationTitle(value: string): boolean {
-  return /^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(
-    value.trim()
+  const trimmed = value.trim();
+  if (/^(modified|updated|edited|touched|changed|extended|refactored|redesigned)\s+[A-Za-z0-9_.\-\/]+(?:\s*\([^)]*\))?$/i.test(trimmed)) {
+    return true;
+  }
+  return looksLikeGenericSummaryWrapper(trimmed);
+}
+
+function looksLikeGenericSummaryWrapper(value: string): boolean {
+  const normalized = value
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  return (
+    normalized.startsWith("all clean. here's a summary of what was fixed") ||
+    normalized.startsWith("all clean, here's a summary of what was fixed") ||
+    normalized.startsWith("now i have enough to give a clear, accurate assessment") ||
+    normalized.startsWith("here's the real picture") ||
+    normalized === "event log → existing events feed" ||
+    normalized.startsWith("event log -> existing events feed") ||
+    normalized.startsWith("tl;dr:")
   );
 }
 
