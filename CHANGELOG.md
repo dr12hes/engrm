@@ -4,6 +4,14 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.17
+
+### Changed
+
+- stop-hook session summaries now create a fallback summary from recent prompts and assistant checkpoints when heuristic observation capture is thin
+- assistant checkpoints are now created before retrospective summary generation, so recent delivered work is more likely to appear in the same session summary
+- this improves the multi-device handoff path by ensuring recent sessions leave behind shared summary memory instead of disappearing when they produce no other observations
+
 ## 0.4.16
 
 ### Added
