@@ -199,8 +199,58 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("Context economics:");
     expect(splash).toContain("89 total memories");
     expect(splash).toContain("read now ~420t");
+    expect(splash).toContain("Legend:");
+    expect(splash).toContain("Context index:");
     expect(splash).toContain("Inspect:");
+    expect(splash).toContain("Fetch by ID:");
     expect(splash).toContain("recent_sessions");
     expect(splash).toContain("activity_feed");
+  });
+
+  test("context index shows ids, icons, and file hints", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 2,
+      available: 10,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 220,
+      context: makeContext({
+        observations: [
+          {
+            id: 12833,
+            type: "change",
+            title: "Scanner Plugin Development Guide",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: JSON.stringify(["docs/plugins/README.md"]),
+            quality: 0.8,
+            created_at: "2026-03-21T10:35:00Z",
+            source_project: undefined,
+          },
+          {
+            id: 12834,
+            type: "decision",
+            title: "Connector Manifest Guide for Signal Bus Integration",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: JSON.stringify(["docs/connectors/manifest-guide.md"]),
+            quality: 0.79,
+            created_at: "2026-03-21T10:36:00Z",
+            source_project: undefined,
+          },
+        ],
+      }),
+    });
+
+    expect(splash).toContain("#12833");
+    expect(splash).toContain("✅");
+    expect(splash).toContain("docs/plugins/README.md");
+    expect(splash).toContain("#12834");
+    expect(splash).toContain("⚖️");
+    expect(splash).toContain("docs/connectors/manifest-guide.md");
   });
 });

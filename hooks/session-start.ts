@@ -243,6 +243,22 @@ function formatSplashScreen(data: SplashData): string {
     }
   }
 
+  const legend = formatLegend();
+  if (legend.length > 0) {
+    lines.push("");
+    for (const line of legend) {
+      lines.push(`  ${line}`);
+    }
+  }
+
+  const contextIndex = formatContextIndex(data.context);
+  if (contextIndex.length > 0) {
+    lines.push("");
+    for (const line of contextIndex) {
+      lines.push(`  ${line}`);
+    }
+  }
+
   const inspectHints = formatInspectHints(data.context);
   if (inspectHints.length > 0) {
     lines.push("");
@@ -402,8 +418,34 @@ function formatContextEconomics(data: SplashData): string[] {
   if (data.estimatedReadTokens > 0) {
     parts.push(`read now ~${data.estimatedReadTokens.toLocaleString()}t`);
   }
+  if (data.context.observations.length > 0) {
+    parts.push(`${data.context.observations.length} observations loaded`);
+  }
   if (parts.length === 0) return [];
   return [`${c.dim}Context economics:${c.reset} ${parts.join(" · ")}`];
+}
+
+function formatLegend(): string[] {
+  return [
+    `${c.dim}Legend:${c.reset} #id | 🔴 bugfix | 🟣 feature | 🔄 refactor | ✅ change | 🔵 discovery | ⚖️ decision`,
+  ];
+}
+
+function formatContextIndex(context: InjectedContext): string[] {
+  const rows = context.observations
+    .filter((obs) => obs.type !== "digest")
+    .slice(0, 6)
+    .map((obs) => {
+      const icon = observationIcon(obs.type);
+      const fileHint = extractPrimaryFileHint(obs);
+      return `${icon} #${obs.id} ${truncateInline(obs.title, 110)}${fileHint ? ` ${c.dim}(${fileHint})${c.reset}` : ""}`;
+    });
+
+  if (rows.length === 0) return [];
+  return [
+    `${c.dim}Context index:${c.reset} use IDs to fetch deeper detail when needed`,
+    ...rows,
+  ];
 }
 
 function formatInspectHints(context: InjectedContext): string[] {
@@ -422,7 +464,12 @@ function formatInspectHints(context: InjectedContext): string[] {
 
   const unique = Array.from(new Set(hints)).slice(0, 4);
   if (unique.length === 0) return [];
-  return [`${c.dim}Inspect:${c.reset} ${unique.join(" · ")}`];
+  const ids = context.observations.slice(0, 5).map((obs) => obs.id);
+  const fetchHint = ids.length > 0 ? `get_observations([${ids.join(", ")}])` : null;
+  return [
+    `${c.dim}Inspect:${c.reset} ${unique.join(" · ")}`,
+    ...(fetchHint ? [`${c.dim}Fetch by ID:${c.reset} ${fetchHint}`] : []),
+  ];
 }
 
 function rememberShownItem(shown: Set<string>, value: string | null | undefined): void {
@@ -585,6 +632,43 @@ function buildProjectSignalLine(context: InjectedContext): string | null {
     .map(([type, count]) => `${type} ${count}`)
     .join("; ");
   return top || null;
+}
+
+function observationIcon(type: string): string {
+  switch (type) {
+    case "bugfix":
+      return "🔴";
+    case "feature":
+      return "🟣";
+    case "refactor":
+      return "🔄";
+    case "change":
+      return "✅";
+    case "discovery":
+      return "🔵";
+    case "decision":
+      return "⚖️";
+    default:
+      return "•";
+  }
+}
+
+function extractPrimaryFileHint(obs: InjectedContext["observations"][number]): string | null {
+  const firstRead = parseJsonArraySafe(obs.files_read)[0];
+  const firstModified = parseJsonArraySafe(obs.files_modified)[0];
+  return firstModified ?? firstRead ?? null;
+}
+
+function parseJsonArraySafe(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function toSplashLines(value: string | null, maxItems: number): string[] {
