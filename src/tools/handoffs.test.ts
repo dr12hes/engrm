@@ -149,4 +149,115 @@ describe("handoff tools", () => {
     expect(loaded.handoff?.id).toBe(result.observation_id);
     expect(loaded.handoff?.narrative).toContain("Recent outcomes:");
   });
+
+  test("createHandoff auto-includes chat snippets for thin sessions", async () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+      local_path: tmpDir,
+    });
+    db.upsertSession("sess-thin", project.id, config.user_id, config.device_id, "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-thin",
+      project_id: project.id,
+      prompt: "Get the events feed ready for chat actions.",
+      cwd: tmpDir,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+    db.insertChatMessage({
+      session_id: "sess-thin",
+      project_id: project.id,
+      role: "assistant",
+      content: "I have the feed plumbing in place; next I need to expose it to the chat action path.",
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-thin",
+      project_id: project.id,
+      user_id: config.user_id,
+      request: "Get the events feed ready for chat actions.",
+      completed: null,
+      next_steps: null,
+      current_thread: null,
+      capture_state: "partial",
+      recent_tool_names: JSON.stringify([]),
+      hot_files: JSON.stringify([]),
+      recent_outcomes: JSON.stringify([]),
+    });
+
+    const result = await createHandoff(db, config, {
+      session_id: "sess-thin",
+      cwd: tmpDir,
+    });
+
+    expect(result.success).toBe(true);
+    const obs = db.getObservationById(result.observation_id!);
+    expect(obs?.narrative).toContain("Chat snippets:");
+    expect(obs?.narrative).toContain("chat action path");
+  });
+
+  test("createHandoff keeps chat snippets out of already-rich sessions by default", async () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+      local_path: tmpDir,
+    });
+    db.upsertSession("sess-rich", project.id, config.user_id, config.device_id, "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-rich",
+      project_id: project.id,
+      prompt: "Finish wiring the event feed and capture the shipped outcome.",
+      cwd: tmpDir,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+    db.insertToolEvent({
+      session_id: "sess-rich",
+      project_id: project.id,
+      tool_name: "Edit",
+      file_path: "AIServer/app/routers/events.py",
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+    db.insertChatMessage({
+      session_id: "sess-rich",
+      project_id: project.id,
+      role: "assistant",
+      content: "I have enough context now to summarize the finished path cleanly.",
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-rich",
+      project_id: project.id,
+      user_id: config.user_id,
+      request: "Finish wiring the event feed and capture the shipped outcome.",
+      completed: "Wired the event feed into the existing Event Log path.",
+      next_steps: "Verify chat action dispatch next.",
+      current_thread: "Event feed shipped into Event Log path",
+      capture_state: "rich",
+      recent_tool_names: JSON.stringify(["Edit"]),
+      hot_files: JSON.stringify(["AIServer/app/routers/events.py"]),
+      recent_outcomes: JSON.stringify([
+        "Wired event metrics into the existing Event Log feed",
+        "Preserved the current Event Log UI path",
+      ]),
+    });
+
+    const result = await createHandoff(db, config, {
+      session_id: "sess-rich",
+      cwd: tmpDir,
+    });
+
+    expect(result.success).toBe(true);
+    const obs = db.getObservationById(result.observation_id!);
+    expect(obs?.narrative).not.toContain("Chat snippets:");
+  });
 });

@@ -13,6 +13,7 @@ All notable changes to this repository should be documented here.
 - MCP docs and examples now describe `activity_feed` as the merged continuity surface across prompts, tools, chat, handoffs, observations, and summaries
 - injected session context can now carry a compact `Recent Chat` section for the current project, so cross-device resume has conversational continuity as well as reduced memory
 - startup handoff can now fall back to a compact `Chat trail` when recent prompt lines are absent, so thin in-flight sessions still read like a live coworker update
+- `create_handoff` now auto-includes a few chat snippets for thin sessions, while keeping already-rich sessions terse unless chat is explicitly requested
 
 ## 0.4.23
 

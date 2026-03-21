@@ -74,7 +74,8 @@ export async function createHandoff(
     };
   }
 
-  const includeChat = input.include_chat === true;
+  const includeChat = input.include_chat === true
+    || (input.include_chat !== false && shouldAutoIncludeChat(story));
   const chatLimit = Math.max(1, Math.min(input.chat_limit ?? 4, 8));
   const generatedTitle = buildHandoffTitle(story.summary, story.latest_request, input.title);
   const title = `Handoff: ${generatedTitle} · ${formatTimestamp(Date.now())}`;
@@ -282,6 +283,16 @@ function buildHandoffNarrative(
   }
 
   return sections.filter(Boolean).join("\n\n");
+}
+
+function shouldAutoIncludeChat(story: ReturnType<typeof getSessionStory>): boolean {
+  if (story.chat_messages.length === 0) return false;
+
+  const summary = story.summary;
+  const thinSummary = !summary?.completed && !summary?.current_thread && story.recent_outcomes.length < 2;
+  const thinChronology = story.capture_state !== "rich" || story.tool_events.length === 0;
+
+  return thinSummary || thinChronology;
 }
 
 function buildHandoffFacts(
