@@ -21,7 +21,7 @@ import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getSessionStory } from "./session-story.js";
-import { looksLikeHandoff } from "./handoffs.js";
+import { isDraftHandoff, looksLikeHandoff } from "./handoffs.js";
 
 export interface ActivityFeedInput {
   limit?: number;
@@ -39,6 +39,7 @@ export interface ActivityFeedEvent {
   detail?: string;
   id?: number;
   observation_type?: string;
+  handoff_kind?: "saved" | "draft";
 }
 
 export interface ActivityFeedResult {
@@ -82,14 +83,16 @@ function toChatEvent(message: ChatMessageRow): ActivityFeedEvent {
 
 function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
   if (looksLikeHandoff(obs)) {
+    const handoffKind = isDraftHandoff(obs) ? "draft" : "saved";
     return {
       kind: "handoff",
       created_at_epoch: obs.created_at_epoch,
       session_id: obs.session_id,
       id: obs.id,
       title: obs.title,
-      detail: obs.narrative?.replace(/\s+/g, " ").trim().slice(0, 220),
+      detail: `${handoffKind === "draft" ? "rolling draft" : "saved handoff"}${obs.narrative ? ` · ${obs.narrative.replace(/\s+/g, " ").trim().slice(0, 220)}` : ""}`,
       observation_type: obs.type,
+      handoff_kind: handoffKind,
     };
   }
   const detailBits: string[] = [];

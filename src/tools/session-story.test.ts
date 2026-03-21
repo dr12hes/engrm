@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { Config } from "../config.js";
 import { MemDatabase } from "../storage/sqlite.js";
 import { getSessionStory } from "./session-story.js";
-import { createHandoff } from "./handoffs.js";
+import { createHandoff, upsertRollingHandoff } from "./handoffs.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -173,6 +173,54 @@ describe("getSessionStory", () => {
     const story = getSessionStory(db, { session_id: "sess-2" });
     expect(story.observations).toHaveLength(1);
     expect(story.handoffs).toHaveLength(1);
+    expect(story.saved_handoffs).toHaveLength(1);
+    expect(story.rolling_handoff_drafts).toHaveLength(0);
     expect(story.handoffs[0]?.title.startsWith("Handoff:")).toBe(true);
+  });
+
+  test("separates rolling handoff drafts from saved handoffs", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: tmpDir,
+    });
+
+    db.upsertSession("sess-3", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-3",
+      project_id: project.id,
+      prompt: "Keep the current thread resumable across machines.",
+      cwd: tmpDir,
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-3",
+      project_id: project.id,
+      user_id: "david",
+      request: "Keep the current thread resumable across machines.",
+      completed: null,
+      next_steps: null,
+      current_thread: "Current thread resumable across machines",
+      capture_state: "partial",
+      recent_tool_names: JSON.stringify([]),
+      hot_files: JSON.stringify([]),
+      recent_outcomes: JSON.stringify([]),
+    });
+
+    await upsertRollingHandoff(db, config, {
+      session_id: "sess-3",
+      cwd: tmpDir,
+    });
+    await createHandoff(db, config, {
+      session_id: "sess-3",
+      cwd: tmpDir,
+    });
+
+    const story = getSessionStory(db, { session_id: "sess-3" });
+    expect(story.handoffs).toHaveLength(2);
+    expect(story.saved_handoffs).toHaveLength(1);
+    expect(story.rolling_handoff_drafts).toHaveLength(1);
+    expect(story.rolling_handoff_drafts[0]?.title.startsWith("Handoff Draft:")).toBe(true);
   });
 });

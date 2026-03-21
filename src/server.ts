@@ -1344,7 +1344,9 @@ server.tool(
     const rows = result.events.length > 0
       ? result.events.map((event) => {
           const stamp = new Date(event.created_at_epoch * 1000).toISOString().replace("T", " ").slice(0, 16);
-          const kind = event.kind === "observation" && event.observation_type
+          const kind = event.kind === "handoff" && event.handoff_kind
+            ? `${event.kind}:${event.handoff_kind}`
+            : event.kind === "observation" && event.observation_type
             ? `${event.kind}:${event.observation_type}`
             : event.kind;
           return `- ${stamp} [${kind}] ${event.title}${event.detail ? ` — ${event.detail}` : ""}`;
@@ -1900,7 +1902,10 @@ server.tool(
         }).join("\n")
       : "- (none)";
     const handoffLines = result.handoffs.length > 0
-      ? result.handoffs.slice(-8).map((obs) => `- #${obs.id} ${obs.title}`).join("\n")
+      ? result.handoffs.slice(-8).map((obs) => {
+          const kind = isDraftHandoff(obs) ? "draft" : "saved";
+          return `- #${obs.id} [${kind}] ${obs.title}`;
+        }).join("\n")
       : "- (none)";
 
     const metrics = result.metrics
@@ -1921,6 +1926,7 @@ server.tool(
             `Session: ${result.session.session_id}\n` +
             `Status: ${result.session.status}\n` +
             `Capture: ${result.capture_state}\n` +
+            `Handoff split: ${result.saved_handoffs.length} saved, ${result.rolling_handoff_drafts.length} rolling drafts\n` +
             `Metrics: ${metrics}\n\n` +
             `Summary:\n${summaryLines}\n\n` +
             `Prompts:\n${promptLines}\n\n` +

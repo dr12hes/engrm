@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { Config } from "../config.js";
 import { MemDatabase } from "../storage/sqlite.js";
 import { getActivityFeed } from "./activity-feed.js";
-import { createHandoff } from "./handoffs.js";
+import { createHandoff, upsertRollingHandoff } from "./handoffs.js";
 
 let db: MemDatabase;
 let tmpDir: string;
@@ -176,6 +176,53 @@ describe("getActivityFeed", () => {
     const handoffEvent = result.events.find((event) => event.kind === "handoff");
     expect(handoffEvent).toBeTruthy();
     expect(handoffEvent?.title.startsWith("Handoff:")).toBe(true);
+    expect(handoffEvent?.handoff_kind).toBe("saved");
+  });
+
+  test("marks rolling handoff drafts distinctly in the feed", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: tmpDir,
+    });
+
+    db.upsertSession("sess-draft", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-draft",
+      project_id: project.id,
+      prompt: "Keep this session resumable while I switch devices.",
+      user_id: "david",
+      device_id: "laptop",
+      cwd: tmpDir,
+    });
+    db.upsertSessionSummary({
+      session_id: "sess-draft",
+      project_id: project.id,
+      user_id: "david",
+      request: "Keep this session resumable while I switch devices.",
+      completed: null,
+      next_steps: null,
+      current_thread: "Session resumable while switching devices",
+      capture_state: "partial",
+      recent_tool_names: JSON.stringify([]),
+      hot_files: JSON.stringify([]),
+      recent_outcomes: JSON.stringify([]),
+    });
+
+    await upsertRollingHandoff(db, config, {
+      session_id: "sess-draft",
+      cwd: tmpDir,
+    });
+
+    const result = getActivityFeed(db, {
+      session_id: "sess-draft",
+      limit: 10,
+    });
+
+    const handoffEvent = result.events.find((event) => event.kind === "handoff");
+    expect(handoffEvent).toBeTruthy();
+    expect(handoffEvent?.handoff_kind).toBe("draft");
+    expect(handoffEvent?.detail).toContain("rolling draft");
   });
 
   test("supports session-specific chronology", () => {

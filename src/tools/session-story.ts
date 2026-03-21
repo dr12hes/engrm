@@ -6,7 +6,7 @@
  */
 
 import type { ChatMessageRow, MemDatabase, ObservationRow, SessionRow, SessionSummaryRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
-import { looksLikeHandoff } from "./handoffs.js";
+import { isDraftHandoff, looksLikeHandoff } from "./handoffs.js";
 
 export interface SessionStoryInput {
   session_id: string;
@@ -21,6 +21,8 @@ export interface SessionStoryResult {
   tool_events: ToolEventRow[];
   observations: ObservationRow[];
   handoffs: ObservationRow[];
+  saved_handoffs: ObservationRow[];
+  rolling_handoff_drafts: ObservationRow[];
   metrics: (SessionRow & {
     files_touched_count: number;
     searches_performed: number;
@@ -45,6 +47,8 @@ export function getSessionStory(
   const toolEvents = db.getSessionToolEvents(input.session_id, 100);
   const allObservations = db.getObservationsBySession(input.session_id);
   const handoffs = allObservations.filter((obs) => looksLikeHandoff(obs));
+  const rollingHandoffDrafts = handoffs.filter((obs) => isDraftHandoff(obs));
+  const savedHandoffs = handoffs.filter((obs) => !isDraftHandoff(obs));
   const observations = allObservations.filter((obs) => !looksLikeHandoff(obs));
   const metrics = db.getSessionMetrics(input.session_id);
   const projectName =
@@ -64,6 +68,8 @@ export function getSessionStory(
     tool_events: toolEvents,
     observations,
     handoffs,
+    saved_handoffs: savedHandoffs,
+    rolling_handoff_drafts: rollingHandoffDrafts,
     metrics,
     capture_state: classifyCaptureState({
       hasSummary: Boolean(summary?.request || summary?.completed),

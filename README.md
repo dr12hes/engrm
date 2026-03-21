@@ -310,6 +310,8 @@ The local workbench now shows handoff split too:
 - saved handoffs
 - rolling drafts
 
+`activity_feed` and `session_story` now keep that distinction visible too, so a live rolling draft does not masquerade as a deliberate saved handoff.
+
 When Engrm knows your current device, handoff tools also prefer resume points from another machine before showing the newest local handoff again.
 
 This is the deliberate version of multi-device continuity: useful when you want to move from laptop to home machine without waiting for an end-of-session summary.
