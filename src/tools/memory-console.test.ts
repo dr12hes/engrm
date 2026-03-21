@@ -94,5 +94,6 @@ describe("getMemoryConsole", () => {
     expect(result.estimated_read_tokens).toBeGreaterThan(0);
     expect(result.suggested_tools).toContain("recent_sessions");
     expect(result.suggested_tools).toContain("activity_feed");
+    expect(result.suggested_tools).toContain("capture_git_worktree");
   });
 });

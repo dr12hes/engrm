@@ -111,13 +111,13 @@ function buildSuggestedTools(
 ): string[] {
   const tools: string[] = [];
   if ((context.recentSessions?.length ?? 0) > 0) {
-    tools.push("recent_sessions", "session_story");
+    tools.push("recent_sessions");
   }
   if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
     tools.push("activity_feed");
   }
   if (context.observations.length > 0) {
-    tools.push("memory_console");
+    tools.push("tool_memory_index", "capture_git_worktree");
   }
   return Array.from(new Set(tools)).slice(0, 4);
 }

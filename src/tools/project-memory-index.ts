@@ -226,13 +226,13 @@ function buildSuggestedTools(
 ): string[] {
   const suggested: string[] = [];
   if (sessions.length > 0) {
-    suggested.push("recent_sessions", "session_story");
+    suggested.push("recent_sessions");
   }
   if (requestCount > 0 || toolCount > 0) {
     suggested.push("activity_feed");
   }
   if (observationCount > 0) {
-    suggested.push("tool_memory_index", "memory_console");
+    suggested.push("tool_memory_index", "capture_git_worktree");
   }
   return Array.from(new Set(suggested)).slice(0, 4);
 }
