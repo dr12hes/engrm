@@ -316,4 +316,91 @@ describe("pullFromVector", () => {
     expect(obs?.created_at_epoch).toBe(createdAtEpoch);
     expect(obs?.created_at).toBe(createdAt);
   });
+
+  test("imports remote summary docs into local session_summaries", async () => {
+    const client = mockClient([
+      {
+        changes: [
+          makeChange(1, {
+            source_id: "other-user-other-device-summary-1",
+            metadata: {
+              project_canonical: "github.com/test/repo",
+              project_name: "repo",
+              type: "summary",
+              title: "Session summary",
+              user_id: "other-user",
+              device_id: "other-device",
+              session_id: "sess-remote-1",
+              request: "Investigate auth regression",
+              completed: "- Added auth guard",
+            },
+          }),
+        ],
+        cursor: "c1",
+        has_more: false,
+      },
+    ]);
+
+    await pullFromVector(db, client, makeConfig());
+
+    const summary = db.getSessionSummary("sess-remote-1");
+    expect(summary).not.toBeNull();
+    expect(summary?.request).toBe("Investigate auth regression");
+    expect(summary?.completed).toBe("- Added auth guard");
+  });
+
+  test("updates local session summary when remote summary doc changes", async () => {
+    const client1 = mockClient([
+      {
+        changes: [
+          makeChange(1, {
+            source_id: "other-user-other-device-summary-2",
+            metadata: {
+              project_canonical: "github.com/test/repo",
+              project_name: "repo",
+              type: "summary",
+              title: "Session summary",
+              user_id: "other-user",
+              device_id: "other-device",
+              session_id: "sess-remote-2",
+              request: "Investigate auth regression",
+            },
+          }),
+        ],
+        cursor: "c1",
+        has_more: false,
+      },
+    ]);
+
+    await pullFromVector(db, client1, makeConfig());
+
+    const client2 = mockClient([
+      {
+        changes: [
+          makeChange(1, {
+            source_id: "other-user-other-device-summary-2",
+            metadata: {
+              project_canonical: "github.com/test/repo",
+              project_name: "repo",
+              type: "summary",
+              title: "Session summary",
+              user_id: "other-user",
+              device_id: "other-device",
+              session_id: "sess-remote-2",
+              request: "Investigate auth regression",
+              completed: "- Added auth guard",
+            },
+          }),
+        ],
+        cursor: "c2",
+        has_more: false,
+      },
+    ]);
+
+    await pullFromVector(db, client2, makeConfig());
+
+    const summary = db.getSessionSummary("sess-remote-2");
+    expect(summary).not.toBeNull();
+    expect(summary?.completed).toBe("- Added auth guard");
+  });
 });

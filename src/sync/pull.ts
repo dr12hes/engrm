@@ -73,21 +73,10 @@ function mergeChanges(
 
   for (const change of changes) {
     const parsed = parseSourceId(change.source_id);
+    const remoteSummary = isRemoteSummary(change);
 
     // Skip observations from own device
     if (parsed && parsed.deviceId === config.device_id) {
-      skipped++;
-      continue;
-    }
-
-    // Check if already imported (by remote_source_id)
-    const existing = db.db
-      .query<{ id: number }, [string]>(
-        "SELECT id FROM observations WHERE remote_source_id = ?"
-      )
-      .get(change.source_id);
-
-    if (existing) {
       skipped++;
       continue;
     }
@@ -109,6 +98,25 @@ function mergeChanges(
           projectCanonical.split("/").pop() ??
           "unknown",
       });
+    }
+
+    if (remoteSummary) {
+      const mergedSummary = mergeRemoteSummary(db, config, change, project.id);
+      if (mergedSummary) {
+        merged++;
+      }
+    }
+
+    // Check if already imported (by remote_source_id)
+    const existing = db.db
+      .query<{ id: number }, [string]>(
+        "SELECT id FROM observations WHERE remote_source_id = ?"
+      )
+      .get(change.source_id);
+
+    if (existing) {
+      if (!remoteSummary) skipped++;
+      continue;
     }
 
     const normalizedType = normalizeRemoteObservationType(
@@ -157,6 +165,37 @@ function mergeChanges(
   }
 
   return { merged, skipped };
+}
+
+function isRemoteSummary(change: VectorSearchResult): boolean {
+  const rawType = typeof change.metadata?.type === "string" ? change.metadata.type.toLowerCase() : "";
+  return rawType === "summary" || change.source_id.includes("-summary-");
+}
+
+function mergeRemoteSummary(
+  db: MemDatabase,
+  config: Config,
+  change: VectorSearchResult,
+  projectId: number
+): boolean {
+  const sessionId = typeof change.metadata?.session_id === "string" ? change.metadata.session_id : null;
+  if (!sessionId) return false;
+
+  const summary = db.upsertSessionSummary({
+    session_id: sessionId,
+    project_id: projectId,
+    user_id:
+      (typeof change.metadata?.user_id === "string" ? change.metadata.user_id : null) ??
+      config.user_id,
+    request: typeof change.metadata?.request === "string" ? change.metadata.request : null,
+    investigated:
+      typeof change.metadata?.investigated === "string" ? change.metadata.investigated : null,
+    learned: typeof change.metadata?.learned === "string" ? change.metadata.learned : null,
+    completed: typeof change.metadata?.completed === "string" ? change.metadata.completed : null,
+    next_steps: typeof change.metadata?.next_steps === "string" ? change.metadata.next_steps : null,
+  });
+
+  return Boolean(summary);
 }
 
 function normalizeRemoteObservationType(
