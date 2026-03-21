@@ -211,7 +211,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `recent_activity` | Inspect what Engrm captured most recently |
 | `memory_stats` | View high-level capture and sync health |
 | `capture_status` | Check whether local hooks are registered and raw prompt/tool chronology is actually being captured |
-| `activity_feed` | Inspect one chronological local feed across prompts, tools, observations, and summaries |
+| `activity_feed` | Inspect one chronological local feed across prompts, tools, chat, handoffs, observations, and summaries |
 | `memory_console` | Show a high-signal local memory console for the current project |
 | `project_memory_index` | Show typed local memory by project, including hot files and recent sessions |
 | `workspace_memory_index` | Show cross-project local memory coverage across the whole workspace |
@@ -224,6 +224,8 @@ The MCP server exposes tools that supported agents can call directly:
 | `create_handoff` | Save an explicit syncable handoff so you can resume work on another device |
 | `recent_handoffs` | List recent saved handoffs for the current project or workspace |
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
+| `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
+| `search_chat` | Search recent chat recall separately from reusable memory observations |
 | `plugin_catalog` | Inspect Engrm plugin manifests for memory-aware integrations |
 | `save_plugin_memory` | Save reduced plugin output with stable Engrm provenance |
 | `capture_git_diff` | Reduce a git diff into a durable memory object and save it |
@@ -314,9 +316,9 @@ What each tool is good for:
 
 - `capture_status` tells you whether prompt/tool hooks are live on this machine
 - `memory_console` gives the quickest project snapshot
-- `activity_feed` shows the merged chronology across prompts, tools, observations, and summaries
+- `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries
 - `recent_sessions` helps you pick a session worth opening
-- `session_story` reconstructs one session in detail
+- `session_story` reconstructs one session in detail, including handoffs and chat recall
 - `tool_memory_index` shows which tools and plugins are actually producing durable memory
 - `session_tool_memory` shows which tool calls in one session turned into reusable memory and which did not
 - `project_memory_index` shows typed memory by repo

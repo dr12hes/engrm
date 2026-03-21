@@ -1322,7 +1322,7 @@ server.tool(
 // Tool: activity_feed
 server.tool(
   "activity_feed",
-  "Show one chronological local feed across prompts, tools, observations, and summaries",
+  "Show one chronological local feed across prompts, tools, chat, observations, handoffs, and summaries",
   {
     limit: z.number().optional(),
     project_scoped: z.boolean().optional(),

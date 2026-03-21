@@ -4,6 +4,14 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Added
+
+- `activity_feed` now includes the separate chat lane as first-class `chat` events in both project-scoped and session-scoped chronology views
+
+### Changed
+
+- MCP docs and examples now describe `activity_feed` as the merged continuity surface across prompts, tools, chat, handoffs, observations, and summaries
+
 ## 0.4.23
 
 ### Added

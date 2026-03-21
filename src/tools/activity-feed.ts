@@ -1,13 +1,14 @@
 /**
  * activity_feed MCP tool.
  *
- * Merges prompts, tools, observations, and session summaries into one
+ * Merges prompts, tools, chat, observations, and session summaries into one
  * chronological local feed so agents can inspect the working story without
  * hopping between multiple narrower tools.
  */
 
 import { detectProject } from "../storage/projects.js";
 import type {
+  ChatMessageRow,
   MemDatabase,
   ObservationRow,
   SessionSummaryRow,
@@ -15,6 +16,7 @@ import type {
   UserPromptRow,
 } from "../storage/sqlite.js";
 import { getRecentActivity } from "./recent.js";
+import { getRecentChat } from "./recent-chat.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentTools } from "./recent-tools.js";
@@ -30,7 +32,7 @@ export interface ActivityFeedInput {
 }
 
 export interface ActivityFeedEvent {
-  kind: "prompt" | "tool" | "observation" | "summary" | "handoff";
+  kind: "prompt" | "tool" | "chat" | "observation" | "summary" | "handoff";
   created_at_epoch: number;
   session_id: string | null;
   title: string;
@@ -63,6 +65,18 @@ function toToolEvent(tool: ToolEventRow): ActivityFeedEvent {
     id: tool.id,
     title: tool.tool_name,
     detail: detail?.replace(/\s+/g, " ").trim(),
+  };
+}
+
+function toChatEvent(message: ChatMessageRow): ActivityFeedEvent {
+  const content = message.content.replace(/\s+/g, " ").trim();
+  return {
+    kind: "chat",
+    created_at_epoch: message.created_at_epoch,
+    session_id: message.session_id,
+    id: message.id,
+    title: message.role === "user" ? "user" : "assistant",
+    detail: content.slice(0, 220),
   };
 }
 
@@ -140,7 +154,8 @@ function compareEvents(a: ActivityFeedEvent, b: ActivityFeedEvent): number {
     handoff: 1,
     observation: 2,
     tool: 3,
-    prompt: 4,
+    chat: 4,
+    prompt: 5,
   };
   if (kindOrder[a.kind] !== kindOrder[b.kind]) {
     return kindOrder[a.kind] - kindOrder[b.kind];
@@ -179,6 +194,7 @@ export function getActivityFeed(
         : []),
       ...story.prompts.map(toPromptEvent),
       ...story.tool_events.map(toToolEvent),
+      ...story.chat_messages.map(toChatEvent),
       ...story.handoffs.map(toObservationEvent),
       ...story.observations.map(toObservationEvent),
     ]
@@ -208,6 +224,10 @@ export function getActivityFeed(
     cwd: input.cwd,
     user_id: input.user_id,
   }).observations;
+  const chat = getRecentChat(db, {
+    ...input,
+    limit,
+  }).messages;
   const sessions = getRecentSessions(db, {
     limit,
     project_scoped: input.project_scoped,
@@ -236,6 +256,7 @@ export function getActivityFeed(
     ...summaryEvents,
     ...prompts.map(toPromptEvent),
     ...tools.map(toToolEvent),
+    ...chat.map(toChatEvent),
     ...observations.map(toObservationEvent),
   ]
     .sort(compareEvents)

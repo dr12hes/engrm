@@ -201,6 +201,14 @@ describe("getActivityFeed", () => {
       user_id: "david",
       device_id: "laptop",
     });
+    db.insertChatMessage({
+      session_id: "sess-2",
+      project_id: project.id,
+      role: "assistant",
+      content: "I traced the audit flow and I am wiring the persistence next.",
+      user_id: "david",
+      device_id: "laptop",
+    });
     db.insertObservation({
       session_id: "sess-2",
       project_id: project.id,
@@ -216,11 +224,15 @@ describe("getActivityFeed", () => {
       limit: 10,
     });
 
-    expect(result.events).toHaveLength(3);
+    expect(result.events).toHaveLength(4);
     const toolEvent = result.events.find((event) => event.kind === "tool");
     expect(toolEvent?.detail).toBe("src/audit.ts");
+    const chatEvent = result.events.find((event) => event.kind === "chat");
+    expect(chatEvent?.title).toBe("assistant");
+    expect(chatEvent?.detail).toContain("wiring the persistence next");
     expect(result.events.some((event) => event.kind === "prompt")).toBe(true);
     expect(result.events.some((event) => event.kind === "tool")).toBe(true);
+    expect(result.events.some((event) => event.kind === "chat")).toBe(true);
     expect(result.events.some((event) => event.kind === "observation")).toBe(true);
   });
 });

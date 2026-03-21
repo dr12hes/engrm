@@ -62,6 +62,18 @@ This proves the full loop:
 - inspect which tool/plugin produced it
 - inspect the resulting session memory
 
+If you want to show continuity rather than just capture, add:
+
+6. `create_handoff`
+7. `recent_handoffs`
+8. `activity_feed`
+
+That demo shows:
+
+- deliberate cross-device resume points
+- synced chat recall kept separate from durable memory
+- one merged feed across prompts, tools, chat, handoffs, and observations
+
 ## Example Prompt Set
 
 Use prompts like these in demos, screenshots, and listings:
