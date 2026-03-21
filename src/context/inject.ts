@@ -15,6 +15,7 @@
 
 import { detectProject } from "../storage/projects.js";
 import type {
+  ChatMessageRow,
   MemDatabase,
   ObservationRow,
   RecentSessionRow,
@@ -82,6 +83,8 @@ export interface InjectedContext {
   recentOutcomes?: string[];
   /** Recent explicit handoffs for cross-device continuity */
   recentHandoffs?: HandoffRow[];
+  /** Recent synced chat recall kept separate from durable observations */
+  recentChatMessages?: ChatMessageRow[];
 }
 
 export interface ContextObservation {
@@ -375,6 +378,8 @@ export function buildSessionContext(
       user_id: opts.userId,
       limit: 3,
     }).handoffs;
+    const recentChatMessages =
+      !isNewProject && project ? db.getRecentChatMessages(project.id, 4, opts.userId) : [];
     return {
       project_name: projectName,
       canonical_id: canonicalId,
@@ -387,6 +392,7 @@ export function buildSessionContext(
       projectTypeCounts,
       recentOutcomes,
       recentHandoffs: recentHandoffs.length > 0 ? recentHandoffs : undefined,
+      recentChatMessages: recentChatMessages.length > 0 ? recentChatMessages : undefined,
     };
   }
 
@@ -445,6 +451,8 @@ export function buildSessionContext(
     user_id: opts.userId,
     limit: 3,
   }).handoffs;
+  const recentChatMessages =
+    !isNewProject ? db.getRecentChatMessages(projectId, 4, opts.userId) : [];
 
   // Fetch recent security findings (last 7 days) for risk awareness
   let securityFindings: SecurityFindingRow[] = [];
@@ -536,6 +544,7 @@ export function buildSessionContext(
     projectTypeCounts,
     recentOutcomes,
     recentHandoffs: recentHandoffs.length > 0 ? recentHandoffs : undefined,
+    recentChatMessages: recentChatMessages.length > 0 ? recentChatMessages : undefined,
   };
 }
 
@@ -624,6 +633,16 @@ export function formatContextForInjection(
       if (narrative) {
         lines.push(`  ${truncateText(narrative, 180)}`);
       }
+    }
+    lines.push("");
+  }
+
+  if (context.recentChatMessages && context.recentChatMessages.length > 0) {
+    lines.push("## Recent Chat");
+    for (const message of context.recentChatMessages.slice(0, 4).reverse()) {
+      lines.push(
+        `- [${message.role}] ${truncateText(message.content.replace(/\s+/g, " ").trim(), 160)}`
+      );
     }
     lines.push("");
   }

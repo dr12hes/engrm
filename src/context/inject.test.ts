@@ -400,6 +400,26 @@ describe("token budget", () => {
     expect(ctx?.recentPrompts?.[0]?.prompt).toContain("startup brief mismatch");
   });
 
+  test("includes recent chat recall for the current project", () => {
+    const project = db.upsertProject({
+      canonical_id: "local/testproject",
+      name: "testproject",
+    });
+
+    db.insertChatMessage({
+      session_id: "sess-chat",
+      project_id: project.id,
+      role: "user",
+      content: "Please wire the events feed into chat actions next.",
+      user_id: "david",
+      device_id: "laptop",
+    });
+
+    const ctx = buildSessionContext(db, "/tmp/testproject");
+    expect(ctx?.recentChatMessages).toHaveLength(1);
+    expect(ctx?.recentChatMessages?.[0]?.content).toContain("events feed into chat actions");
+  });
+
   test("includes recent session rollups and project type counts for the current project", () => {
     const project = db.upsertProject({
       canonical_id: "local/testproject",
@@ -581,6 +601,79 @@ describe("formatContextForInjection", () => {
     expect(text).toContain("## Recent Handoffs");
     expect(text).toContain("Finish wiring the events feed into chat actions");
     expect(text).toContain("Current thread:");
+  });
+
+  test("formats recent chat after handoffs and before raw requests", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [],
+      session_count: 0,
+      total_active: 0,
+      recentHandoffs: [
+        {
+          id: 50,
+          session_id: "sess-handoff",
+          project_id: 1,
+          type: "message",
+          title: "Handoff: Finish wiring the events feed into chat actions · 2026-03-21 22:10Z",
+          narrative: "Current thread: Finish wiring the events feed into chat actions",
+          facts: null,
+          concepts: JSON.stringify(["handoff", "session-handoff"]),
+          files_read: null,
+          files_modified: null,
+          quality: 0.8,
+          lifecycle: "active",
+          sensitivity: "shared",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "engrm-handoff",
+          created_at: "2026-03-21T22:10:00Z",
+          created_at_epoch: 1711059000,
+          archived_at_epoch: null,
+          compacted_into: null,
+          superseded_by: null,
+          remote_source_id: "other-user-other-device-obs-50",
+          source_tool: "create_handoff",
+          source_prompt_number: 3,
+          project_name: "myproject",
+        },
+      ],
+      recentChatMessages: [
+        {
+          id: 9,
+          session_id: "sess-handoff",
+          project_id: 1,
+          role: "assistant",
+          content: "I have the feed plumbing in place; next I need to expose it to the chat action path.",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          created_at_epoch: 1711059010,
+          remote_source_id: null,
+        },
+      ],
+      recentPrompts: [
+        {
+          id: 11,
+          session_id: "sess-1",
+          project_id: 1,
+          prompt_number: 3,
+          prompt: "Investigate why startup context feels too shallow compared with claude-mem",
+          prompt_hash: "hash",
+          cwd: "/tmp/myproject",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          created_at_epoch: 1,
+        },
+      ],
+    });
+
+    expect(text).toContain("## Recent Chat");
+    expect(text).toContain("[assistant] I have the feed plumbing in place");
+    expect(text.indexOf("## Recent Handoffs")).toBeLessThan(text.indexOf("## Recent Chat"));
+    expect(text.indexOf("## Recent Chat")).toBeLessThan(text.indexOf("## Recent Requests"));
   });
 
   test("filters malformed prompt fragments from recent requests", () => {

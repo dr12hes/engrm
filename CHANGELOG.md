@@ -11,6 +11,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - MCP docs and examples now describe `activity_feed` as the merged continuity surface across prompts, tools, chat, handoffs, observations, and summaries
+- injected session context can now carry a compact `Recent Chat` section for the current project, so cross-device resume has conversational continuity as well as reduced memory
 
 ## 0.4.23
 
