@@ -525,6 +525,64 @@ describe("formatContextForInjection", () => {
     expect(text).toContain("#3: Investigate why startup context feels too shallow");
   });
 
+  test("formats recent handoffs ahead of raw request chronology when available", () => {
+    const text = formatContextForInjection({
+      project_name: "myproject",
+      canonical_id: "local/myproject",
+      observations: [],
+      session_count: 0,
+      total_active: 0,
+      recentHandoffs: [
+        {
+          id: 50,
+          session_id: "sess-handoff",
+          project_id: 1,
+          type: "message",
+          title: "Handoff: Finish wiring the events feed into chat actions · 2026-03-21 22:10Z",
+          narrative: "Current thread: Finish wiring the events feed into chat actions\n\nNext Steps: Hook the action dispatcher into the same feed.",
+          facts: JSON.stringify(["session_id=sess-handoff"]),
+          concepts: JSON.stringify(["handoff", "session-handoff"]),
+          files_read: null,
+          files_modified: null,
+          quality: 0.8,
+          lifecycle: "active",
+          sensitivity: "shared",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "engrm-handoff",
+          created_at: "2026-03-21T22:10:00Z",
+          created_at_epoch: 1711059000,
+          archived_at_epoch: null,
+          compacted_into: null,
+          superseded_by: null,
+          remote_source_id: "other-user-other-device-obs-50",
+          source_tool: "create_handoff",
+          source_prompt_number: 3,
+          project_name: "myproject",
+        },
+      ],
+      recentPrompts: [
+        {
+          id: 11,
+          session_id: "sess-1",
+          project_id: 1,
+          prompt_number: 3,
+          prompt: "Investigate why startup context feels too shallow compared with claude-mem",
+          prompt_hash: "hash",
+          cwd: "/tmp/myproject",
+          user_id: "david",
+          device_id: "laptop",
+          agent: "claude-code",
+          created_at_epoch: 1,
+        },
+      ],
+    });
+
+    expect(text).toContain("## Recent Handoffs");
+    expect(text).toContain("Finish wiring the events feed into chat actions");
+    expect(text).toContain("Current thread:");
+  });
+
   test("filters malformed prompt fragments from recent requests", () => {
     const text = formatContextForInjection({
       project_name: "myproject",

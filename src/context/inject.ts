@@ -607,6 +607,27 @@ export function formatContextForInjection(
     lines.push("");
   }
 
+  if (context.recentHandoffs && context.recentHandoffs.length > 0) {
+    lines.push("## Recent Handoffs");
+    for (const handoff of context.recentHandoffs.slice(0, 3)) {
+      const title = handoff.title
+        .replace(/^Handoff:\s*/i, "")
+        .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
+        .trim();
+      if (title) {
+        lines.push(`- ${truncateText(title, 160)}`);
+      }
+      const narrative = handoff.narrative
+        ?.split(/\n{2,}/)
+        .map((part) => part.replace(/\s+/g, " ").trim())
+        .find((part) => /^(Current thread:|Completed:|Next Steps:)/i.test(part));
+      if (narrative) {
+        lines.push(`  ${truncateText(narrative, 180)}`);
+      }
+    }
+    lines.push("");
+  }
+
   if (context.recentPrompts && context.recentPrompts.length > 0) {
     const promptLines = context.recentPrompts
       .filter((prompt) => isMeaningfulPrompt(prompt.prompt))
