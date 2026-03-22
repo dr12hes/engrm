@@ -1080,6 +1080,7 @@ server.tool(
             `${projectLine}` +
             `${captureLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat.length} messages across ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
@@ -1317,6 +1318,7 @@ server.tool(
             `Recent handoffs: ${result.recent_handoffs}\n` +
             `Handoff split: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `Recent chat messages: ${result.recent_chat_messages}\n` +
+            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n` +
             `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
             result.preview,
@@ -1426,7 +1428,8 @@ server.tool(
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
             `Recent handoffs captured: ${result.recent_handoffs_count}\n` +
             `Handoff split: ${result.saved_handoffs_count} saved, ${result.rolling_handoff_drafts_count} rolling drafts\n` +
-            `Recent chat messages captured: ${result.recent_chat_count}\n\n` +
+            `Recent chat messages captured: ${result.recent_chat_count}\n` +
+            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n\n` +
             `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +

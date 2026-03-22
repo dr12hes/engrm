@@ -39,6 +39,12 @@ export interface SessionContextResult {
   saved_handoffs: number;
   latest_handoff_title: string | null;
   recent_chat_messages: number;
+  recent_chat_sessions: number;
+  chat_source_summary: {
+    transcript: number;
+    hook: number;
+  };
+  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
   capture_state: "rich" | "partial" | "summary-only";
@@ -70,12 +76,13 @@ export function getSessionContext(
   const rollingHandoffDrafts = (context.recentHandoffs ?? []).filter((handoff) => handoff.title.startsWith("Handoff Draft:")).length;
   const savedHandoffs = recentHandoffs - rollingHandoffDrafts;
   const latestHandoffTitle = context.recentHandoffs?.[0]?.title ?? null;
-  const recentChatMessages = getRecentChat(db, {
+  const recentChat = getRecentChat(db, {
     cwd,
     project_scoped: true,
     user_id: input.user_id,
     limit: 8,
-  }).messages.length;
+  });
+  const recentChatMessages = recentChat.messages.length;
   const captureState: SessionContextResult["capture_state"] =
     recentRequests > 0 && recentTools > 0
       ? "rich"
@@ -107,6 +114,13 @@ export function getSessionContext(
     saved_handoffs: savedHandoffs,
     latest_handoff_title: latestHandoffTitle,
     recent_chat_messages: recentChatMessages,
+    recent_chat_sessions: recentChat.session_count,
+    chat_source_summary: recentChat.source_summary,
+    chat_coverage_state: recentChat.transcript_backed
+      ? "transcript-backed"
+      : recentChatMessages > 0
+        ? "hook-only"
+        : "none",
     recent_outcomes: context.recentOutcomes ?? [],
     hot_files: hotFiles,
     capture_state: captureState,

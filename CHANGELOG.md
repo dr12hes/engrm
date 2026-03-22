@@ -4,6 +4,10 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Changed
+
+- `memory_console`, `project_memory_index`, and `session_context` now expose chat recall coverage too, so the main workbench can show whether project recall is transcript-backed, hook-only, or absent without opening the dedicated chat tools
+
 ## 0.4.26
 
 ### Added

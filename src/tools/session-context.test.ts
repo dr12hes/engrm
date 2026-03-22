@@ -100,6 +100,9 @@ describe("getSessionContext", () => {
     expect(result?.rolling_handoff_drafts).toBe(0);
     expect(result?.latest_handoff_title).toContain("Handoff:");
     expect(result?.recent_chat_messages).toBe(1);
+    expect(result?.recent_chat_sessions).toBe(1);
+    expect(result?.chat_source_summary).toEqual({ transcript: 0, hook: 1 });
+    expect(result?.chat_coverage_state).toBe("hook-only");
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");

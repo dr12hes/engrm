@@ -35,6 +35,12 @@ export interface MemoryConsoleResult {
   rolling_handoff_drafts: number;
   saved_handoffs: number;
   recent_chat: ReturnType<typeof getRecentChat>["messages"];
+  recent_chat_sessions: number;
+  chat_source_summary: {
+    transcript: number;
+    hook: number;
+  };
+  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
   observations: ReturnType<typeof getRecentActivity>["observations"];
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
@@ -92,7 +98,7 @@ export function getMemoryConsole(
       project_scoped: projectScoped,
       user_id: input.user_id,
       limit: 6,
-    }).messages;
+    });
   const projectIndex = projectScoped
     ? getProjectMemoryIndex(db, {
         cwd,
@@ -103,7 +109,7 @@ export function getMemoryConsole(
     requests.length,
     tools.length,
     recentHandoffs.length,
-    recentChat.length,
+    recentChat.messages.length,
     sessions,
     (projectIndex?.recent_outcomes ?? []).length
   );
@@ -119,7 +125,16 @@ export function getMemoryConsole(
     recent_handoffs: recentHandoffs,
     rolling_handoff_drafts: rollingHandoffDrafts,
     saved_handoffs: savedHandoffs,
-    recent_chat: recentChat,
+    recent_chat: recentChat.messages,
+    recent_chat_sessions: projectIndex?.recent_chat_sessions ?? recentChat.session_count,
+    chat_source_summary: projectIndex?.chat_source_summary ?? recentChat.source_summary,
+    chat_coverage_state: projectIndex?.chat_coverage_state ?? (
+      recentChat.transcript_backed
+        ? "transcript-backed"
+        : recentChat.messages.length > 0
+          ? "hook-only"
+          : "none"
+    ),
     observations,
     capture_summary: projectIndex?.capture_summary,
     recent_outcomes: projectIndex?.recent_outcomes ?? [],
@@ -135,7 +150,7 @@ export function getMemoryConsole(
       tools.length,
       observations.length,
       recentHandoffs.length,
-      recentChat.length
+      recentChat.messages.length
     ),
   };
 }

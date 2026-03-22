@@ -127,6 +127,9 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.saved_handoffs_count).toBe(1);
     expect(result?.rolling_handoff_drafts_count).toBe(0);
     expect(result?.recent_chat_count).toBe(1);
+    expect(result?.recent_chat_sessions).toBe(1);
+    expect(result?.chat_source_summary).toEqual({ transcript: 0, hook: 1 });
+    expect(result?.chat_coverage_state).toBe("hook-only");
     expect(result?.raw_capture_active).toBe(true);
     expect(result?.capture_summary.rich_sessions).toBe(1);
     expect(result?.hot_files[0]?.path).toBe("src/auth.ts");

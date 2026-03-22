@@ -110,6 +110,9 @@ describe("getMemoryConsole", () => {
     expect(result.saved_handoffs).toBe(1);
     expect(result.rolling_handoff_drafts).toBe(0);
     expect(result.recent_chat).toHaveLength(1);
+    expect(result.recent_chat_sessions).toBe(1);
+    expect(result.chat_source_summary).toEqual({ transcript: 0, hook: 1 });
+    expect(result.chat_coverage_state).toBe("hook-only");
     expect(result.observations).toHaveLength(3);
     expect(result.capture_summary?.rich_sessions).toBe(1);
     expect(result.recent_outcomes).toContain("Fixed auth redirect");

@@ -40,6 +40,12 @@ export interface ProjectMemoryIndexResult {
   rolling_handoff_drafts_count: number;
   saved_handoffs_count: number;
   recent_chat_count: number;
+  recent_chat_sessions: number;
+  chat_source_summary: {
+    transcript: number;
+    hook: number;
+  };
+  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
   raw_capture_active: boolean;
   capture_summary: CaptureSummary;
   hot_files: Array<{ path: string; count: number }>;
@@ -151,12 +157,13 @@ export function getProjectMemoryIndex(
   }).handoffs;
   const rollingHandoffDraftsCount = recentHandoffsCount.filter((handoff) => isDraftHandoff(handoff)).length;
   const savedHandoffsCount = recentHandoffsCount.length - rollingHandoffDraftsCount;
-  const recentChatCount = getRecentChat(db, {
+  const recentChat = getRecentChat(db, {
     cwd,
     project_scoped: true,
     user_id: input.user_id,
     limit: 20,
-  }).messages.length;
+  });
+  const recentChatCount = recentChat.messages.length;
   const recentOutcomes = observations
     .filter((obs) => ["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type))
     .map((obs) => obs.title.trim())
@@ -198,6 +205,13 @@ export function getProjectMemoryIndex(
     rolling_handoff_drafts_count: rollingHandoffDraftsCount,
     saved_handoffs_count: savedHandoffsCount,
     recent_chat_count: recentChatCount,
+    recent_chat_sessions: recentChat.session_count,
+    chat_source_summary: recentChat.source_summary,
+    chat_coverage_state: recentChat.transcript_backed
+      ? "transcript-backed"
+      : recentChatCount > 0
+        ? "hook-only"
+        : "none",
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
     capture_summary: captureSummary,
     hot_files: hotFiles,
