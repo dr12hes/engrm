@@ -12,6 +12,12 @@ export interface SearchChatInput {
 export interface SearchChatResult {
   messages: ChatMessageRow[];
   project?: string;
+  session_count: number;
+  source_summary: {
+    transcript: number;
+    hook: number;
+  };
+  transcript_backed: boolean;
 }
 
 export function searchChat(
@@ -33,8 +39,26 @@ export function searchChat(
     }
   }
 
+  const messages = db.searchChatMessages(input.query, projectId, limit, input.user_id);
   return {
-    messages: db.searchChatMessages(input.query, projectId, limit, input.user_id),
+    messages,
     project: projectName,
+    session_count: countDistinctSessions(messages),
+    source_summary: summarizeChatSources(messages),
+    transcript_backed: messages.some((message) => message.source_kind === "transcript"),
   };
+}
+
+function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; hook: number } {
+  return messages.reduce(
+    (summary, message) => {
+      summary[message.source_kind] += 1;
+      return summary;
+    },
+    { transcript: 0, hook: 0 }
+  );
+}
+
+function countDistinctSessions(messages: ChatMessageRow[]): number {
+  return new Set(messages.map((message) => message.session_id)).size;
 }

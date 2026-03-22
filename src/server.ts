@@ -1740,6 +1740,10 @@ server.tool(
   async (params) => {
     const result = getRecentChat(db, params);
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const coverageLine =
+      `Coverage: ${result.messages.length} messages across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
+      `· transcript ${result.source_summary.transcript} · hook ${result.source_summary.hook}\n` +
+      `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
@@ -1751,7 +1755,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: `${projectLine}Recent chat:\n${rows}`,
+          text: `${projectLine}${coverageLine}Recent chat:\n${rows}`,
         },
       ],
     };
@@ -1771,6 +1775,10 @@ server.tool(
   async (params) => {
     const result = searchChat(db, params);
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const coverageLine =
+      `Coverage: ${result.messages.length} matches across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
+      `· transcript ${result.source_summary.transcript} · hook ${result.source_summary.hook}\n` +
+      `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
@@ -1782,7 +1790,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: `${projectLine}Chat search for "${params.query}":\n${rows}`,
+          text: `${projectLine}${coverageLine}Chat search for "${params.query}":\n${rows}`,
         },
       ],
     };

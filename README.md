@@ -365,6 +365,7 @@ What each tool is good for:
 - `session_tool_memory` shows which tool calls in one session turned into reusable memory and which did not
 - `project_memory_index` shows typed memory by repo, including continuity state and hot files
 - `workspace_memory_index` shows coverage across all repos on the machine
+- `recent_chat` / `search_chat` now report transcript-vs-hook coverage too, so weak OpenClaw recall is easier to diagnose and refresh
 
 ### Thin Tool Workflow
 
