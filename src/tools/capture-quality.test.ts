@@ -88,12 +88,38 @@ describe("getCaptureQuality", () => {
       device_id: "laptop",
       source_tool: "assistant-stop",
     });
+    db.insertChatMessage({
+      session_id: "sess-a",
+      project_id: projectA.id,
+      role: "assistant",
+      content: "Transcript-backed auth thread is available.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
+    db.insertChatMessage({
+      session_id: "sess-b",
+      project_id: projectB.id,
+      role: "assistant",
+      content: "Only hook chat exists for the UI filter thread.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "hook",
+    });
 
     const result = getCaptureQuality(db, { user_id: "david" });
     expect(result.totals.projects).toBe(2);
     expect(result.totals.assistant_checkpoints).toBe(1);
+    expect(result.totals.chat_messages).toBe(2);
     expect(result.session_states.rich).toBe(1);
     expect(result.session_states.summary_only).toBe(1);
+    expect(result.chat_coverage).toEqual({
+      transcript_backed_sessions: 1,
+      hook_only_sessions: 1,
+    });
     expect(result.projects_with_raw_capture).toBe(1);
     expect(result.provenance_summary).toEqual([
       { tool: "Edit", count: 1 },
@@ -114,6 +140,10 @@ describe("getCaptureQuality", () => {
     expect(result.assistant_checkpoint_types).toEqual([
       { type: "change", count: 1 },
     ]);
-    expect(result.top_projects[0]?.raw_capture_state).toBe("rich");
+    const repoA = result.top_projects.find((project) => project.name === "repo-a");
+    const repoB = result.top_projects.find((project) => project.name === "repo-b");
+    expect(repoA?.raw_capture_state).toBe("rich");
+    expect(repoA?.chat_coverage_state).toBe("transcript-backed");
+    expect(repoB?.chat_coverage_state).toBe("hook-only");
   });
 });

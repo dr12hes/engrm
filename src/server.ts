@@ -1170,7 +1170,7 @@ server.tool(
       : "- (none)";
     const projectLines = result.top_projects.length > 0
       ? result.top_projects.map((project) =>
-          `- ${project.name} [${project.raw_capture_state}] obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count} checkpoints=${project.assistant_checkpoint_count}`
+          `- ${project.name} [${project.raw_capture_state}] obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count} checkpoints=${project.assistant_checkpoint_count} chat=${project.chat_message_count} (${project.chat_coverage_state})`
         ).join("\n")
       : "- (none)";
 
@@ -1179,8 +1179,9 @@ server.tool(
         {
           type: "text" as const,
           text:
-            `Workspace totals: projects=${result.totals.projects}, observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}, checkpoints=${result.totals.assistant_checkpoints}\n\n` +
+            `Workspace totals: projects=${result.totals.projects}, observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}, checkpoints=${result.totals.assistant_checkpoints}, chat=${result.totals.chat_messages}\n\n` +
             `Session capture states: rich=${result.session_states.rich}, partial=${result.session_states.partial}, summary-only=${result.session_states.summary_only}, legacy=${result.session_states.legacy}\n\n` +
+            `Chat recall coverage: transcript-backed sessions=${result.chat_coverage.transcript_backed_sessions}, hook-only sessions=${result.chat_coverage.hook_only_sessions}\n\n` +
             `Projects with raw capture: ${result.projects_with_raw_capture}\n\n` +
             `Assistant checkpoints by type:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
