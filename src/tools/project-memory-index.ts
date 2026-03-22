@@ -31,6 +31,10 @@ export interface ProjectMemoryIndexResult {
   canonical_id: string;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  resume_freshness: "live" | "recent" | "stale";
+  resume_source_session_id: string | null;
+  resume_source_device_id: string | null;
+  resume_next_actions: string[];
   observation_counts: Record<string, number>;
   recent_sessions: RecentSessionRow[];
   recent_outcomes: string[];
@@ -161,6 +165,8 @@ export function getProjectMemoryIndex(
     limit: 20,
   });
   const recentChatCount = recentChat.messages.length;
+  const latestSession = recentSessions[0] ?? null;
+  const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
   const recentOutcomes = observations
     .filter((obs) => ["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type))
     .map((obs) => obs.title.trim())
@@ -194,12 +200,17 @@ export function getProjectMemoryIndex(
     recentSessions,
     recentOutcomes.length
   );
+  const sourceTimestamp = pickResumeSourceTimestamp(latestSession, recentChat.messages);
 
   return {
     project: project.name,
     canonical_id: project.canonical_id,
     continuity_state: continuityState,
     continuity_summary: describeContinuityState(continuityState),
+    resume_freshness: classifyResumeFreshness(sourceTimestamp),
+    resume_source_session_id: latestSession?.session_id ?? null,
+    resume_source_device_id: latestSession?.device_id ?? null,
+    resume_next_actions: collectNextActions(latestSummary?.next_steps),
     observation_counts: counts,
     recent_sessions: recentSessions,
     recent_outcomes: recentOutcomes,
@@ -223,6 +234,41 @@ export function getProjectMemoryIndex(
     estimated_read_tokens: estimatedReadTokens,
     suggested_tools: suggestedTools,
   };
+}
+
+function pickResumeSourceTimestamp(
+  latestSession: RecentSessionRow | null,
+  messages: ReturnType<typeof getRecentChat>["messages"]
+): number | null {
+  const latestChatEpoch = messages.length > 0
+    ? messages[messages.length - 1]?.created_at_epoch ?? null
+    : null;
+  return latestChatEpoch
+    ?? latestSession?.completed_at_epoch
+    ?? latestSession?.started_at_epoch
+    ?? null;
+}
+
+export function classifyResumeFreshness(sourceTimestamp: number | null): ProjectMemoryIndexResult["resume_freshness"] {
+  if (!sourceTimestamp) return "stale";
+  const ageMs = Date.now() - sourceTimestamp * 1000;
+  if (ageMs <= 15 * 60 * 1000) return "live";
+  if (ageMs <= 3 * 24 * 60 * 60 * 1000) return "recent";
+  return "stale";
+}
+
+function collectNextActions(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const normalized = value
+    .split(/\n+/)
+    .map((line) => line.replace(/^[\s*-]+/, "").trim())
+    .filter((line) => line.length > 0);
+  if (normalized.length > 1) return normalized.slice(0, 5);
+  return value
+    .split(/[.;](?:\s+|$)/)
+    .map((item) => item.replace(/^[\s*-]+/, "").trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 5);
 }
 
 export function classifyContinuityState(

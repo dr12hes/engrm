@@ -27,6 +27,10 @@ export interface MemoryConsoleResult {
   capture_mode: "rich" | "observations-only";
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  resume_freshness: "live" | "recent" | "stale";
+  resume_source_session_id: string | null;
+  resume_source_device_id: string | null;
+  resume_next_actions: string[];
   capture_summary?: ReturnType<typeof getProjectMemoryIndex>["capture_summary"];
   sessions: ReturnType<typeof getRecentSessions>["sessions"];
   requests: ReturnType<typeof getRecentRequests>["prompts"];
@@ -116,6 +120,10 @@ export function getMemoryConsole(
     capture_mode: requests.length > 0 || tools.length > 0 ? "rich" : "observations-only",
     continuity_state: continuityState,
     continuity_summary: projectIndex?.continuity_summary ?? describeContinuityState(continuityState),
+    resume_freshness: projectIndex?.resume_freshness ?? "stale",
+    resume_source_session_id: projectIndex?.resume_source_session_id ?? sessions[0]?.session_id ?? null,
+    resume_source_device_id: projectIndex?.resume_source_device_id ?? sessions[0]?.device_id ?? null,
+    resume_next_actions: projectIndex?.resume_next_actions ?? [],
     sessions,
     requests,
     tools,

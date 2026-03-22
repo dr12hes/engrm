@@ -35,7 +35,7 @@ describe("getMemoryConsole", () => {
       investigated: null,
       learned: null,
       completed: "Added retry",
-      next_steps: null,
+      next_steps: "Verify retry headers in the auth flow.\nConfirm the home-machine handoff still loads cleanly.",
     });
     db.insertUserPrompt({
       session_id: "sess-1",
@@ -103,6 +103,10 @@ describe("getMemoryConsole", () => {
     expect(result.project).toBe("repo");
     expect(result.capture_mode).toBe("rich");
     expect(result.continuity_state).toBe("fresh");
+    expect(result.resume_freshness).toBe("live");
+    expect(result.resume_source_session_id).toBe("sess-1");
+    expect(result.resume_source_device_id).toBe("laptop");
+    expect(result.resume_next_actions[0]).toContain("Verify retry headers");
     expect(result.sessions).toHaveLength(1);
     expect(result.requests).toHaveLength(1);
     expect(result.tools).toHaveLength(1);

@@ -110,7 +110,7 @@ describe("getProjectMemoryIndex", () => {
       investigated: null,
       learned: null,
       completed: "Added retry",
-      next_steps: null,
+      next_steps: "Verify retry headers in the auth flow.\nConfirm the home-machine handoff still loads cleanly.",
     });
 
     const result = getProjectMemoryIndex(db, {
@@ -119,6 +119,10 @@ describe("getProjectMemoryIndex", () => {
     });
 
     expect(result?.project).toBe("repo");
+    expect(result?.resume_freshness).toBe("live");
+    expect(result?.resume_source_session_id).toBe("sess-1");
+    expect(result?.resume_source_device_id).toBe("laptop");
+    expect(result?.resume_next_actions[0]).toContain("Verify retry headers");
     expect(result?.observation_counts.bugfix).toBe(1);
     expect(result?.observation_counts.decision).toBe(1);
     expect(result?.recent_requests_count).toBe(1);

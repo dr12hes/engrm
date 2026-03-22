@@ -14,7 +14,7 @@ import {
   type ContextOptions,
 } from "../context/inject.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
-import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
+import { classifyContinuityState, classifyResumeFreshness, describeContinuityState } from "./project-memory-index.js";
 
 export interface SessionContextInput {
   cwd?: string;
@@ -29,6 +29,10 @@ export interface SessionContextResult {
   canonical_id: string;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  resume_freshness: "live" | "recent" | "stale";
+  resume_source_session_id: string | null;
+  resume_source_device_id: string | null;
+  resume_next_actions: string[];
   session_count: number;
   total_active: number;
   recent_requests: number;
@@ -80,6 +84,8 @@ export function getSessionContext(
     limit: 8,
   });
   const recentChatMessages = recentChat.messages.length;
+  const latestSession = context.recentSessions?.[0] ?? null;
+  const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
   const captureState: SessionContextResult["capture_state"] =
     recentRequests > 0 && recentTools > 0
       ? "rich"
@@ -95,12 +101,23 @@ export function getSessionContext(
     context.recentSessions ?? [],
     (context.recentOutcomes ?? []).length
   );
+  const latestChatEpoch = recentChat.messages.length > 0
+    ? recentChat.messages[recentChat.messages.length - 1]?.created_at_epoch ?? null
+    : null;
+  const resumeTimestamp = latestChatEpoch
+    ?? latestSession?.completed_at_epoch
+    ?? latestSession?.started_at_epoch
+    ?? null;
 
   return {
     project_name: context.project_name,
     canonical_id: context.canonical_id,
     continuity_state: continuityState,
     continuity_summary: describeContinuityState(continuityState),
+    resume_freshness: classifyResumeFreshness(resumeTimestamp),
+    resume_source_session_id: latestSession?.session_id ?? null,
+    resume_source_device_id: latestSession?.device_id ?? null,
+    resume_next_actions: collectNextActions(latestSummary?.next_steps),
     session_count: context.session_count,
     total_active: context.total_active,
     recent_requests: recentRequests,
@@ -122,6 +139,20 @@ export function getSessionContext(
     suggested_tools: buildSuggestedTools(context, recentChat.coverage_state),
     preview,
   };
+}
+
+function collectNextActions(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const normalized = value
+    .split(/\n+/)
+    .map((line) => line.replace(/^[\s*-]+/, "").trim())
+    .filter((line) => line.length > 0);
+  if (normalized.length > 1) return normalized.slice(0, 5);
+  return value
+    .split(/[.;](?:\s+|$)/)
+    .map((item) => item.replace(/^[\s*-]+/, "").trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 5);
 }
 
 function buildHotFiles(context: NonNullable<ReturnType<typeof buildSessionContext>>): Array<{ path: string; count: number }> {

@@ -1226,11 +1226,13 @@ server.tool(
             `${projectLine}` +
             `${captureLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat.length} messages across ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Top types:\n${topTypes}\n\n` +
             `Assistant checkpoint types:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
@@ -1456,6 +1458,7 @@ server.tool(
             `Project: ${result.project_name}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Loaded observations: ${result.session_count}\n` +
             `Searchable total: ${result.total_active}\n` +
             `Recent requests: ${result.recent_requests}\n` +
@@ -1466,6 +1469,7 @@ server.tool(
             `Recent chat messages: ${result.recent_chat_messages}\n` +
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
+            `Next actions: ${result.resume_next_actions.length > 0 ? result.resume_next_actions.join(" | ") : "(none)"}\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
             result.preview,
         },
@@ -1570,6 +1574,7 @@ server.tool(
             `Project: ${result.project}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Recent requests captured: ${result.recent_requests_count}\n` +
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
             `Recent handoffs captured: ${result.recent_handoffs_count}\n` +
@@ -1580,6 +1585,7 @@ server.tool(
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Observation counts:\n${counts}\n\n` +
             `Top types:\n${topTypes}\n\n` +
             `Recent sessions:\n${sessions}\n\n` +

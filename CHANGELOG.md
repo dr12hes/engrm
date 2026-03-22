@@ -7,6 +7,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - `resume_thread` now includes `next_actions`, source session/device cues, and a `live / recent / stale` freshness signal, so the default continuity tool reads more like a coworker handoff than a generic recap
+- `memory_console`, `project_memory_index`, and `session_context` now expose that same resume-readiness state and next actions, so the main MCP workbench can tell whether a repo is actually ready for a confident resume before you call `resume_thread`
 
 ## 0.4.30
 

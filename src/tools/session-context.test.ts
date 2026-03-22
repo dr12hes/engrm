@@ -27,6 +27,16 @@ describe("getSessionContext", () => {
     });
 
     db.upsertSession("sess-1", project.id, "david", "laptop", "claude-code");
+    db.insertSessionSummary({
+      session_id: "sess-1",
+      project_id: project.id,
+      user_id: "david",
+      request: "Investigate why startup context still feels thin",
+      investigated: null,
+      learned: null,
+      completed: "Exposed project memory index in MCP",
+      next_steps: "Surface stronger handoff cues ahead of raw chronology.\nVerify the preview still stays compact.",
+    });
     db.insertUserPrompt({
       session_id: "sess-1",
       project_id: project.id,
@@ -91,6 +101,10 @@ describe("getSessionContext", () => {
     expect(result).not.toBeNull();
     expect(result?.project_name).toBe("repo");
     expect(result?.continuity_state).toBe("fresh");
+    expect(result?.resume_freshness).toBe("live");
+    expect(result?.resume_source_session_id).toBe("sess-1");
+    expect(result?.resume_source_device_id).toBe("laptop");
+    expect(result?.resume_next_actions[0]).toContain("Surface stronger handoff cues");
     expect(result?.recent_requests).toBe(1);
     expect(result?.recent_tools).toBe(1);
     expect(result?.capture_state).toBe("rich");
