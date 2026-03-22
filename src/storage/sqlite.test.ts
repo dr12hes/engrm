@@ -335,6 +335,64 @@ describe("MemDatabase — user prompts", () => {
   });
 });
 
+describe("MemDatabase — chat messages", () => {
+  let projectId: number;
+
+  beforeEach(() => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+    projectId = project.id;
+  });
+
+  test("prefers transcript-backed chat over hook chat for the same session", () => {
+    db.insertChatMessage({
+      session_id: "sess-chat",
+      project_id: projectId,
+      role: "user",
+      content: "prompt edge",
+      user_id: "david",
+      device_id: "laptop",
+      source_kind: "hook",
+    });
+    db.insertChatMessage({
+      session_id: "sess-chat",
+      project_id: projectId,
+      role: "assistant",
+      content: "final edge",
+      user_id: "david",
+      device_id: "laptop",
+      source_kind: "hook",
+    });
+    db.insertChatMessage({
+      session_id: "sess-chat",
+      project_id: projectId,
+      role: "user",
+      content: "prompt full",
+      user_id: "david",
+      device_id: "laptop",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
+    db.insertChatMessage({
+      session_id: "sess-chat",
+      project_id: projectId,
+      role: "assistant",
+      content: "middle full",
+      user_id: "david",
+      device_id: "laptop",
+      source_kind: "transcript",
+      transcript_index: 2,
+    });
+
+    const messages = db.getSessionChatMessages("sess-chat", 10);
+    expect(messages).toHaveLength(2);
+    expect(messages.map((msg) => msg.content)).toEqual(["prompt full", "middle full"]);
+    expect(messages.every((msg) => msg.source_kind === "transcript")).toBe(true);
+  });
+});
+
 describe("MemDatabase — tool events", () => {
   let projectId: number;
 

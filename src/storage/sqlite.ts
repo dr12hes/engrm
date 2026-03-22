@@ -251,6 +251,8 @@ export interface ChatMessageRow {
   agent: string;
   created_at_epoch: number;
   remote_source_id: string | null;
+  source_kind: "hook" | "transcript";
+  transcript_index: number | null;
 }
 
 export interface SecurityFindingRow {
@@ -363,6 +365,8 @@ export interface InsertChatMessage {
   agent?: string;
   created_at_epoch?: number;
   remote_source_id?: string | null;
+  source_kind?: "hook" | "transcript";
+  transcript_index?: number | null;
 }
 
 // --- Database class ---
@@ -1138,8 +1142,8 @@ export class MemDatabase {
     const result = this.db
       .query(
         `INSERT INTO chat_messages (
-          session_id, project_id, role, content, user_id, device_id, agent, created_at_epoch, remote_source_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          session_id, project_id, role, content, user_id, device_id, agent, created_at_epoch, remote_source_id, source_kind, transcript_index
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.session_id,
@@ -1150,7 +1154,9 @@ export class MemDatabase {
         input.device_id,
         input.agent ?? "claude-code",
         createdAt,
-        input.remote_source_id ?? null
+        input.remote_source_id ?? null,
+        input.source_kind ?? "hook",
+        input.transcript_index ?? null
       );
 
     return this.getChatMessageById(Number(result.lastInsertRowid))!;
@@ -1181,7 +1187,17 @@ export class MemDatabase {
       .query<ChatMessageRow, [string, number]>(
         `SELECT * FROM chat_messages
          WHERE session_id = ?
-         ORDER BY created_at_epoch ASC, id ASC
+           AND (
+             source_kind = 'transcript'
+             OR NOT EXISTS (
+               SELECT 1 FROM chat_messages t2
+               WHERE t2.session_id = chat_messages.session_id
+                 AND t2.source_kind = 'transcript'
+             )
+           )
+         ORDER BY
+           CASE WHEN transcript_index IS NULL THEN created_at_epoch ELSE transcript_index END ASC,
+           id ASC
          LIMIT ?`
       )
       .all(sessionId, limit);
@@ -1198,6 +1214,14 @@ export class MemDatabase {
         .query<ChatMessageRow, (number | string)[]>(
           `SELECT * FROM chat_messages
            WHERE project_id = ?${visibilityClause}
+             AND (
+               source_kind = 'transcript'
+               OR NOT EXISTS (
+                 SELECT 1 FROM chat_messages t2
+                 WHERE t2.session_id = chat_messages.session_id
+                   AND t2.source_kind = 'transcript'
+               )
+             )
            ORDER BY created_at_epoch DESC, id DESC
            LIMIT ?`
         )
@@ -1208,6 +1232,14 @@ export class MemDatabase {
       .query<ChatMessageRow, (number | string)[]>(
         `SELECT * FROM chat_messages
          WHERE 1 = 1${visibilityClause}
+           AND (
+             source_kind = 'transcript'
+             OR NOT EXISTS (
+               SELECT 1 FROM chat_messages t2
+               WHERE t2.session_id = chat_messages.session_id
+                 AND t2.source_kind = 'transcript'
+             )
+           )
          ORDER BY created_at_epoch DESC, id DESC
          LIMIT ?`
       )
@@ -1228,6 +1260,14 @@ export class MemDatabase {
           `SELECT * FROM chat_messages
            WHERE project_id = ?
              AND lower(content) LIKE ?${visibilityClause}
+             AND (
+               source_kind = 'transcript'
+               OR NOT EXISTS (
+                 SELECT 1 FROM chat_messages t2
+                 WHERE t2.session_id = chat_messages.session_id
+                   AND t2.source_kind = 'transcript'
+               )
+             )
            ORDER BY created_at_epoch DESC, id DESC
            LIMIT ?`
         )
@@ -1238,10 +1278,28 @@ export class MemDatabase {
       .query<ChatMessageRow, (number | string)[]>(
         `SELECT * FROM chat_messages
          WHERE lower(content) LIKE ?${visibilityClause}
+           AND (
+             source_kind = 'transcript'
+             OR NOT EXISTS (
+               SELECT 1 FROM chat_messages t2
+               WHERE t2.session_id = chat_messages.session_id
+                 AND t2.source_kind = 'transcript'
+             )
+           )
          ORDER BY created_at_epoch DESC, id DESC
          LIMIT ?`
       )
       .all(needle, ...(userId ? [userId] : []), limit);
+  }
+
+  getTranscriptChatMessage(sessionId: string, transcriptIndex: number): ChatMessageRow | null {
+    return (
+      this.db
+        .query<ChatMessageRow, [string, number]>(
+          "SELECT * FROM chat_messages WHERE session_id = ? AND transcript_index = ?"
+        )
+        .get(sessionId, transcriptIndex) ?? null
+    );
   }
 
   // --- Sync outbox ---

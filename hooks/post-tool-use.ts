@@ -24,6 +24,7 @@ import { extractErrorSignature, recallPastFix } from "../src/capture/recall.js";
 import { checkSessionFatigue } from "../src/capture/fatigue.js";
 import { buildLiveSummaryUpdate, mergeLiveSummarySections } from "../src/capture/live-summary.js";
 import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
+import { syncTranscriptChat } from "../src/capture/transcript.js";
 import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 async function main(): Promise<void> {
@@ -59,6 +60,7 @@ async function main(): Promise<void> {
     // --- Session + Metrics tracking ---
     if (event.session_id) {
       persistRawToolChronology(event, config.user_id, config.device_id);
+      syncTranscriptChat(db, config, event.session_id, event.cwd);
     }
 
     // --- Security scanning ---

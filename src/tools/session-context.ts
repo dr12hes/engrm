@@ -148,6 +148,6 @@ function buildSuggestedTools(
   if ((context.recentHandoffs?.length ?? 0) > 0) {
     tools.push("load_handoff");
   }
-  tools.push("recent_chat", "search_chat");
+  tools.push("recent_chat", "search_chat", "refresh_chat_recall");
   return Array.from(new Set(tools)).slice(0, 4);
 }

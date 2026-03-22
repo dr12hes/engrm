@@ -246,6 +246,9 @@ function mergeRemoteChat(
     agent: typeof change.metadata?.agent === "string" ? change.metadata.agent : "unknown",
     created_at_epoch: typeof change.metadata?.created_at_epoch === "number" ? change.metadata.created_at_epoch : undefined,
     remote_source_id: change.source_id,
+    source_kind: change.metadata?.source_kind === "transcript" ? "transcript" : "hook",
+    transcript_index:
+      typeof change.metadata?.transcript_index === "number" ? change.metadata.transcript_index : null,
   });
   return true;
 }

@@ -11,6 +11,7 @@
 import { detectProject } from "../src/storage/projects.js";
 import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
 import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
+import { syncTranscriptChat } from "../src/capture/transcript.js";
 import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 interface UserPromptSubmitEvent {
@@ -56,6 +57,8 @@ async function main(): Promise<void> {
       agent: "claude-code",
     });
 
+    syncTranscriptChat(db, config, event.session_id, event.cwd);
+
     const chatMessage = db.insertChatMessage({
       session_id: event.session_id,
       project_id: project.id,
@@ -64,6 +67,7 @@ async function main(): Promise<void> {
       user_id: config.user_id,
       device_id: config.device_id,
       agent: "claude-code",
+      source_kind: "hook",
     });
     db.addToOutbox("chat_message", chatMessage.id);
 

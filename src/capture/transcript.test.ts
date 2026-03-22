@@ -1,19 +1,93 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import {
   readTranscript,
+  syncTranscriptChat,
   truncateTranscript,
   resolveTranscriptPath,
   type TranscriptMessage,
 } from "./transcript.js";
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { MemDatabase } from "../storage/sqlite.js";
 
 describe("resolveTranscriptPath", () => {
   test("encodes cwd with dashes", () => {
     const path = resolveTranscriptPath("abc-123", "/Volumes/Data/devs/project");
     expect(path).toContain("-Volumes-Data-devs-project");
     expect(path).toEndWith("abc-123.jsonl");
+  });
+});
+
+describe("syncTranscriptChat", () => {
+  let tmpDir: string;
+  let db: MemDatabase;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "engrm-transcript-sync-"));
+    db = new MemDatabase(join(tmpDir, "test.db"));
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("imports transcript turns into the separate chat lane", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+    });
+    db.upsertSession("sess-1", project.id, "david", "laptop", "claude-code");
+
+    const transcriptPath = join(tmpDir, "sess-1.jsonl");
+    writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({ role: "user", content: "first question" }),
+        JSON.stringify({ role: "assistant", content: "first answer" }),
+        JSON.stringify({ role: "user", content: "second question" }),
+      ].join("\n")
+    );
+
+    const result = syncTranscriptChat(
+      db,
+      { user_id: "david", device_id: "laptop" } as any,
+      "sess-1",
+      "/Volumes/Data/devs/huginn",
+      transcriptPath
+    );
+
+    expect(result.imported).toBe(3);
+    const messages = db.getSessionChatMessages("sess-1", 10);
+    expect(messages).toHaveLength(3);
+    expect(messages[0]?.content).toBe("first question");
+    expect(messages[0]?.source_kind).toBe("transcript");
+    expect(messages[1]?.role).toBe("assistant");
+    expect(messages[2]?.transcript_index).toBe(3);
+  });
+
+  test("does not duplicate already imported transcript rows", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+    });
+    db.upsertSession("sess-2", project.id, "david", "laptop", "claude-code");
+
+    const transcriptPath = join(tmpDir, "sess-2.jsonl");
+    writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({ role: "user", content: "hello" }),
+        JSON.stringify({ role: "assistant", content: "hi" }),
+      ].join("\n")
+    );
+
+    syncTranscriptChat(db, { user_id: "david", device_id: "laptop" } as any, "sess-2", "/Volumes/Data/devs/huginn", transcriptPath);
+    const again = syncTranscriptChat(db, { user_id: "david", device_id: "laptop" } as any, "sess-2", "/Volumes/Data/devs/huginn", transcriptPath);
+
+    expect(again.imported).toBe(0);
+    expect(db.getSessionChatMessages("sess-2", 10)).toHaveLength(2);
   });
 });
 

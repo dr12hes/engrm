@@ -32,6 +32,11 @@ export interface TranscriptAnalysisResult {
   insights: TranscriptAnalysisItem[];
 }
 
+export interface TranscriptChatSyncResult {
+  imported: number;
+  total: number;
+}
+
 // --- Public API ---
 
 /**
@@ -107,6 +112,56 @@ export function readTranscript(
   }
 
   return messages;
+}
+
+/**
+ * Import transcript user/assistant turns into the separate chat lane.
+ * Transcript-backed rows are stored separately from hook-captured chat so
+ * recall can prefer the fuller conversation when it is available.
+ */
+export function syncTranscriptChat(
+  db: MemDatabase,
+  config: Config,
+  sessionId: string,
+  cwd: string,
+  transcriptPath?: string
+): TranscriptChatSyncResult {
+  const messages = readTranscript(sessionId, cwd, transcriptPath)
+    .map((message) => ({
+      ...message,
+      text: message.text.trim(),
+    }))
+    .filter((message) => message.text.length > 0);
+  if (messages.length === 0) return { imported: 0, total: 0 };
+
+  const session = db.getSessionById(sessionId);
+  const projectId = session?.project_id ?? null;
+  const now = Math.floor(Date.now() / 1000);
+  let imported = 0;
+
+  for (let index = 0; index < messages.length; index++) {
+    const transcriptIndex = index + 1;
+    if (db.getTranscriptChatMessage(sessionId, transcriptIndex)) continue;
+
+    const message = messages[index]!;
+    const createdAtEpoch = Math.max(0, now - (messages.length - transcriptIndex));
+    const row = db.insertChatMessage({
+      session_id: sessionId,
+      project_id: projectId,
+      role: message.role,
+      content: message.text,
+      user_id: config.user_id,
+      device_id: config.device_id,
+      agent: "claude-code",
+      created_at_epoch: createdAtEpoch,
+      source_kind: "transcript",
+      transcript_index: transcriptIndex,
+    });
+    db.addToOutbox("chat_message", row.id);
+    imported++;
+  }
+
+  return { imported, total: messages.length };
 }
 
 /**

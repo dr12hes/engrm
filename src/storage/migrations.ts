@@ -485,6 +485,19 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_outbox_record ON sync_outbox(record_type, record_id);
     `,
   },
+  {
+    version: 17,
+    description: "Track transcript-backed chat messages separately from hook chat",
+    sql: `
+      ALTER TABLE chat_messages ADD COLUMN source_kind TEXT DEFAULT 'hook';
+      ALTER TABLE chat_messages ADD COLUMN transcript_index INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_source_kind
+        ON chat_messages(session_id, source_kind, transcript_index, created_at_epoch DESC, id DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_messages_session_transcript
+        ON chat_messages(session_id, transcript_index)
+        WHERE transcript_index IS NOT NULL;
+    `,
+  },
 ];
 
 /**
@@ -567,6 +580,12 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
   }
   if (syncOutboxSupportsChatMessages(db)) {
     version = Math.max(version, 16);
+  }
+  if (
+    columnExists(db, "chat_messages", "source_kind") &&
+    columnExists(db, "chat_messages", "transcript_index")
+  ) {
+    version = Math.max(version, 17);
   }
 
   return version;
@@ -710,9 +729,22 @@ export function ensureChatMessageColumns(db: CompatDatabase): void {
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_messages_remote_source ON chat_messages(remote_source_id) WHERE remote_source_id IS NOT NULL"
   );
 
+  if (!columnExists(db, "chat_messages", "source_kind")) {
+    db.exec("ALTER TABLE chat_messages ADD COLUMN source_kind TEXT DEFAULT 'hook'");
+  }
+  if (!columnExists(db, "chat_messages", "transcript_index")) {
+    db.exec("ALTER TABLE chat_messages ADD COLUMN transcript_index INTEGER");
+  }
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_chat_messages_source_kind ON chat_messages(session_id, source_kind, transcript_index, created_at_epoch DESC, id DESC)"
+  );
+  db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_messages_session_transcript ON chat_messages(session_id, transcript_index) WHERE transcript_index IS NOT NULL"
+  );
+
   const current = getSchemaVersion(db);
-  if (current < 15) {
-    db.exec("PRAGMA user_version = 15");
+  if (current < 17) {
+    db.exec("PRAGMA user_version = 17");
   }
 }
 

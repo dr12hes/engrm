@@ -21,6 +21,7 @@ import { buildBeacon, sendBeacon } from "../src/telemetry/beacon.js";
 import { detectProject } from "../src/storage/projects.js";
 import {
   readTranscript,
+  syncTranscriptChat,
   truncateTranscript,
   analyzeTranscript,
   saveTranscriptResults,
@@ -89,6 +90,7 @@ async function main(): Promise<void> {
     // Complete the session
     if (event.session_id) {
       db.completeSession(event.session_id);
+      syncTranscriptChat(db, config, event.session_id, event.cwd, event.transcript_path);
 
       if (event.last_assistant_message) {
         try {
@@ -110,6 +112,7 @@ async function main(): Promise<void> {
               user_id: config.user_id,
               device_id: config.device_id,
               agent: "claude-code",
+              source_kind: "hook",
             });
             db.addToOutbox("chat_message", chatMessage.id);
           }

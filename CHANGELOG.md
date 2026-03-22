@@ -10,6 +10,7 @@ All notable changes to this repository should be documented here.
 
 - `activity_feed` now includes the separate chat lane as first-class `chat` events in both project-scoped and session-scoped chronology views
 - `refresh_handoff` MCP tool now refreshes a rolling live handoff draft for the current session without creating a new saved handoff
+- `refresh_chat_recall` MCP tool can now hydrate the separate chat lane from the current Claude transcript for long sessions
 - rolling cross-device handoff drafts now update throughout the session and sync as a distinct continuity layer
 - the MCP workbench now exposes saved-vs-draft handoff split in:
   - `memory_console`
@@ -20,6 +21,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - MCP docs and examples now describe `activity_feed` as the merged continuity surface across prompts, tools, chat, handoffs, observations, and summaries
+- long sessions can now fill the chat lane from transcript-backed messages, and chat views label whether each message came from a transcript import or hook-edge capture
 - injected session context can now carry a compact `Recent Chat` section for the current project, so cross-device resume has conversational continuity as well as reduced memory
 - injected context now surfaces `Recent Handoffs`, giving the model an explicit cross-device resume lane before raw chronology
 - startup handoff can now fall back to a compact `Chat trail` when recent prompt lines are absent, so thin in-flight sessions still read like a live coworker update

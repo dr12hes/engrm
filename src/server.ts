@@ -58,6 +58,7 @@ import { savePluginMemory } from "./plugins/save.js";
 import { reduceGitDiffToMemory } from "./plugins/git-diff.js";
 import { reduceRepoScanToMemory } from "./plugins/repo-scan.js";
 import { reduceOpenClawContentToMemory } from "./plugins/openclaw-content.js";
+import { syncTranscriptChat } from "./capture/transcript.js";
 
 // --- Bootstrap ---
 
@@ -1612,6 +1613,37 @@ server.tool(
 );
 
 server.tool(
+  "refresh_chat_recall",
+  "Hydrate the separate chat lane from the current Claude transcript so long sessions keep their full user/assistant thread",
+  {
+    session_id: z.string().optional().describe("Optional session ID; defaults to the current session when called from hooks or the active repo session when known"),
+    cwd: z.string().optional().describe("Project directory used to resolve the Claude transcript path"),
+    transcript_path: z.string().optional().describe("Optional explicit Claude transcript JSONL path"),
+  },
+  async (params) => {
+    const cwd = params.cwd ?? process.cwd();
+    const sessionId = params.session_id
+      ?? db.getRecentSessions(null, 1, config.user_id)[0]?.session_id
+      ?? null;
+    if (!sessionId) {
+      return {
+        content: [{ type: "text" as const, text: "No session available to hydrate chat recall from." }],
+      };
+    }
+
+    const result = syncTranscriptChat(db, config, sessionId, cwd, params.transcript_path);
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Chat recall refreshed for session ${sessionId}\nImported: ${result.imported}\nTranscript messages seen: ${result.total}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
   "recent_handoffs",
   "List recent saved handoffs and rolling handoff drafts so you can resume work on another device or in a new session",
   {
@@ -1708,7 +1740,7 @@ server.tool(
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
-          return `- ${stamp} [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
+          return `- ${stamp} [${msg.role}] [${msg.source_kind}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
         }).join("\n")
       : "- (none)";
 
@@ -1739,7 +1771,7 @@ server.tool(
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
-          return `- ${stamp} [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
+          return `- ${stamp} [${msg.role}] [${msg.source_kind}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
         }).join("\n")
       : "- (none)";
 

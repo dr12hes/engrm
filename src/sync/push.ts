@@ -55,6 +55,8 @@ export function buildChatVectorDocument(
       session_id: chat.session_id,
       created_at_epoch: chat.created_at_epoch,
       local_id: chat.id,
+      source_kind: chat.source_kind,
+      transcript_index: chat.transcript_index,
     },
   };
 }

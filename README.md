@@ -225,6 +225,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `refresh_handoff` | Refresh the rolling live handoff draft for the current session without creating a new saved handoff |
 | `recent_handoffs` | List recent saved handoffs for the current project or workspace |
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
+| `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
 | `search_chat` | Search recent chat recall separately from reusable memory observations |
 | `plugin_catalog` | Inspect Engrm plugin manifests for memory-aware integrations |
@@ -317,6 +318,13 @@ When Engrm knows your current device, handoff tools also prefer resume points fr
 This is the deliberate version of multi-device continuity: useful when you want to move from laptop to home machine without waiting for an end-of-session summary.
 
 The separate chat lane is still kept distinct from durable observations, but it can now sync too, so recent user/assistant conversation is recoverable on another machine without polluting the main memory feed.
+
+For long sessions, Engrm now also supports transcript-backed chat hydration:
+
+- `refresh_chat_recall`
+  - reads the Claude transcript for the current session
+  - fills gaps in the separate chat lane with transcript-backed messages
+  - keeps those rows marked separately from hook-edge chat so recall can prefer the fuller thread
 
 ### Local Memory Inspection
 
