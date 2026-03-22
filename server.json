@@ -6,12 +6,12 @@
     "url": "https://github.com/dr12hes/engrm",
     "source": "github"
   },
-  "version": "0.4.27",
+  "version": "0.4.28",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "engrm",
-      "version": "0.4.27",
+      "version": "0.4.28",
       "transport": {
         "type": "stdio"
       }

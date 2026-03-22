@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.28
+
 ### Added
 
 - chat recall now has a sqlite-vec semantic lane too, so new chat messages can be embedded locally and searched by meaning rather than exact wording alone
