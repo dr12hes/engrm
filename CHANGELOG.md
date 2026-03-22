@@ -24,6 +24,7 @@ All notable changes to this repository should be documented here.
 - long sessions can now fill the chat lane from transcript-backed messages, and chat views label whether each message came from a transcript import or hook-edge capture
 - injected session context can now carry a compact `Recent Chat` section for the current project, so cross-device resume has conversational continuity as well as reduced memory
 - injected context now surfaces `Recent Handoffs`, giving the model an explicit cross-device resume lane before raw chronology
+- `PreCompact` now refreshes transcript-backed chat recall and the rolling handoff draft before Claude compacts, so context compression preserves the current thread instead of acting like the conversation vanished
 - startup handoff can now fall back to a compact `Chat trail` when recent prompt lines are absent, so thin in-flight sessions still read like a live coworker update
 - `create_handoff` now auto-includes a few chat snippets for thin sessions, while keeping already-rich sessions terse unless chat is explicitly requested
 - startup `Next look` hints now point at `load_handoff` and `recent_chat` when Engrm already knows those continuity lanes are available

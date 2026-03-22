@@ -15,6 +15,8 @@ import {
   buildSessionContext,
   formatContextForInjection,
 } from "../src/context/inject.js";
+import { syncTranscriptChat } from "../src/capture/transcript.js";
+import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 interface PreCompactEvent {
   session_id: string;
@@ -84,6 +86,17 @@ async function main(): Promise<void> {
   }
 
   try {
+    let importedChat = 0;
+
+    if (event.session_id) {
+      const chatSync = syncTranscriptChat(db, config, event.session_id, event.cwd);
+      importedChat = chatSync.imported;
+      await upsertRollingHandoff(db, config, {
+        session_id: event.session_id,
+        cwd: event.cwd,
+      });
+    }
+
     // Inject project-level memory (observations from all sessions)
     const context = buildSessionContext(db, event.cwd, {
       tokenBudget: 800,
@@ -120,6 +133,9 @@ async function main(): Promise<void> {
 
     if (sessionCount > 0) {
       console.error(`Engrm: ${sessionCount} session observation(s) carried forward`);
+    }
+    if (importedChat > 0) {
+      console.error(`Engrm: ${importedChat} transcript chat message(s) preserved before compaction`);
     }
   } finally {
     db.close();

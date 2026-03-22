@@ -305,6 +305,7 @@ Rolling handoff drafts:
 - are kept as one updatable syncable draft per session
 - refresh during prompt-time and tool-time summary updates
 - let another machine resume live work even before you save a deliberate handoff
+- are refreshed again before Claude compacts, so the active thread survives context compression better
 
 The local workbench now shows handoff split too:
 
@@ -325,6 +326,14 @@ For long sessions, Engrm now also supports transcript-backed chat hydration:
   - reads the Claude transcript for the current session
   - fills gaps in the separate chat lane with transcript-backed messages
   - keeps those rows marked separately from hook-edge chat so recall can prefer the fuller thread
+
+Before Claude compacts, Engrm now also:
+
+- refreshes transcript-backed chat recall for the active session
+- refreshes the rolling handoff draft
+- then injects the preserved thread into the compacted context
+
+So compaction should reduce prompt-window pressure without making the memory layer act like the conversation never happened.
 
 ### Local Memory Inspection
 
