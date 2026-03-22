@@ -12,6 +12,7 @@ import { detectProject } from "../src/storage/projects.js";
 import { parseStdinJson, bootstrapHook, runHook } from "../src/hooks/common.js";
 import { buildSessionHandoffMetadata } from "../src/capture/session-handoff.js";
 import { syncTranscriptChat } from "../src/capture/transcript.js";
+import { composeChatEmbeddingText, embedText } from "../src/embeddings/embedder.js";
 import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 interface UserPromptSubmitEvent {
@@ -57,7 +58,7 @@ async function main(): Promise<void> {
       agent: "claude-code",
     });
 
-    syncTranscriptChat(db, config, event.session_id, event.cwd);
+    await syncTranscriptChat(db, config, event.session_id, event.cwd);
 
     const chatMessage = db.insertChatMessage({
       session_id: event.session_id,
@@ -70,6 +71,12 @@ async function main(): Promise<void> {
       source_kind: "hook",
     });
     db.addToOutbox("chat_message", chatMessage.id);
+    if (db.vecAvailable) {
+      const chatEmbedding = await embedText(composeChatEmbeddingText(event.prompt));
+      if (chatEmbedding) {
+        db.vecChatInsert(chatMessage.id, chatEmbedding);
+      }
+    }
 
     const compactPrompt = event.prompt.replace(/\s+/g, " ").trim();
     if (compactPrompt.length >= 8) {

@@ -60,7 +60,7 @@ async function main(): Promise<void> {
     // --- Session + Metrics tracking ---
     if (event.session_id) {
       persistRawToolChronology(event, config.user_id, config.device_id);
-      syncTranscriptChat(db, config, event.session_id, event.cwd);
+      await syncTranscriptChat(db, config, event.session_id, event.cwd);
     }
 
     // --- Security scanning ---

@@ -3,6 +3,7 @@ import {
   ensureObservationTypes,
   ensureSessionSummaryColumns,
   ensureChatMessageColumns,
+  ensureChatVectorTable,
   ensureSyncOutboxSupportsChatMessages,
 } from "./migrations.js";
 import { createHash } from "node:crypto";
@@ -255,6 +256,11 @@ export interface ChatMessageRow {
   transcript_index: number | null;
 }
 
+export interface VecChatMatchRow {
+  chat_message_id: number;
+  distance: number;
+}
+
 export interface SecurityFindingRow {
   id: number;
   session_id: string | null;
@@ -387,6 +393,7 @@ export class MemDatabase {
     ensureObservationTypes(this.db);
     ensureSessionSummaryColumns(this.db);
     ensureChatMessageColumns(this.db);
+    ensureChatVectorTable(this.db);
     ensureSyncOutboxSupportsChatMessages(this.db);
   }
 
@@ -1182,6 +1189,18 @@ export class MemDatabase {
     );
   }
 
+  getChatMessagesByIds(ids: number[]): ChatMessageRow[] {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = this.db
+      .query<ChatMessageRow, number[]>(
+        `SELECT * FROM chat_messages WHERE id IN (${placeholders})`
+      )
+      .all(...ids);
+    const order = new Map(ids.map((id, index) => [id, index]));
+    return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  }
+
   getSessionChatMessages(sessionId: string, limit: number = 50): ChatMessageRow[] {
     return this.db
       .query<ChatMessageRow, [string, number]>(
@@ -1290,6 +1309,63 @@ export class MemDatabase {
          LIMIT ?`
       )
       .all(needle, ...(userId ? [userId] : []), limit);
+  }
+
+  vecChatInsert(chatMessageId: number, embedding: Float32Array): void {
+    if (!this.vecAvailable) return;
+    this.db
+      .query(
+        "INSERT OR REPLACE INTO vec_chat_messages (chat_message_id, embedding) VALUES (?, ?)"
+      )
+      .run(chatMessageId, new Uint8Array(embedding.buffer));
+  }
+
+  searchChatVec(
+    queryEmbedding: Float32Array,
+    projectId: number | null,
+    limit: number = 20,
+    userId?: string
+  ): VecChatMatchRow[] {
+    if (!this.vecAvailable) return [];
+
+    const embeddingBlob = new Uint8Array(queryEmbedding.buffer);
+    const visibilityClause = userId ? " AND c.user_id = ?" : "";
+    const transcriptPreference = `
+      AND (
+        c.source_kind = 'transcript'
+        OR NOT EXISTS (
+          SELECT 1 FROM chat_messages t2
+          WHERE t2.session_id = c.session_id
+            AND t2.source_kind = 'transcript'
+        )
+      )`;
+
+    if (projectId !== null) {
+      return this.db
+        .query<VecChatMatchRow, any[]>(
+          `SELECT v.chat_message_id, v.distance
+           FROM vec_chat_messages v
+           JOIN chat_messages c ON c.id = v.chat_message_id
+           WHERE v.embedding MATCH ?
+             AND k = ?
+             AND c.project_id = ?`
+             + visibilityClause
+             + transcriptPreference
+        )
+        .all(embeddingBlob, limit, projectId, ...(userId ? [userId] : []));
+    }
+
+    return this.db
+      .query<VecChatMatchRow, any[]>(
+        `SELECT v.chat_message_id, v.distance
+         FROM vec_chat_messages v
+         JOIN chat_messages c ON c.id = v.chat_message_id
+         WHERE v.embedding MATCH ?
+           AND k = ?`
+          + visibilityClause
+          + transcriptPreference
+      )
+      .all(embeddingBlob, limit, ...(userId ? [userId] : []));
   }
 
   getTranscriptChatMessage(sessionId: string, transcriptIndex: number): ChatMessageRow | null {

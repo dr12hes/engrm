@@ -498,6 +498,17 @@ const MIGRATIONS: Migration[] = [
         WHERE transcript_index IS NOT NULL;
     `,
   },
+  {
+    version: 18,
+    description: "Add sqlite-vec semantic search for chat recall",
+    condition: (db) => isVecExtensionLoaded(db),
+    sql: `
+      CREATE VIRTUAL TABLE IF NOT EXISTS vec_chat_messages USING vec0(
+        chat_message_id INTEGER PRIMARY KEY,
+        embedding FLOAT[384]
+      );
+    `,
+  },
 ];
 
 /**
@@ -586,6 +597,9 @@ function inferLegacySchemaVersion(db: CompatDatabase): number {
     columnExists(db, "chat_messages", "transcript_index")
   ) {
     version = Math.max(version, 17);
+  }
+  if (tableExists(db, "vec_chat_messages")) {
+    version = Math.max(version, 18);
   }
 
   return version;
@@ -745,6 +759,22 @@ export function ensureChatMessageColumns(db: CompatDatabase): void {
   const current = getSchemaVersion(db);
   if (current < 17) {
     db.exec("PRAGMA user_version = 17");
+  }
+}
+
+export function ensureChatVectorTable(db: CompatDatabase): void {
+  if (!isVecExtensionLoaded(db)) return;
+
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_chat_messages USING vec0(
+      chat_message_id INTEGER PRIMARY KEY,
+      embedding FLOAT[384]
+    );
+  `);
+
+  const current = getSchemaVersion(db);
+  if (current < 18) {
+    db.exec("PRAGMA user_version = 18");
   }
 }
 

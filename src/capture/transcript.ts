@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import type { Config } from "../config.js";
 import type { MemDatabase } from "../storage/sqlite.js";
+import { composeChatEmbeddingText, embedText } from "../embeddings/embedder.js";
 import { saveObservation } from "../tools/save.js";
 
 // --- Types ---
@@ -119,7 +120,7 @@ export function readTranscript(
  * Transcript-backed rows are stored separately from hook-captured chat so
  * recall can prefer the fuller conversation when it is available.
  */
-export function syncTranscriptChat(
+export async function syncTranscriptChat(
   db: MemDatabase,
   config: Config,
   sessionId: string,
@@ -158,6 +159,12 @@ export function syncTranscriptChat(
       transcript_index: transcriptIndex,
     });
     db.addToOutbox("chat_message", row.id);
+    if (db.vecAvailable) {
+      const embedding = await embedText(composeChatEmbeddingText(message.text));
+      if (embedding) {
+        db.vecChatInsert(row.id, embedding);
+      }
+    }
     imported++;
   }
 

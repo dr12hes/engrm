@@ -86,6 +86,7 @@ That demo shows:
 - synced chat recall kept separate from durable memory
 - one merged feed across prompts, tools, chat, handoffs, and observations
 - transcript-backed chat recovery for long sessions
+- hybrid semantic chat recall for “what were we just talking about?” moments
 
 ## Example Prompt Set
 

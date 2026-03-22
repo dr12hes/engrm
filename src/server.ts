@@ -1700,7 +1700,7 @@ server.tool(
       };
     }
 
-    const result = syncTranscriptChat(db, config, sessionId, cwd, params.transcript_path);
+    const result = await syncTranscriptChat(db, config, sessionId, cwd, params.transcript_path);
     return {
       content: [
         {
@@ -1839,11 +1839,12 @@ server.tool(
     user_id: z.string().optional(),
   },
   async (params) => {
-    const result = searchChat(db, params);
+    const result = await searchChat(db, params);
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
     const coverageLine =
       `Coverage: ${result.messages.length} matches across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
-      `· transcript ${result.source_summary.transcript} · hook ${result.source_summary.hook}\n` +
+      `· transcript ${result.source_summary.transcript} · hook ${result.source_summary.hook}` +
+      `${result.semantic_backed ? " · semantic yes" : ""}\n` +
       `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {

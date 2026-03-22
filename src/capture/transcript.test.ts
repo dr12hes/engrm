@@ -33,7 +33,7 @@ describe("syncTranscriptChat", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("imports transcript turns into the separate chat lane", () => {
+  test("imports transcript turns into the separate chat lane", async () => {
     const project = db.upsertProject({
       canonical_id: "github.com/dr12hes/huginn",
       name: "huginn",
@@ -50,7 +50,7 @@ describe("syncTranscriptChat", () => {
       ].join("\n")
     );
 
-    const result = syncTranscriptChat(
+    const result = await syncTranscriptChat(
       db,
       { user_id: "david", device_id: "laptop" } as any,
       "sess-1",
@@ -67,7 +67,7 @@ describe("syncTranscriptChat", () => {
     expect(messages[2]?.transcript_index).toBe(3);
   });
 
-  test("does not duplicate already imported transcript rows", () => {
+  test("does not duplicate already imported transcript rows", async () => {
     const project = db.upsertProject({
       canonical_id: "github.com/dr12hes/huginn",
       name: "huginn",
@@ -83,8 +83,8 @@ describe("syncTranscriptChat", () => {
       ].join("\n")
     );
 
-    syncTranscriptChat(db, { user_id: "david", device_id: "laptop" } as any, "sess-2", "/Volumes/Data/devs/huginn", transcriptPath);
-    const again = syncTranscriptChat(db, { user_id: "david", device_id: "laptop" } as any, "sess-2", "/Volumes/Data/devs/huginn", transcriptPath);
+    await syncTranscriptChat(db, { user_id: "david", device_id: "laptop" } as any, "sess-2", "/Volumes/Data/devs/huginn", transcriptPath);
+    const again = await syncTranscriptChat(db, { user_id: "david", device_id: "laptop" } as any, "sess-2", "/Volumes/Data/devs/huginn", transcriptPath);
 
     expect(again.imported).toBe(0);
     expect(db.getSessionChatMessages("sess-2", 10)).toHaveLength(2);

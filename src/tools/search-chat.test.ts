@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("searchChat", () => {
-  test("returns source coverage for matching chat results", () => {
+  test("returns source coverage for matching chat results", async () => {
     const project = db.upsertProject({
       canonical_id: "local/repo",
       name: "repo",
@@ -48,7 +48,7 @@ describe("searchChat", () => {
       source_kind: "hook",
     });
 
-    const result = searchChat(db, {
+    const result = await searchChat(db, {
       cwd: "/tmp/repo",
       user_id: "david",
       query: "eventservice",

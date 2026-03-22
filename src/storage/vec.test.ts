@@ -98,6 +98,36 @@ describe("sqlite-vec integration", () => {
     expect(results[0]!.observation_id).toBe(obs1.id);
   });
 
+  test("vecChatInsert and searchChatVec round-trip", () => {
+    if (!db.vecAvailable) return;
+
+    const project = db.upsertProject({
+      canonical_id: "test/chat-project",
+      name: "chat-project",
+    });
+
+    const message = db.insertChatMessage({
+      session_id: "sess-chat-vec",
+      project_id: project.id,
+      role: "user",
+      content: "Can you review eventservice and notification routing?",
+      user_id: "david",
+      device_id: "laptop",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
+
+    const vec = new Float32Array(384);
+    vec[0] = 1.0;
+    vec[5] = 0.25;
+    db.vecChatInsert(message.id, vec);
+
+    const results = db.searchChatVec(vec, project.id, 5, "david");
+    expect(results.length).toBe(1);
+    expect(results[0]!.chat_message_id).toBe(message.id);
+    expect(results[0]!.distance).toBe(0);
+  });
+
   test("searchVec excludes superseded observations", () => {
     if (!db.vecAvailable) return;
 

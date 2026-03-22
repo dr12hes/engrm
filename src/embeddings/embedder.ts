@@ -117,6 +117,13 @@ export function composeEmbeddingText(obs: {
   return parts.join("\n\n");
 }
 
+export function composeChatEmbeddingText(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 2000);
+}
+
 // --- Internal ---
 
 async function getPipeline(): Promise<any> {

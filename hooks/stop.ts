@@ -26,6 +26,7 @@ import {
   analyzeTranscript,
   saveTranscriptResults,
 } from "../src/capture/transcript.js";
+import { composeChatEmbeddingText, embedText } from "../src/embeddings/embedder.js";
 import { upsertRollingHandoff } from "../src/tools/handoffs.js";
 
 import type { InsertSessionSummary, ObservationRow, UserPromptRow } from "../src/storage/sqlite.js";
@@ -90,7 +91,7 @@ async function main(): Promise<void> {
     // Complete the session
     if (event.session_id) {
       db.completeSession(event.session_id);
-      syncTranscriptChat(db, config, event.session_id, event.cwd, event.transcript_path);
+      await syncTranscriptChat(db, config, event.session_id, event.cwd, event.transcript_path);
 
       if (event.last_assistant_message) {
         try {
@@ -115,6 +116,14 @@ async function main(): Promise<void> {
               source_kind: "hook",
             });
             db.addToOutbox("chat_message", chatMessage.id);
+            if (db.vecAvailable) {
+              const chatEmbedding = await embedText(
+                composeChatEmbeddingText(event.last_assistant_message)
+              );
+              if (chatEmbedding) {
+                db.vecChatInsert(chatMessage.id, chatEmbedding);
+              }
+            }
           }
           createAssistantCheckpoint(db, event.session_id, event.cwd, event.last_assistant_message);
         } catch {

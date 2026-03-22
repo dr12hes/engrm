@@ -4,6 +4,15 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Added
+
+- chat recall now has a sqlite-vec semantic lane too, so new chat messages can be embedded locally and searched by meaning rather than exact wording alone
+
+### Changed
+
+- `search_chat` now uses hybrid lexical + semantic ranking when local embeddings and sqlite-vec are available, while still falling back cleanly to lexical recall on thinner machines
+- transcript-backed chat hydration and hook-captured chat writes now feed the semantic chat lane too, so unified recall can find recent conversation more like a real chat memory instead of a plain text grep
+
 ## 0.4.27
 
 ### Added

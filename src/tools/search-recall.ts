@@ -46,15 +46,13 @@ export async function searchRecall(
   const limit = Math.max(1, Math.min(input.limit ?? 10, 50));
   const [memory, chat] = await Promise.all([
     searchObservations(db, input),
-    Promise.resolve(
-      searchChat(db, {
-        query,
-        limit: limit * 2,
-        project_scoped: input.project_scoped,
-        cwd: input.cwd,
-        user_id: input.user_id,
-      })
-    ),
+    searchChat(db, {
+      query,
+      limit: limit * 2,
+      project_scoped: input.project_scoped,
+      cwd: input.cwd,
+      user_id: input.user_id,
+    }),
   ]);
 
   const merged = mergeRecallResults(memory.observations, chat.messages, limit);

@@ -227,7 +227,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
-| `search_chat` | Search recent chat recall separately from reusable memory observations |
+| `search_chat` | Search recent chat recall with hybrid lexical + semantic matching, separately from reusable memory observations |
 | `search_recall` | Search durable memory and chat recall together when you do not want to guess the right lane |
 | `plugin_catalog` | Inspect Engrm plugin manifests for memory-aware integrations |
 | `save_plugin_memory` | Save reduced plugin output with stable Engrm provenance |
@@ -363,6 +363,7 @@ What each tool is good for:
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed or only hook-captured
 - when chat continuity is only hook-captured, the workbench and startup hints now prefer `refresh_chat_recall`
 - the workbench and startup hints now also prefer `search_recall` as the first “what were we just talking about?” path when recent prompts/chat/observations exist
+- `search_chat` now uses hybrid lexical + semantic ranking when sqlite-vec and local embeddings are available, so recent conversation recall is less dependent on exact wording
 - `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries
 - `recent_sessions` helps you pick a session worth opening
 - `session_story` reconstructs one session in detail, including handoffs and chat recall
@@ -370,7 +371,7 @@ What each tool is good for:
 - `session_tool_memory` shows which tool calls in one session turned into reusable memory and which did not
 - `project_memory_index` shows typed memory by repo, including continuity state and hot files
 - `workspace_memory_index` shows coverage across all repos on the machine
-- `recent_chat` / `search_chat` now report transcript-vs-hook coverage too, so weak OpenClaw recall is easier to diagnose and refresh
+- `recent_chat` / `search_chat` now report transcript-vs-hook coverage too, and `search_chat` will also mark when semantic ranking was available, so weak OpenClaw recall is easier to diagnose and refresh
 
 ### Thin Tool Workflow
 

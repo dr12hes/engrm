@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     let importedChat = 0;
 
     if (event.session_id) {
-      const chatSync = syncTranscriptChat(db, config, event.session_id, event.cwd);
+      const chatSync = await syncTranscriptChat(db, config, event.session_id, event.cwd);
       importedChat = chatSync.imported;
       await upsertRollingHandoff(db, config, {
         session_id: event.session_id,
