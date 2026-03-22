@@ -228,6 +228,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
 | `search_chat` | Search recent chat recall separately from reusable memory observations |
+| `search_recall` | Search durable memory and chat recall together when you do not want to guess the right lane |
 | `plugin_catalog` | Inspect Engrm plugin manifests for memory-aware integrations |
 | `save_plugin_memory` | Save reduced plugin output with stable Engrm provenance |
 | `capture_git_diff` | Reduce a git diff into a durable memory object and save it |

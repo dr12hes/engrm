@@ -14,6 +14,7 @@ import { loadConfig, getDbPath, configExists } from "./config.js";
 import { MemDatabase } from "./storage/sqlite.js";
 import { saveObservation } from "./tools/save.js";
 import { searchObservations } from "./tools/search.js";
+import { searchRecall } from "./tools/search-recall.js";
 import { getObservations } from "./tools/get.js";
 import { getTimeline } from "./tools/timeline.js";
 import { pinObservation } from "./tools/pin.js";
@@ -670,6 +671,67 @@ server.tool(
         {
           type: "text" as const,
           text: `${projectLine}Found ${result.total} result(s):\n\n${header}\n${separator}\n${rows.join("\n")}\n\nTop context:\n${previews.join("\n")}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "search_recall",
+  "Search live recall across durable memory and chat together. Best for questions like 'what were we just talking about?'",
+  {
+    query: z.string().describe("Recall query"),
+    project_scoped: z.boolean().optional().describe("Scope to project (default: true)"),
+    limit: z.number().optional().describe("Max results (default: 10)"),
+    cwd: z.string().optional().describe("Optional cwd override for project-scoped recall"),
+    user_id: z.string().optional().describe("Optional user override"),
+  },
+  async (params) => {
+    const result = await searchRecall(db, {
+      query: params.query,
+      project_scoped: params.project_scoped,
+      limit: params.limit,
+      cwd: params.cwd,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    if (result.results.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: result.project
+              ? `No recall found for "${params.query}" in project ${result.project}`
+              : `No recall found for "${params.query}"`,
+          },
+        ],
+      };
+    }
+
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const summaryLine = `Matches: ${result.results.length} · memory ${result.totals.memory} · chat ${result.totals.chat}\n`;
+    const rows = result.results
+      .map((item) => {
+        const sourceBits: string[] = [item.kind];
+        if (item.type) sourceBits.push(item.type);
+        if (item.role) sourceBits.push(item.role);
+        if (item.source_kind) sourceBits.push(item.source_kind);
+        const idBit = item.observation_id
+          ? `#${item.observation_id}`
+          : item.id
+            ? `chat:${item.id}`
+            : "";
+        const title = `${idBit ? `${idBit} ` : ""}${item.title}${item.project_name ? ` (${item.project_name})` : ""}`;
+        return `- [${sourceBits.join(" · ")}] ${title}\n  ${item.detail.slice(0, 220)}`;
+      })
+      .join("\n");
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${projectLine}${summaryLine}Recall search for "${params.query}":\n${rows}`,
         },
       ],
     };
