@@ -79,6 +79,7 @@ If you want to show continuity rather than just capture, add:
 7. `recent_handoffs`
 8. `activity_feed`
 9. `refresh_chat_recall`
+10. `repair_recall`
 
 That demo shows:
 
@@ -86,6 +87,7 @@ That demo shows:
 - synced chat recall kept separate from durable memory
 - one merged feed across prompts, tools, chat, handoffs, and observations
 - transcript-backed chat recovery for long sessions
+- history-backed chat recovery when transcript/session matching is messy on a real machine
 - hybrid semantic chat recall for “what were we just talking about?” moments
 
 ## Example Prompt Set

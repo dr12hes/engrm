@@ -39,6 +39,7 @@ import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
 import { captureGitWorktree } from "./tools/capture-git-worktree.js";
 import { captureRepoScan } from "./tools/capture-repo-scan.js";
+import { repairRecall } from "./tools/repair-recall.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
 import {
@@ -1142,7 +1143,7 @@ server.tool(
             `${projectLine}` +
             `${captureLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
-            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat.length} messages across ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n` +
+            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat.length} messages across ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
@@ -1244,7 +1245,7 @@ server.tool(
           text:
             `Workspace totals: projects=${result.totals.projects}, observations=${result.totals.observations}, sessions=${result.totals.sessions}, prompts=${result.totals.prompts}, tools=${result.totals.tool_events}, checkpoints=${result.totals.assistant_checkpoints}, chat=${result.totals.chat_messages}\n\n` +
             `Session capture states: rich=${result.session_states.rich}, partial=${result.session_states.partial}, summary-only=${result.session_states.summary_only}, legacy=${result.session_states.legacy}\n\n` +
-            `Chat recall coverage: transcript-backed sessions=${result.chat_coverage.transcript_backed_sessions}, hook-only sessions=${result.chat_coverage.hook_only_sessions}\n\n` +
+            `Chat recall coverage: transcript-backed sessions=${result.chat_coverage.transcript_backed_sessions}, history-backed sessions=${result.chat_coverage.history_backed_sessions}, hook-only sessions=${result.chat_coverage.hook_only_sessions}\n\n` +
             `Projects with raw capture: ${result.projects_with_raw_capture}\n\n` +
             `Assistant checkpoints by type:\n${checkpointTypeLines}\n\n` +
             `Observation provenance:\n${provenanceLines}\n\n` +
@@ -1380,7 +1381,7 @@ server.tool(
             `Recent handoffs: ${result.recent_handoffs}\n` +
             `Handoff split: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `Recent chat messages: ${result.recent_chat_messages}\n` +
-            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n` +
+            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
             result.preview,
@@ -1491,7 +1492,7 @@ server.tool(
             `Recent handoffs captured: ${result.recent_handoffs_count}\n` +
             `Handoff split: ${result.saved_handoffs_count} saved, ${result.rolling_handoff_drafts_count} rolling drafts\n` +
             `Recent chat messages captured: ${result.recent_chat_count}\n` +
-            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n\n` +
+            `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n\n` +
             `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +
@@ -1713,6 +1714,50 @@ server.tool(
 );
 
 server.tool(
+  "repair_recall",
+  "Rehydrate recent session recall for the current project from Claude transcripts or history fallback when chat feels missing or under-captured",
+  {
+    session_id: z.string().optional().describe("Optional single session ID to repair instead of scanning recent project sessions"),
+    cwd: z.string().optional().describe("Project directory used to resolve project sessions and Claude history/transcript files"),
+    limit: z.number().optional().describe("How many recent sessions to inspect when repairing a project"),
+    user_id: z.string().optional().describe("Optional user override; defaults to the configured user"),
+    transcript_path: z.string().optional().describe("Optional explicit transcript JSONL path when repairing a single session"),
+  },
+  async (params) => {
+    const result = await repairRecall(db, config, {
+      session_id: params.session_id,
+      cwd: params.cwd ?? process.cwd(),
+      limit: params.limit,
+      user_id: params.user_id ?? config.user_id,
+      transcript_path: params.transcript_path,
+    });
+
+    const projectLine = result.project_name ? `Project: ${result.project_name}\n` : "";
+    const rows = result.results.length > 0
+      ? result.results.map((session) =>
+          `- ${session.session_id} [${session.chat_coverage_state}] imported=${session.imported_chat_messages} chat=${session.chat_messages_after} prompts=${session.prompt_count_after} ` +
+          `(transcript ${session.chat_source_summary.transcript} · history ${session.chat_source_summary.history} · hook ${session.chat_source_summary.hook})`
+        ).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${projectLine}` +
+            `Scope: ${result.scope}\n` +
+            `Inspected sessions: ${result.inspected_sessions}\n` +
+            `Sessions with new recall: ${result.sessions_with_imports}\n` +
+            `Imported chat messages: ${result.imported_chat_messages}\n\n` +
+            `Repair results:\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
   "recent_handoffs",
   "List recent saved handoffs and rolling handoff drafts so you can resume work on another device or in a new session",
   {
@@ -1809,7 +1854,7 @@ server.tool(
     const coverageLine =
       `Coverage: ${result.messages.length} messages across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
       `· transcript ${result.source_summary.transcript} · history ${result.source_summary.history} · hook ${result.source_summary.hook}\n` +
-      `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
+      `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall for one session or repair_recall for recent project sessions if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
@@ -1845,7 +1890,7 @@ server.tool(
       `Coverage: ${result.messages.length} matches across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
       `· transcript ${result.source_summary.transcript} · history ${result.source_summary.history} · hook ${result.source_summary.hook}` +
       `${result.semantic_backed ? " · semantic yes" : ""}\n` +
-      `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
+      `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall for one session or repair_recall for recent project sessions if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
@@ -2040,7 +2085,7 @@ server.tool(
             `Metrics: ${metrics}\n\n` +
             `Summary:\n${summaryLines}\n\n` +
             `Prompts:\n${promptLines}\n\n` +
-            `Chat recall: ${result.chat_coverage_state} (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n\n` +
+            `Chat recall: ${result.chat_coverage_state} (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n\n` +
             `Chat:\n${chatLines}\n\n` +
             `Tools:\n${toolLines}\n\n` +
             `Handoffs:\n${handoffLines}\n\n` +

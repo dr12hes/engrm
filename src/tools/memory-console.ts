@@ -12,7 +12,7 @@ import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getProjectMemoryIndex } from "./project-memory-index.js";
-import { getRecentChat } from "./recent-chat.js";
+import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
 
@@ -36,11 +36,8 @@ export interface MemoryConsoleResult {
   saved_handoffs: number;
   recent_chat: ReturnType<typeof getRecentChat>["messages"];
   recent_chat_sessions: number;
-  chat_source_summary: {
-    transcript: number;
-    hook: number;
-  };
-  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
+  chat_source_summary: ChatSourceSummary;
+  chat_coverage_state: ChatCoverageState;
   observations: ReturnType<typeof getRecentActivity>["observations"];
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
@@ -128,13 +125,7 @@ export function getMemoryConsole(
     recent_chat: recentChat.messages,
     recent_chat_sessions: projectIndex?.recent_chat_sessions ?? recentChat.session_count,
     chat_source_summary: projectIndex?.chat_source_summary ?? recentChat.source_summary,
-    chat_coverage_state: projectIndex?.chat_coverage_state ?? (
-      recentChat.transcript_backed
-        ? "transcript-backed"
-        : recentChat.messages.length > 0
-          ? "hook-only"
-          : "none"
-    ),
+    chat_coverage_state: projectIndex?.chat_coverage_state ?? recentChat.coverage_state,
     observations,
     capture_summary: projectIndex?.capture_summary,
     recent_outcomes: projectIndex?.recent_outcomes ?? [],
@@ -151,7 +142,7 @@ export function getMemoryConsole(
       observations.length,
       recentHandoffs.length,
       recentChat.messages.length,
-      recentChat.transcript_backed
+      recentChat.coverage_state
     ),
   };
 }
@@ -163,16 +154,17 @@ function buildFallbackSuggestedTools(
   observationCount: number,
   handoffCount: number,
   chatCount: number,
-  transcriptBackedChat: boolean
+  chatCoverageState: ChatCoverageState
 ): string[] {
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
   if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("search_recall");
+  if ((sessionCount > 0 || chatCount > 0) && chatCoverageState !== "transcript-backed") suggested.push("repair_recall");
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");
   if (sessionCount > 0) suggested.push("create_handoff", "recent_handoffs");
   if (handoffCount > 0) suggested.push("load_handoff");
-  if (chatCount > 0 && !transcriptBackedChat) suggested.push("refresh_chat_recall");
+  if (chatCount > 0 && chatCoverageState !== "transcript-backed") suggested.push("refresh_chat_recall");
   if (chatCount > 0) suggested.push("recent_chat", "search_chat");
   return Array.from(new Set(suggested)).slice(0, 4);
 }

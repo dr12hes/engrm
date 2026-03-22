@@ -30,9 +30,15 @@ describe("getCaptureQuality", () => {
       name: "repo-b",
       local_path: "/tmp/repo-b",
     });
+    const projectC = db.upsertProject({
+      canonical_id: "local/repo-c",
+      name: "repo-c",
+      local_path: "/tmp/repo-c",
+    });
 
     db.upsertSession("sess-a", projectA.id, "david", "laptop", "claude-code");
     db.upsertSession("sess-b", projectB.id, "david", "laptop", "claude-code");
+    db.upsertSession("sess-c", projectC.id, "david", "laptop", "claude-code");
     db.insertSessionSummary({
       session_id: "sess-a",
       project_id: projectA.id,
@@ -103,7 +109,18 @@ describe("getCaptureQuality", () => {
       session_id: "sess-b",
       project_id: projectB.id,
       role: "assistant",
-      content: "Only hook chat exists for the UI filter thread.",
+      content: "Recovered history-backed chat exists for the UI filter thread.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "hook",
+      remote_source_id: "history:sess-b:1234:abcd",
+    });
+    db.insertChatMessage({
+      session_id: "sess-c",
+      project_id: projectC.id,
+      role: "assistant",
+      content: "Only hook chat exists for the deployment thread.",
       user_id: "david",
       device_id: "laptop",
       agent: "claude-code",
@@ -111,13 +128,14 @@ describe("getCaptureQuality", () => {
     });
 
     const result = getCaptureQuality(db, { user_id: "david" });
-    expect(result.totals.projects).toBe(2);
+    expect(result.totals.projects).toBe(3);
     expect(result.totals.assistant_checkpoints).toBe(1);
-    expect(result.totals.chat_messages).toBe(2);
+    expect(result.totals.chat_messages).toBe(3);
     expect(result.session_states.rich).toBe(1);
     expect(result.session_states.summary_only).toBe(1);
     expect(result.chat_coverage).toEqual({
       transcript_backed_sessions: 1,
+      history_backed_sessions: 1,
       hook_only_sessions: 1,
     });
     expect(result.projects_with_raw_capture).toBe(1);
@@ -142,8 +160,10 @@ describe("getCaptureQuality", () => {
     ]);
     const repoA = result.top_projects.find((project) => project.name === "repo-a");
     const repoB = result.top_projects.find((project) => project.name === "repo-b");
+    const repoC = result.top_projects.find((project) => project.name === "repo-c");
     expect(repoA?.raw_capture_state).toBe("rich");
     expect(repoA?.chat_coverage_state).toBe("transcript-backed");
-    expect(repoB?.chat_coverage_state).toBe("hook-only");
+    expect(repoB?.chat_coverage_state).toBe("history-backed");
+    expect(repoC?.chat_coverage_state).toBe("hook-only");
   });
 });

@@ -7,7 +7,12 @@
 
 import type { ChatMessageRow, MemDatabase, ObservationRow, SessionRow, SessionSummaryRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
 import { isDraftHandoff, looksLikeHandoff } from "./handoffs.js";
-import { getChatCaptureOrigin } from "./recent-chat.js";
+import {
+  getChatCoverageState,
+  summarizeChatSources,
+  type ChatCoverageState,
+  type ChatSourceSummary,
+} from "./recent-chat.js";
 
 export interface SessionStoryInput {
   session_id: string;
@@ -19,12 +24,8 @@ export interface SessionStoryResult {
   summary: SessionSummaryRow | null;
   prompts: UserPromptRow[];
   chat_messages: ChatMessageRow[];
-  chat_source_summary: {
-    transcript: number;
-    history: number;
-    hook: number;
-  };
-  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
+  chat_source_summary: ChatSourceSummary;
+  chat_coverage_state: ChatCoverageState;
   tool_events: ToolEventRow[];
   observations: ObservationRow[];
   handoffs: ObservationRow[];
@@ -73,11 +74,7 @@ export function getSessionStory(
     prompts,
     chat_messages: chatMessages,
     chat_source_summary: summarizeChatSources(chatMessages),
-    chat_coverage_state: chatMessages.some((message) => message.source_kind === "transcript")
-      ? "transcript-backed"
-      : chatMessages.length > 0
-        ? "hook-only"
-        : "none",
+    chat_coverage_state: getChatCoverageState(chatMessages),
     tool_events: toolEvents,
     observations,
     handoffs,
@@ -191,14 +188,4 @@ function collectProvenanceSummary(observations: ObservationRow[]): Array<{ tool:
     .map(([tool, count]) => ({ tool, count }))
     .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
     .slice(0, 6);
-}
-
-function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; history: number; hook: number } {
-  return messages.reduce(
-    (summary, message) => {
-      summary[getChatCaptureOrigin(message)] += 1;
-      return summary;
-    },
-    { transcript: 0, history: 0, hook: 0 }
-  );
 }

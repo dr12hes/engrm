@@ -10,7 +10,7 @@ import type { MemDatabase, ObservationRow, RecentSessionRow } from "../storage/s
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentTools } from "./recent-tools.js";
-import { getRecentChat } from "./recent-chat.js";
+import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { estimateTokens } from "../context/inject.js";
 
@@ -41,11 +41,8 @@ export interface ProjectMemoryIndexResult {
   saved_handoffs_count: number;
   recent_chat_count: number;
   recent_chat_sessions: number;
-  chat_source_summary: {
-    transcript: number;
-    hook: number;
-  };
-  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
+  chat_source_summary: ChatSourceSummary;
+  chat_coverage_state: ChatCoverageState;
   raw_capture_active: boolean;
   capture_summary: CaptureSummary;
   hot_files: Array<{ path: string; count: number }>;
@@ -180,7 +177,7 @@ export function getProjectMemoryIndex(
     recentToolsCount,
     observations.length,
     recentChatCount,
-    recentChat.transcript_backed
+    recentChat.coverage_state
   );
   const estimatedReadTokens = estimateTokens(
     [
@@ -214,11 +211,7 @@ export function getProjectMemoryIndex(
     recent_chat_count: recentChatCount,
     recent_chat_sessions: recentChat.session_count,
     chat_source_summary: recentChat.source_summary,
-    chat_coverage_state: recentChat.transcript_backed
-      ? "transcript-backed"
-      : recentChatCount > 0
-        ? "hook-only"
-        : "none",
+    chat_coverage_state: recentChat.coverage_state,
     raw_capture_active: recentRequestsCount > 0 || recentToolsCount > 0,
     capture_summary: captureSummary,
     hot_files: hotFiles,
@@ -311,7 +304,7 @@ function buildSuggestedTools(
   toolCount: number,
   observationCount: number,
   recentChatCount: number,
-  transcriptBackedChat: boolean
+  chatCoverageState: ChatCoverageState
 ): string[] {
   const suggested: string[] = [];
   if (sessions.length > 0) {
@@ -323,13 +316,16 @@ function buildSuggestedTools(
   if (requestCount > 0 || recentChatCount > 0 || observationCount > 0) {
     suggested.push("search_recall");
   }
+  if ((sessions.length > 0 || recentChatCount > 0) && chatCoverageState !== "transcript-backed") {
+    suggested.push("repair_recall");
+  }
   if (observationCount > 0) {
     suggested.push("tool_memory_index", "capture_git_worktree");
   }
   if (sessions.length > 0) {
     suggested.push("create_handoff", "recent_handoffs");
   }
-  if (recentChatCount > 0 && !transcriptBackedChat) {
+  if (recentChatCount > 0 && chatCoverageState !== "transcript-backed") {
     suggested.push("refresh_chat_recall");
   }
   if (recentChatCount > 0) {

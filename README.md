@@ -226,6 +226,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `recent_handoffs` | List recent saved handoffs for the current project or workspace |
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
+| `repair_recall` | Rehydrate recent project/session recall from transcript or Claude history fallback when chat feels missing |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
 | `search_chat` | Search recent chat recall with hybrid lexical + semantic matching, separately from reusable memory observations |
 | `search_recall` | Search durable memory and chat recall together when you do not want to guess the right lane |
@@ -328,6 +329,12 @@ For long sessions, Engrm now also supports transcript-backed chat hydration:
   - fills gaps in the separate chat lane with transcript-backed messages
   - keeps those rows marked separately from hook-edge chat so recall can prefer the fuller thread
 
+- `repair_recall`
+  - scans recent sessions for the current project
+  - rehydrates recall from transcript files when they exist
+  - falls back to Claude `history.jsonl` when transcript/session alignment is missing
+  - reports whether recovered chat is `transcript-backed`, `history-backed`, or still only `hook-only`
+
 Before Claude compacts, Engrm now also:
 
 - refreshes transcript-backed chat recall for the active session
@@ -358,10 +365,10 @@ Recommended flow:
 What each tool is good for:
 
 - `capture_status` tells you whether prompt/tool hooks are live on this machine
-- `capture_quality` shows whether chat recall is transcript-backed or still hook-only across the workspace
+- `capture_quality` shows whether chat recall is transcript-backed, history-backed, or still hook-only across the workspace
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
-- `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed or only hook-captured
-- when chat continuity is only hook-captured, the workbench and startup hints now prefer `refresh_chat_recall`
+- `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed, history-backed, or only hook-captured
+- when chat continuity is only partial, the workbench and startup hints now prefer `repair_recall`, and still suggest `refresh_chat_recall` when a single session likely just needs transcript hydration
 - the workbench and startup hints now also prefer `search_recall` as the first “what were we just talking about?” path when recent prompts/chat/observations exist
 - `search_chat` now uses hybrid lexical + semantic ranking when sqlite-vec and local embeddings are available, so recent conversation recall is less dependent on exact wording
 - `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries
@@ -371,7 +378,7 @@ What each tool is good for:
 - `session_tool_memory` shows which tool calls in one session turned into reusable memory and which did not
 - `project_memory_index` shows typed memory by repo, including continuity state and hot files
 - `workspace_memory_index` shows coverage across all repos on the machine
-- `recent_chat` / `search_chat` now report transcript-vs-hook coverage too, and `search_chat` will also mark when semantic ranking was available, so weak OpenClaw recall is easier to diagnose and refresh
+- `recent_chat` / `search_chat` now report transcript-vs-history-vs-hook coverage too, and `search_chat` will also mark when semantic ranking was available, so weak OpenClaw recall is easier to diagnose and repair
 
 ### Thin Tool Workflow
 

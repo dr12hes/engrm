@@ -129,5 +129,6 @@ describe("getMemoryConsole", () => {
     expect(result.suggested_tools).toContain("recent_sessions");
     expect(result.suggested_tools).toContain("activity_feed");
     expect(result.suggested_tools).toContain("search_recall");
+    expect(result.suggested_tools).toContain("repair_recall");
   });
 });

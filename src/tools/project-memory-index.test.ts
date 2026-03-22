@@ -147,6 +147,6 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");
     expect(result?.suggested_tools).toContain("search_recall");
-    expect(result?.suggested_tools).toContain("tool_memory_index");
+    expect(result?.suggested_tools).toContain("repair_recall");
   });
 });

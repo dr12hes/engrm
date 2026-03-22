@@ -13,7 +13,7 @@ import {
   formatContextForInjection,
   type ContextOptions,
 } from "../context/inject.js";
-import { getRecentChat } from "./recent-chat.js";
+import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
 
 export interface SessionContextInput {
@@ -40,11 +40,8 @@ export interface SessionContextResult {
   latest_handoff_title: string | null;
   recent_chat_messages: number;
   recent_chat_sessions: number;
-  chat_source_summary: {
-    transcript: number;
-    hook: number;
-  };
-  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
+  chat_source_summary: ChatSourceSummary;
+  chat_coverage_state: ChatCoverageState;
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
   capture_state: "rich" | "partial" | "summary-only";
@@ -116,17 +113,13 @@ export function getSessionContext(
     recent_chat_messages: recentChatMessages,
     recent_chat_sessions: recentChat.session_count,
     chat_source_summary: recentChat.source_summary,
-    chat_coverage_state: recentChat.transcript_backed
-      ? "transcript-backed"
-      : recentChatMessages > 0
-        ? "hook-only"
-        : "none",
+    chat_coverage_state: recentChat.coverage_state,
     recent_outcomes: context.recentOutcomes ?? [],
     hot_files: hotFiles,
     capture_state: captureState,
     raw_capture_active: recentRequests > 0 || recentTools > 0,
     estimated_read_tokens: estimateTokens(preview),
-    suggested_tools: buildSuggestedTools(context, recentChat.transcript_backed),
+    suggested_tools: buildSuggestedTools(context, recentChat.coverage_state),
     preview,
   };
 }
@@ -158,7 +151,7 @@ function parseJsonArray(value: string | null | undefined): string[] {
 
 function buildSuggestedTools(
   context: NonNullable<ReturnType<typeof buildSessionContext>>,
-  transcriptBackedChat: boolean
+  chatCoverageState: ChatCoverageState
 ): string[] {
   const tools: string[] = [];
   if ((context.recentSessions?.length ?? 0) > 0) {
@@ -174,6 +167,12 @@ function buildSuggestedTools(
   ) {
     tools.push("search_recall");
   }
+  if (
+    ((context.recentSessions?.length ?? 0) > 0 || (context.recentChatMessages?.length ?? 0) > 0)
+    && chatCoverageState !== "transcript-backed"
+  ) {
+    tools.push("repair_recall");
+  }
   if (context.observations.length > 0) {
     tools.push("tool_memory_index", "capture_git_worktree");
   }
@@ -183,7 +182,7 @@ function buildSuggestedTools(
   if ((context.recentHandoffs?.length ?? 0) > 0) {
     tools.push("load_handoff");
   }
-  if ((context.recentChatMessages?.length ?? 0) > 0 && !transcriptBackedChat) {
+  if ((context.recentChatMessages?.length ?? 0) > 0 && chatCoverageState !== "transcript-backed") {
     tools.push("refresh_chat_recall");
   }
   if ((context.recentChatMessages?.length ?? 0) > 0) {

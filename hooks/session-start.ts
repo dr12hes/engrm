@@ -558,8 +558,9 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
   if ((context.recentChatMessages?.length ?? 0) > 0) {
     hints.push("recent_chat");
   }
-  if (hasHookOnlyRecentChat(context)) {
+  if (hasNonTranscriptRecentChat(context)) {
     hints.push("refresh_chat_recall");
+    hints.push("repair_recall");
   }
   if (continuityState !== "fresh") {
     hints.push("recent_chat");
@@ -1178,7 +1179,7 @@ function getStartupContinuityState(
   );
 }
 
-function hasHookOnlyRecentChat(context: InjectedContext): boolean {
+function hasNonTranscriptRecentChat(context: InjectedContext): boolean {
   const recentChat = context.recentChatMessages ?? [];
   return recentChat.length > 0 && !recentChat.some((message) => message.source_kind === "transcript");
 }

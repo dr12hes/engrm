@@ -8,6 +8,7 @@
 import type { MemDatabase } from "../storage/sqlite.js";
 import { getWorkspaceMemoryIndex } from "./workspace-memory-index.js";
 import { getRecentSessions } from "./recent-sessions.js";
+import type { ChatCoverageState } from "./recent-chat.js";
 
 export interface CaptureQualityInput {
   limit?: number;
@@ -32,6 +33,7 @@ export interface CaptureQualityResult {
   };
   chat_coverage: {
     transcript_backed_sessions: number;
+    history_backed_sessions: number;
     hook_only_sessions: number;
   };
   projects_with_raw_capture: number;
@@ -51,7 +53,7 @@ export interface CaptureQualityResult {
     tool_event_count: number;
     assistant_checkpoint_count: number;
     chat_message_count: number;
-    chat_coverage_state: "transcript-backed" | "hook-only" | "none";
+    chat_coverage_state: ChatCoverageState;
     raw_capture_state: "rich" | "partial" | "summary-only";
   }>;
 }
@@ -80,11 +82,22 @@ export function getCaptureQuality(
   };
 
   const chatCoverageRow = db.db
-    .query<{ transcript_backed_sessions: number; hook_only_sessions: number; chat_messages: number }, (string | number)[]>(
+    .query<{ transcript_backed_sessions: number; history_backed_sessions: number; hook_only_sessions: number; chat_messages: number }, (string | number)[]>(
       `SELECT
          COUNT(DISTINCT CASE WHEN source_kind = 'transcript' THEN session_id END) as transcript_backed_sessions,
          COUNT(DISTINCT CASE
            WHEN source_kind = 'hook'
+            AND remote_source_id LIKE 'history:%'
+            AND NOT EXISTS (
+              SELECT 1 FROM chat_messages t2
+              WHERE t2.session_id = chat_messages.session_id
+                AND t2.source_kind = 'transcript'
+            )
+           THEN session_id
+         END) as history_backed_sessions,
+         COUNT(DISTINCT CASE
+           WHEN source_kind = 'hook'
+            AND (remote_source_id IS NULL OR remote_source_id NOT LIKE 'history:%')
             AND NOT EXISTS (
               SELECT 1 FROM chat_messages t2
               WHERE t2.session_id = chat_messages.session_id
@@ -99,6 +112,7 @@ export function getCaptureQuality(
     )
     .get(...(input.user_id ? [input.user_id] : [])) ?? {
       transcript_backed_sessions: 0,
+      history_backed_sessions: 0,
       hook_only_sessions: 0,
       chat_messages: 0,
     };
@@ -106,27 +120,39 @@ export function getCaptureQuality(
   const chatCoverageByProject = new Map<string, {
     chat_message_count: number;
     transcript_count: number;
+    history_count: number;
     hook_only_count: number;
   }>();
   const chatRows = db.db
-    .query<{ canonical_id: string; source_kind: "hook" | "transcript"; count: number }, (string | number)[]>(
-      `SELECT p.canonical_id, cm.source_kind, COUNT(*) as count
+    .query<{ canonical_id: string; source_kind: "hook" | "transcript"; origin_kind: "transcript" | "history" | "hook"; count: number }, (string | number)[]>(
+      `SELECT
+         p.canonical_id,
+         cm.source_kind,
+         CASE
+           WHEN cm.source_kind = 'transcript' THEN 'transcript'
+           WHEN cm.remote_source_id LIKE 'history:%' THEN 'history'
+           ELSE 'hook'
+         END as origin_kind,
+         COUNT(*) as count
        FROM chat_messages cm
        JOIN projects p ON p.id = cm.project_id
        WHERE cm.project_id IS NOT NULL
        ${input.user_id ? " AND cm.user_id = ?" : ""}
-       GROUP BY p.canonical_id, cm.source_kind`
+       GROUP BY p.canonical_id, cm.source_kind, origin_kind`
     )
     .all(...(input.user_id ? [input.user_id] : []));
   for (const row of chatRows) {
     const current = chatCoverageByProject.get(row.canonical_id) ?? {
       chat_message_count: 0,
       transcript_count: 0,
+      history_count: 0,
       hook_only_count: 0,
     };
     current.chat_message_count += row.count;
-    if (row.source_kind === "transcript") {
+    if (row.origin_kind === "transcript") {
       current.transcript_count += row.count;
+    } else if (row.origin_kind === "history") {
+      current.history_count += row.count;
     } else {
       current.hook_only_count += row.count;
     }
@@ -137,6 +163,7 @@ export function getCaptureQuality(
     const chat = chatCoverageByProject.get(project.canonical_id) ?? {
       chat_message_count: 0,
       transcript_count: 0,
+      history_count: 0,
       hook_only_count: 0,
     };
     return {
@@ -151,6 +178,8 @@ export function getCaptureQuality(
       chat_coverage_state:
         chat.transcript_count > 0
           ? "transcript-backed"
+          : chat.history_count > 0
+            ? "history-backed"
           : chat.hook_only_count > 0
             ? "hook-only"
             : "none",
@@ -219,6 +248,7 @@ export function getCaptureQuality(
     session_states: sessionStates,
     chat_coverage: {
       transcript_backed_sessions: chatCoverageRow.transcript_backed_sessions,
+      history_backed_sessions: chatCoverageRow.history_backed_sessions,
       hook_only_sessions: chatCoverageRow.hook_only_sessions,
     },
     projects_with_raw_capture: workspace.projects_with_raw_capture,

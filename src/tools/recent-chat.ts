@@ -2,6 +2,12 @@ import { detectProject } from "../storage/projects.js";
 import type { ChatMessageRow, MemDatabase } from "../storage/sqlite.js";
 
 export type ChatCaptureOrigin = "transcript" | "history" | "hook";
+export type ChatCoverageState = "transcript-backed" | "history-backed" | "hook-only" | "none";
+export interface ChatSourceSummary {
+  transcript: number;
+  history: number;
+  hook: number;
+}
 
 export interface RecentChatInput {
   limit?: number;
@@ -15,12 +21,9 @@ export interface RecentChatResult {
   messages: ChatMessageRow[];
   project?: string;
   session_count: number;
-  source_summary: {
-    transcript: number;
-    history: number;
-    hook: number;
-  };
+  source_summary: ChatSourceSummary;
   transcript_backed: boolean;
+  coverage_state: ChatCoverageState;
 }
 
 export function getRecentChat(
@@ -36,6 +39,7 @@ export function getRecentChat(
       session_count: countDistinctSessions(messages),
       source_summary: summarizeChatSources(messages),
       transcript_backed: messages.some((message) => message.source_kind === "transcript"),
+      coverage_state: getChatCoverageState(messages),
     };
   }
 
@@ -60,10 +64,11 @@ export function getRecentChat(
     session_count: countDistinctSessions(messages),
     source_summary: summarizeChatSources(messages),
     transcript_backed: messages.some((message) => message.source_kind === "transcript"),
+    coverage_state: getChatCoverageState(messages),
   };
 }
 
-function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; hook: number } {
+export function summarizeChatSources(messages: Array<Pick<ChatMessageRow, "source_kind" | "remote_source_id">>): ChatSourceSummary {
   return messages.reduce(
     (summary, message) => {
       summary[getChatCaptureOrigin(message)] += 1;
@@ -71,6 +76,18 @@ function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number;
     },
     { transcript: 0, history: 0, hook: 0 }
   );
+}
+
+export function getChatCoverageState(
+  messagesOrSummary: Array<Pick<ChatMessageRow, "source_kind" | "remote_source_id">> | ChatSourceSummary
+): ChatCoverageState {
+  const summary = Array.isArray(messagesOrSummary)
+    ? summarizeChatSources(messagesOrSummary)
+    : messagesOrSummary;
+  if (summary.transcript > 0) return "transcript-backed";
+  if (summary.history > 0) return "history-backed";
+  if (summary.hook > 0) return "hook-only";
+  return "none";
 }
 
 function countDistinctSessions(messages: ChatMessageRow[]): number {
