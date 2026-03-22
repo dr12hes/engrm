@@ -30,6 +30,8 @@ The goal is to turn useful local work into durable memory that can be recalled l
 - `capture_openclaw_content`
 - `tool_memory_index`
 - `capture_quality`
+- `resume_thread`
+- `repair_recall`
 
 ## Explicit Handoff Flow
 
@@ -61,14 +63,16 @@ What makes this better than a plain summary:
 For a quick public demo or MCP listing video:
 
 1. `capture_quality`
-2. `tool_memory_index`
-3. `capture_git_worktree` or `capture_repo_scan`
-4. `session_tool_memory`
-5. `session_story`
+2. `resume_thread`
+3. `tool_memory_index`
+4. `capture_git_worktree` or `capture_repo_scan`
+5. `session_tool_memory`
+6. `session_story`
 
 This proves the full loop:
 
 - capture current work
+- recover the live thread honestly
 - reduce it into durable memory
 - inspect which tool/plugin produced it
 - inspect the resulting session memory
@@ -101,6 +105,8 @@ Use prompts like these in demos, screenshots, and listings:
 - "Show which tools are actually creating durable memory in this repo."
 - "Tell me whether raw chronology is healthy on this machine."
 - "Save this OpenClaw research and posting run as reusable memory."
+- "Resume the current thread and tell me how fresh that resume point is."
+- "Repair recall for this repo before trying to resume the thread."
 
 ## Example: `capture_git_worktree`
 

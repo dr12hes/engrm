@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dr12hes/engrm",
-  "description": "Shared memory across devices, sessions, and agents, with thin MCP tools that turn local work into reusable memory.",
+  "description": "Shared memory across devices, sessions, and agents, with thin MCP tools for durable capture and live continuity.",
   "repository": {
     "url": "https://github.com/dr12hes/engrm",
     "source": "github"
   },
-  "version": "0.4.30",
+  "version": "0.4.31",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "engrm",
-      "version": "0.4.30",
+      "version": "0.4.31",
       "transport": {
         "type": "stdio"
       }

@@ -4,11 +4,14 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.31
+
 ### Changed
 
 - `resume_thread` now includes `next_actions`, source session/device cues, and a `live / recent / stale` freshness signal, so the default continuity tool reads more like a coworker handoff than a generic recap
 - `memory_console`, `project_memory_index`, and `session_context` now expose that same resume-readiness state and next actions, so the main MCP workbench can tell whether a repo is actually ready for a confident resume before you call `resume_thread`
 - startup handoff now shows the same `live / recent / stale` resume cue with source device/session details, so the first visible Engrm handoff is closer to the same continuity model as the MCP tools
+- public MCP docs, examples, and listing metadata now position Engrm around both durable capture and live continuity, with `resume_thread` and `repair_recall` included in the starter surface
 
 ## 0.4.30
 

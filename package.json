@@ -1,7 +1,7 @@
 {
   "name": "engrm",
-  "version": "0.4.30",
-  "description": "Shared memory across devices, sessions, and coding agents",
+  "version": "0.4.31",
+  "description": "Shared memory across devices, sessions, and agents, with thin MCP tools for durable capture and live continuity",
   "mcpName": "io.github.dr12hes/engrm",
   "type": "module",
   "main": "dist/server.js",

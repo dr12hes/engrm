@@ -109,15 +109,15 @@ Avoid leading with:
 
 ### Short Description
 
-Shared memory across devices, sessions, and agents, with thin MCP tools that turn local work into reusable memory.
+Shared memory across devices, sessions, and agents, with thin MCP tools for durable capture and live continuity.
 
 ### Medium Description
 
-Engrm is a memory layer for coding agents and operator workflows. It captures useful work locally, reduces it into durable memory, and makes that memory reusable across Claude Code, Codex, OpenClaw, and related systems. Instead of exposing a huge MCP surface, Engrm focuses on thin tools and thick memory: small local tools like `capture_git_worktree` and `capture_repo_scan` that create reusable memory objects rather than raw transcript noise.
+Engrm is a memory layer for coding agents and operator workflows. It captures useful work locally, reduces it into durable memory, and makes that memory reusable across Claude Code, Codex, OpenClaw, and related systems. Instead of exposing a huge MCP surface, Engrm focuses on thin tools and thick memory: small local tools like `capture_git_worktree` and `capture_repo_scan` that create reusable memory objects rather than raw transcript noise, plus continuity tools like `resume_thread` and `repair_recall` that help agents recover the live thread across long sessions and device switches.
 
 ### Long Description
 
-Engrm helps agents keep continuity across devices, sessions, and tools. It captures prompts, tool use, observations, assistant checkpoints, and reduced plugin outputs in a local memory store, then exposes that memory through startup handoff, session inspection, and MCP tools. The current public MCP surface is intentionally small: thin local tools capture meaningful git diffs, repo scans, and OpenClaw content work, while inspection tools like `tool_memory_index` and `capture_quality` show whether those tools are actually producing durable memory. The goal is not more schema in context. The goal is to preserve useful work so the next agent or session can pick up faster.
+Engrm helps agents keep continuity across devices, sessions, and tools. It captures prompts, tool use, observations, assistant checkpoints, chat recall, and reduced plugin outputs in a local memory store, then exposes that memory through startup handoff, session inspection, and MCP tools. The current public MCP surface is intentionally small: thin local tools capture meaningful git diffs, repo scans, and OpenClaw content work, while continuity tools like `resume_thread` and `repair_recall` help agents recover the live thread when a session is long, compacted, or moved to another machine. Inspection tools like `tool_memory_index` and `capture_quality` show whether those tools are actually producing durable memory and whether recall is transcript-backed, history-backed, or still thin. The goal is not more schema in context. The goal is to preserve useful work so the next agent or session can pick up faster.
 
 ### Feature Bullets
 
@@ -125,6 +125,7 @@ Engrm helps agents keep continuity across devices, sessions, and tools. It captu
 - Cross-device and cross-agent continuity for Claude Code, Codex, and OpenClaw
 - Local-first capture with prompt, tool, and session chronology
 - Startup handoff that tells the next agent what has been going on
+- Direct thread resume and recall repair for long or moved sessions
 - Inspection tools that show which tools and plugins are actually producing durable memory
 
 ### One-Line Positioning Variants
@@ -148,6 +149,10 @@ This is the MCP surface we should be comfortable pointing people at first:
   - show which tools are actually producing durable memory and which plugins they exercise
 - `capture_quality`
   - check whether raw chronology is healthy enough to trust memory quality on this machine
+- `resume_thread`
+  - build one direct resume point with freshness, source, next actions, tool trail, and recent chat
+- `repair_recall`
+  - repair weak continuity from transcript or Claude history fallback before resuming
 
 Why this set:
 
@@ -155,6 +160,7 @@ Why this set:
 - local-first execution
 - durable memory output
 - easy to validate after capture
+- concrete continuity recovery on real machines
 
 ## Example MCP Prompts
 
@@ -165,20 +171,24 @@ Use prompts like these in listings, screenshots, and demos:
 - "Show which tools are creating durable memory in this repo."
 - "Tell me whether raw capture is healthy on this machine."
 - "Save this OpenClaw research and posting run as reusable memory."
+- "Resume the current thread and tell me how fresh that resume point is."
+- "Repair recall for this repo before trying to resume the thread."
 
 ## Validation Flow To Demo Publicly
 
 Use this sequence when recording or testing Engrm for MCP directories:
 
 1. `capture_quality`
-2. `tool_memory_index`
-3. `capture_git_worktree` or `capture_repo_scan`
-4. `session_tool_memory`
-5. `session_story`
+2. `resume_thread`
+3. `tool_memory_index`
+4. `capture_git_worktree` or `capture_repo_scan`
+5. `session_tool_memory`
+6. `session_story`
 
 That proves the full loop:
 
 - capture something meaningful
+- recover the live thread honestly
 - reduce it into durable memory
 - inspect which tool/plugin produced it
 - inspect the resulting session story

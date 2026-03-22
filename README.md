@@ -252,6 +252,10 @@ If you are evaluating Engrm as an MCP server, start with this small set first:
   - verify which tools are actually producing durable memory and which plugins they exercise
 - `capture_quality`
   - check whether raw chronology is healthy across the workspace before judging memory quality
+- `resume_thread`
+  - get one direct “where were we?” resume point with freshness, source, tool trail, and next actions
+- `repair_recall`
+  - repair weak project recall from transcript or Claude history fallback before you give up on continuity
 
 These are the tools we should be comfortable pointing people to publicly first:
 
@@ -259,6 +263,7 @@ These are the tools we should be comfortable pointing people to publicly first:
 - local-first execution
 - durable memory output instead of raw transcript dumping
 - easy local inspection after capture
+- clear continuity recovery when switching devices or resuming long sessions
 
 ### Thin Tools, Thick Memory
 
@@ -361,13 +366,14 @@ Recommended flow:
 ```text
 1. capture_status
 2. memory_console
-3. activity_feed
-4. recent_sessions
-5. session_story
-6. tool_memory_index
-7. session_tool_memory
-8. project_memory_index
-9. workspace_memory_index
+3. resume_thread
+4. activity_feed
+5. recent_sessions
+6. session_story
+7. tool_memory_index
+8. session_tool_memory
+9. project_memory_index
+10. workspace_memory_index
 ```
 
 What each tool is good for:
@@ -375,9 +381,10 @@ What each tool is good for:
 - `capture_status` tells you whether prompt/tool hooks are live on this machine
 - `capture_quality` shows whether chat recall is transcript-backed, history-backed, or still hook-only across the workspace
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
+- `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, and chat in one place
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed, history-backed, or only hook-captured
+- `memory_console`, `project_memory_index`, and `session_context` also expose resume-readiness directly, so you can see whether a repo is `live`, `recent`, or `stale` before drilling deeper
 - when chat continuity is only partial, the workbench and startup hints now prefer `repair_recall`, and still suggest `refresh_chat_recall` when a single session likely just needs transcript hydration
-- `resume_thread` is now the fastest “get me back into the live thread” path when you do not want to think about which continuity lane to inspect
 - the workbench and startup hints now also prefer `search_recall` as the first “what were we just talking about?” path when recent prompts/chat/observations exist
 - `search_chat` now uses hybrid lexical + semantic ranking when sqlite-vec and local embeddings are available, so recent conversation recall is less dependent on exact wording
 - `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries
