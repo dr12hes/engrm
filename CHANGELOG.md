@@ -17,6 +17,7 @@ All notable changes to this repository should be documented here.
 - startup and workbench hints now suggest `repair_recall` when recent chat exists but full transcript-backed continuity is still missing
 - startup and workbench hints now also surface `resume_thread` as the quickest “get me back into the live thread” path
 - chat/recall hints and coverage output now show `history` explicitly alongside `transcript` and `hook`, making OpenClaw-style recovery paths much easier to understand
+- `resume_thread` now reports resume confidence and basis cues, so agents can tell whether they are resuming from a strong handoff, usable live recall, or only a thin fallback
 
 ## 0.4.29
 

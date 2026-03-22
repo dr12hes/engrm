@@ -760,6 +760,9 @@ server.tool(
     const handoffLine = result.handoff
       ? `Handoff: #${result.handoff.id} ${result.handoff.title}${result.handoff.source ? ` (${result.handoff.source})` : ""}\n`
       : "Handoff: (none)\n";
+    const basisLines = result.resume_basis.length > 0
+      ? result.resume_basis.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
     const outcomes = result.recent_outcomes.length > 0
       ? result.recent_outcomes.map((item) => `- ${item}`).join("\n")
       : "- (none)";
@@ -783,11 +786,13 @@ server.tool(
           text:
             `${projectLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Resume confidence: ${result.resume_confidence}\n` +
             `Current thread: ${result.current_thread ?? "(unknown)"}\n` +
             `Latest request: ${result.latest_request ?? "(none)"}\n` +
             `${handoffLine}` +
             `Chat recall: ${result.chat_coverage_state}\n` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Resume basis:\n${basisLines}\n\n` +
             `Recent outcomes:\n${outcomes}\n\n` +
             `Recent chat:\n${chatLines}\n\n` +
             `Recall hits:\n${recallLines}`,

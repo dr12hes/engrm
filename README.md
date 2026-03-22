@@ -339,6 +339,7 @@ For long sessions, Engrm now also supports transcript-backed chat hydration:
 - `resume_thread`
   - gives OpenClaw or Claude one direct “where were we?” action
   - combines the best handoff, the current thread, recent outcomes, recent chat, and unified recall
+  - reports whether the resume point is `strong`, `usable`, or `thin`
   - makes Engrm usable as the primary live continuity layer instead of forcing agents to choose between low-level recall tools
 
 Before Claude compacts, Engrm now also:

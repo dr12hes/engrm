@@ -76,6 +76,9 @@ describe("resumeThread", () => {
     });
 
     expect(result.project_name).toBe("repo");
+    expect(result.resume_confidence).toBe("strong");
+    expect(result.resume_basis).toContain("explicit handoff available");
+    expect(result.resume_basis).toContain("current thread recovered");
     expect(result.current_thread).toContain("EventService");
     expect(result.latest_request).toContain("EventService");
     expect(result.handoff?.title).toContain("Handoff:");
@@ -122,7 +125,9 @@ describe("resumeThread", () => {
       user_id: "david",
     });
 
+    expect(result.resume_confidence).toBe("usable");
     expect(result.chat_coverage_state).toBe("history-backed");
+    expect(result.resume_basis).toContain("history-backed chat continuity");
     expect(result.suggested_tools).toContain("repair_recall");
     expect(result.suggested_tools).toContain("refresh_chat_recall");
   });

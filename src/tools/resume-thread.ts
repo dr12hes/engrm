@@ -17,6 +17,8 @@ export interface ResumeThreadResult {
   project_name: string | null;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  resume_confidence: "strong" | "usable" | "thin";
+  resume_basis: string[];
   latest_request: string | null;
   current_thread: string | null;
   handoff: {
@@ -89,6 +91,23 @@ export async function resumeThread(
     || recentChat.messages[recentChat.messages.length - 1]?.content.replace(/\s+/g, " ").trim().slice(0, 180)
     || null;
 
+  const resumeBasis = buildResumeBasis({
+    handoff,
+    continuityState: context?.continuity_state ?? "cold",
+    chatCoverageState: recentChat.coverage_state,
+    latestRequest: inferredRequest,
+    currentThread,
+    recallHits: recall.results,
+    recentOutcomes: context?.recent_outcomes ?? [],
+  });
+  const resumeConfidence = classifyResumeConfidence({
+    handoff,
+    continuityState: context?.continuity_state ?? "cold",
+    chatCoverageState: recentChat.coverage_state,
+    recallHits: recall.results,
+    currentThread,
+  });
+
   const suggestedTools = Array.from(new Set([
     "search_recall",
     ...(recentChat.coverage_state !== "transcript-backed" && recentChat.messages.length > 0
@@ -102,6 +121,8 @@ export async function resumeThread(
     project_name: project?.name ?? context?.project_name ?? null,
     continuity_state: context?.continuity_state ?? "cold",
     continuity_summary: context?.continuity_summary ?? "No fresh repo-local continuity yet; older memory should be treated cautiously.",
+    resume_confidence: resumeConfidence,
+    resume_basis: resumeBasis,
     latest_request: inferredRequest,
     current_thread: currentThread,
     handoff: handoff
@@ -138,4 +159,44 @@ function extractCurrentThread(handoff: HandoffRow | null): string | null {
 
 function extractHandoffSource(handoff: HandoffRow): string | null {
   return handoff.device_id ?? null;
+}
+
+function classifyResumeConfidence(input: {
+  handoff: HandoffRow | null;
+  continuityState: "fresh" | "thin" | "cold";
+  chatCoverageState: ChatCoverageState;
+  recallHits: SearchRecallEntry[];
+  currentThread: string | null;
+}): ResumeThreadResult["resume_confidence"] {
+  const hasStrongChat = input.chatCoverageState === "transcript-backed" || input.chatCoverageState === "history-backed";
+  const hasRecall = input.recallHits.length > 0;
+  if (input.handoff && input.currentThread && (input.continuityState === "fresh" || hasStrongChat || hasRecall)) {
+    return "strong";
+  }
+  if (input.currentThread && (input.continuityState !== "cold" || hasStrongChat || hasRecall)) {
+    return "usable";
+  }
+  return "thin";
+}
+
+function buildResumeBasis(input: {
+  handoff: HandoffRow | null;
+  continuityState: "fresh" | "thin" | "cold";
+  chatCoverageState: ChatCoverageState;
+  latestRequest: string | null;
+  currentThread: string | null;
+  recallHits: SearchRecallEntry[];
+  recentOutcomes: string[];
+}): string[] {
+  const basis: string[] = [];
+  if (input.handoff) basis.push("explicit handoff available");
+  if (input.currentThread) basis.push("current thread recovered");
+  if (input.latestRequest) basis.push("latest request recovered");
+  if (input.recentOutcomes.length > 0) basis.push("recent outcomes available");
+  if (input.recallHits.some((item) => item.kind === "chat")) basis.push("live chat recall available");
+  if (input.chatCoverageState === "transcript-backed") basis.push("transcript-backed chat continuity");
+  if (input.chatCoverageState === "history-backed") basis.push("history-backed chat continuity");
+  if (input.continuityState === "fresh") basis.push("fresh repo-local continuity");
+  if (basis.length === 0) basis.push("thin fallback only");
+  return basis.slice(0, 5);
 }
