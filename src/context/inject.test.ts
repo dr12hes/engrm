@@ -734,9 +734,13 @@ describe("formatContextForInjection", () => {
       ],
     });
 
+    expect(text).toContain("## Recall Index");
+    expect(text).toContain("handoff:50");
+    expect(text).toContain("chat:9");
     expect(text).toContain("## Recent Chat");
     expect(text).toContain("[assistant] I have the feed plumbing in place");
     expect(text.indexOf("## Recent Handoffs")).toBeLessThan(text.indexOf("## Recent Chat"));
+    expect(text.indexOf("## Recall Index")).toBeLessThan(text.indexOf("## Recent Chat"));
     expect(text.indexOf("## Recent Chat")).toBeLessThan(text.indexOf("## Recent Requests"));
   });
 

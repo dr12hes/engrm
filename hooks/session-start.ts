@@ -575,6 +575,7 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
     context.observations.length > 0
   ) {
     hints.push("list_recall_items");
+    hints.push("load_recall_item");
     hints.push("resume_thread");
     hints.push("search_recall");
   }

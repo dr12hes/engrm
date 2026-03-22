@@ -725,6 +725,15 @@ export function formatContextForInjection(
     lines.push("");
   }
 
+  const recallIndexLines = buildRecallIndexLines(context);
+  if (recallIndexLines.length > 0) {
+    lines.push("## Recall Index");
+    for (const line of recallIndexLines) {
+      lines.push(line);
+    }
+    lines.push("");
+  }
+
   if (context.recentChatMessages && context.recentChatMessages.length > 0) {
     lines.push("## Recent Chat");
     for (const message of context.recentChatMessages.slice(0, 4).reverse()) {
@@ -867,6 +876,31 @@ export function formatContextForInjection(
   }
 
   return lines.join("\n");
+}
+
+function buildRecallIndexLines(context: InjectedContext): string[] {
+  const lines: string[] = [];
+
+  for (const handoff of context.recentHandoffs?.slice(0, 2) ?? []) {
+    const title = handoff.title
+      .replace(/^Handoff(?: Draft)?:\s*/i, "")
+      .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
+      .trim();
+    if (!title) continue;
+    lines.push(`- handoff:${handoff.id} — ${truncateText(title, 140)}`);
+  }
+
+  for (const session of context.recentSessions?.slice(0, 2) ?? []) {
+    const title = session.current_thread ?? session.request ?? session.completed ?? session.session_id;
+    if (!title) continue;
+    lines.push(`- session:${session.session_id} — ${truncateText(title.replace(/\s+/g, " ").trim(), 140)}`);
+  }
+
+  for (const message of context.recentChatMessages?.slice(0, 2) ?? []) {
+    lines.push(`- chat:${message.id} — ${truncateText(message.content.replace(/\s+/g, " ").trim(), 140)}`);
+  }
+
+  return Array.from(new Set(lines)).slice(0, 5);
 }
 
 function formatSessionBrief(summary: SessionSummaryRow): string[] {

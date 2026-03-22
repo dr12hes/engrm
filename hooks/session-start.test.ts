@@ -533,6 +533,7 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("Pull detail:");
     expect(splash).toContain("recent_sessions");
     expect(splash).toContain("activity_feed");
+    expect(splash).toContain("load_recall_item");
   });
 
   test("context index shows ids, icons, and file hints", () => {
