@@ -1,3 +1,4 @@
+import type { Config } from "../config.js";
 import { detectProject } from "../storage/projects.js";
 import type { MemDatabase } from "../storage/sqlite.js";
 import { loadHandoff, type HandoffRow } from "./handoffs.js";
@@ -5,12 +6,14 @@ import { getRecentChat, type ChatCoverageState } from "./recent-chat.js";
 import { searchRecall, type SearchRecallEntry } from "./search-recall.js";
 import { getSessionContext } from "./session-context.js";
 import { getRecentSessions } from "./recent-sessions.js";
+import { repairRecall, type RepairRecallResult } from "./repair-recall.js";
 
 export interface ResumeThreadInput {
   cwd?: string;
   user_id?: string;
   current_device_id?: string;
   limit?: number;
+  repair_if_needed?: boolean;
 }
 
 export interface ResumeThreadResult {
@@ -19,6 +22,11 @@ export interface ResumeThreadResult {
   continuity_summary: string;
   resume_confidence: "strong" | "usable" | "thin";
   resume_basis: string[];
+  repair_attempted: boolean;
+  repair_result: {
+    imported_chat_messages: number;
+    sessions_with_imports: number;
+  } | null;
   latest_request: string | null;
   current_thread: string | null;
   handoff: {
@@ -40,43 +48,34 @@ export interface ResumeThreadResult {
 
 export async function resumeThread(
   db: MemDatabase,
+  config: Config,
   input: ResumeThreadInput = {}
 ): Promise<ResumeThreadResult> {
   const cwd = input.cwd ?? process.cwd();
   const limit = Math.max(2, Math.min(input.limit ?? 5, 8));
+  const repairIfNeeded = input.repair_if_needed !== false;
   const detected = detectProject(cwd);
   const project = db.getProjectByCanonicalId(detected.canonical_id);
-  const context = getSessionContext(db, {
-    cwd,
-    user_id: input.user_id,
-    current_device_id: input.current_device_id,
-  });
-  const handoffResult = loadHandoff(db, {
-    cwd,
-    project_scoped: true,
-    user_id: input.user_id,
-    current_device_id: input.current_device_id,
-  });
-  const handoff = handoffResult.handoff;
-  const recentChat = getRecentChat(db, {
-    cwd,
-    project_scoped: true,
-    user_id: input.user_id,
-    limit: Math.max(limit, 4),
-  });
-  const recentSessions = getRecentSessions(db, {
-    cwd,
-    project_scoped: true,
-    user_id: input.user_id,
-    limit: 3,
-  }).sessions;
-  const recall = await searchRecall(db, {
-    query: "what were we just talking about",
-    cwd,
-    project_scoped: true,
-    user_id: input.user_id,
-    limit,
-  });
+
+  let snapshot = await buildResumeSnapshot(db, cwd, input.user_id, input.current_device_id, limit);
+  let repairResult: RepairRecallResult | null = null;
+  const shouldRepair =
+    repairIfNeeded &&
+    snapshot.recentChat.coverage_state !== "transcript-backed" &&
+    (snapshot.recentChat.messages.length > 0 || snapshot.recentSessions.length > 0 || snapshot.context?.continuity_state !== "cold");
+
+  if (shouldRepair) {
+    repairResult = await repairRecall(db, config, {
+      cwd,
+      user_id: input.user_id,
+      limit: Math.max(limit, 4),
+    });
+    if (repairResult.imported_chat_messages > 0) {
+      snapshot = await buildResumeSnapshot(db, cwd, input.user_id, input.current_device_id, limit);
+    }
+  }
+
+  const { context, handoff, recentChat, recentSessions, recall } = snapshot;
 
   const latestSession = recentSessions[0] ?? null;
   const inferredRequest =
@@ -123,6 +122,13 @@ export async function resumeThread(
     continuity_summary: context?.continuity_summary ?? "No fresh repo-local continuity yet; older memory should be treated cautiously.",
     resume_confidence: resumeConfidence,
     resume_basis: resumeBasis,
+    repair_attempted: shouldRepair,
+    repair_result: repairResult
+      ? {
+          imported_chat_messages: repairResult.imported_chat_messages,
+          sessions_with_imports: repairResult.sessions_with_imports,
+        }
+      : null,
     latest_request: inferredRequest,
     current_thread: currentThread,
     handoff: handoff
@@ -148,6 +154,59 @@ export async function resumeThread(
       })),
     recall_hits: recall.results.slice(0, limit),
     suggested_tools: suggestedTools,
+  };
+}
+
+async function buildResumeSnapshot(
+  db: MemDatabase,
+  cwd: string,
+  userId: string | undefined,
+  currentDeviceId: string | undefined,
+  limit: number
+): Promise<{
+  context: ReturnType<typeof getSessionContext>;
+  handoff: HandoffRow | null;
+  recentChat: ReturnType<typeof getRecentChat>;
+  recentSessions: ReturnType<typeof getRecentSessions>["sessions"];
+  recall: Awaited<ReturnType<typeof searchRecall>>;
+}> {
+  const context = getSessionContext(db, {
+    cwd,
+    user_id: userId,
+    current_device_id: currentDeviceId,
+  });
+  const handoffResult = loadHandoff(db, {
+    cwd,
+    project_scoped: true,
+    user_id: userId,
+    current_device_id: currentDeviceId,
+  });
+  const recentChat = getRecentChat(db, {
+    cwd,
+    project_scoped: true,
+    user_id: userId,
+    limit: Math.max(limit, 4),
+  });
+  const recentSessions = getRecentSessions(db, {
+    cwd,
+    project_scoped: true,
+    user_id: userId,
+    limit: 3,
+  }).sessions;
+  const recall = await searchRecall(db, {
+    query: "what were we just talking about",
+    cwd,
+    project_scoped: true,
+    user_id: userId,
+    limit,
+  });
+
+  return {
+    context,
+    handoff: handoffResult.handoff,
+    recentChat,
+    recentSessions,
+    recall,
   };
 }
 

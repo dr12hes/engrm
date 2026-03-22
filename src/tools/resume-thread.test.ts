@@ -70,12 +70,16 @@ describe("resumeThread", () => {
     });
 
     const result = await resumeThread(db, {
+      user_id: "david",
+      device_id: "desktop",
+    } as any, {
       cwd: "/tmp/repo",
       user_id: "david",
       current_device_id: "desktop",
     });
 
     expect(result.project_name).toBe("repo");
+    expect(result.repair_attempted).toBe(false);
     expect(result.resume_confidence).toBe("strong");
     expect(result.resume_basis).toContain("explicit handoff available");
     expect(result.resume_basis).toContain("current thread recovered");
@@ -121,10 +125,15 @@ describe("resumeThread", () => {
     });
 
     const result = await resumeThread(db, {
+      user_id: "david",
+      device_id: "desktop",
+    } as any, {
       cwd: "/tmp/repo",
       user_id: "david",
     });
 
+    expect(result.repair_attempted).toBe(true);
+    expect(result.repair_result).not.toBeNull();
     expect(result.resume_confidence).toBe("usable");
     expect(result.chat_coverage_state).toBe("history-backed");
     expect(result.resume_basis).toContain("history-backed chat continuity");

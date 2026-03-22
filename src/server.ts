@@ -747,13 +747,15 @@ server.tool(
     cwd: z.string().optional().describe("Optional cwd override for the project to resume"),
     limit: z.number().optional().describe("Max recall hits/chat snippets to include"),
     user_id: z.string().optional().describe("Optional user override"),
+    repair_if_needed: z.boolean().optional().describe("If true, attempt recall repair before resuming when continuity is still weak"),
   },
   async (params) => {
-    const result = await resumeThread(db, {
+    const result = await resumeThread(db, config, {
       cwd: params.cwd ?? process.cwd(),
       limit: params.limit,
       user_id: params.user_id ?? config.user_id,
       current_device_id: config.device_id,
+      repair_if_needed: params.repair_if_needed,
     });
 
     const projectLine = result.project_name ? `Project: ${result.project_name}\n` : "";
@@ -763,6 +765,9 @@ server.tool(
     const basisLines = result.resume_basis.length > 0
       ? result.resume_basis.map((item) => `- ${item}`).join("\n")
       : "- (none)";
+    const repairLine = result.repair_attempted
+      ? `Recall repair: attempted${result.repair_result ? ` · imported ${result.repair_result.imported_chat_messages} chat across ${result.repair_result.sessions_with_imports} session(s)` : ""}\n`
+      : "";
     const outcomes = result.recent_outcomes.length > 0
       ? result.recent_outcomes.map((item) => `- ${item}`).join("\n")
       : "- (none)";
@@ -787,6 +792,7 @@ server.tool(
             `${projectLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Resume confidence: ${result.resume_confidence}\n` +
+            repairLine +
             `Current thread: ${result.current_thread ?? "(unknown)"}\n` +
             `Latest request: ${result.latest_request ?? "(none)"}\n` +
             `${handoffLine}` +
