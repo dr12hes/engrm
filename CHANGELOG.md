@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.30
+
 ### Added
 
 - new `repair_recall` MCP tool can rehydrate recent project/session recall from transcript files or Claude `history.jsonl`, so OpenClaw-style recall failures are easier to repair in one pass instead of one session at a time
