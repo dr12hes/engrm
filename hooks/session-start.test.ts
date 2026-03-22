@@ -141,6 +141,7 @@ describe("session-start startup brief", () => {
     expect(lines.some((line) => line.includes("Current thread:"))).toBe(false);
     expect(lines.some((line) => line.includes("What's moved:"))).toBe(false);
     expect(lines.join("\n")).not.toContain("License changed from ELv2");
+    expect(lines.join("\n")).toContain("Fresh repo-local handoff is still thin");
   });
 
   test("shows recent work from summary outcomes before generic session rollups", () => {

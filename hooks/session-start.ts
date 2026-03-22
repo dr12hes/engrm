@@ -297,6 +297,7 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const projectSignals = buildProjectSignalLine(context);
   const shownItems = new Set<string>();
   const latestHandoffLines = buildLatestHandoffLines(context);
+  const freshContinuity = hasFreshContinuitySignal(context);
 
   if (latestHandoffLines.length > 0) {
     lines.push(`${c.cyan}Latest handoff:${c.reset}`);
@@ -410,6 +411,14 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   if (projectSignals) {
     lines.push(`${c.cyan}Signal mix:${c.reset}`);
     lines.push(`  - ${truncateInline(projectSignals, 160)}`);
+  }
+
+  if (
+    !freshContinuity &&
+    lines.length > 0 &&
+    (promptLines.length > 0 || recentChatLines.length > 0)
+  ) {
+    lines.push(`${c.dim}Fresh repo-local handoff is still thin; recent prompts/chat are more trustworthy than older memory here.${c.reset}`);
   }
 
   const stale = pickRelevantStaleDecision(context, latest);
@@ -859,7 +868,7 @@ function pickContextIndexObservations(
     return score;
   };
 
-  for (const obs of context.observations
+  for (const obs of getFreshStartupObservations(context)
     .filter((obs) => obs.type !== "digest")
     .filter((obs) => {
       const normalized = normalizeStartupItem(obs.title);
