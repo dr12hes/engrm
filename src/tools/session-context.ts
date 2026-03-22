@@ -15,6 +15,7 @@ import {
 } from "../context/inject.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { classifyContinuityState, classifyResumeFreshness, describeContinuityState } from "./project-memory-index.js";
+import { listRecallItems } from "./list-recall-items.js";
 
 export interface SessionContextInput {
   cwd?: string;
@@ -29,6 +30,8 @@ export interface SessionContextResult {
   canonical_id: string;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  recall_mode: "direct" | "indexed";
+  recall_items_ready: number;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -84,6 +87,13 @@ export function getSessionContext(
     limit: 8,
   });
   const recentChatMessages = recentChat.messages.length;
+  const recallIndex = listRecallItems(db, {
+    cwd,
+    project_scoped: true,
+    user_id: input.user_id,
+    current_device_id: input.current_device_id,
+    limit: 10,
+  });
   const latestSession = context.recentSessions?.[0] ?? null;
   const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
   const captureState: SessionContextResult["capture_state"] =
@@ -114,6 +124,8 @@ export function getSessionContext(
     canonical_id: context.canonical_id,
     continuity_state: continuityState,
     continuity_summary: describeContinuityState(continuityState),
+    recall_mode: recallIndex.continuity_mode,
+    recall_items_ready: recallIndex.items.length,
     resume_freshness: classifyResumeFreshness(resumeTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,
@@ -197,6 +209,7 @@ function buildSuggestedTools(
     context.observations.length > 0
   ) {
     tools.push("list_recall_items");
+    tools.push("load_recall_item");
     tools.push("resume_thread");
     tools.push("search_recall");
   }

@@ -119,6 +119,8 @@ describe("getProjectMemoryIndex", () => {
     });
 
     expect(result?.project).toBe("repo");
+    expect(result?.recall_mode).toBe("direct");
+    expect(result?.recall_items_ready).toBeGreaterThan(0);
     expect(result?.resume_freshness).toBe("live");
     expect(result?.resume_source_session_id).toBe("sess-1");
     expect(result?.resume_source_device_id).toBe("laptop");
@@ -151,7 +153,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");
     expect(result?.suggested_tools).toContain("list_recall_items");
+    expect(result?.suggested_tools).toContain("load_recall_item");
     expect(result?.suggested_tools).toContain("resume_thread");
-    expect(result?.suggested_tools).toContain("search_recall");
   });
 });

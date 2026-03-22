@@ -1379,6 +1379,7 @@ server.tool(
             `${projectLine}` +
             `${captureLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat.length} messages across ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
@@ -1611,6 +1612,7 @@ server.tool(
             `Project: ${result.project_name}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Loaded observations: ${result.session_count}\n` +
             `Searchable total: ${result.total_active}\n` +
@@ -1727,6 +1729,7 @@ server.tool(
             `Project: ${result.project}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Recent requests captured: ${result.recent_requests_count}\n` +
             `Recent tools captured: ${result.recent_tools_count}\n\n` +

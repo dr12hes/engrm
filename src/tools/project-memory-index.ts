@@ -13,6 +13,7 @@ import { getRecentTools } from "./recent-tools.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { estimateTokens } from "../context/inject.js";
+import { listRecallItems } from "./list-recall-items.js";
 
 export interface CaptureSummary {
   rich_sessions: number;
@@ -31,6 +32,8 @@ export interface ProjectMemoryIndexResult {
   canonical_id: string;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  recall_mode: "direct" | "indexed";
+  recall_items_ready: number;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -165,6 +168,12 @@ export function getProjectMemoryIndex(
     limit: 20,
   });
   const recentChatCount = recentChat.messages.length;
+  const recallIndex = listRecallItems(db, {
+    cwd,
+    project_scoped: true,
+    user_id: input.user_id,
+    limit: 10,
+  });
   const latestSession = recentSessions[0] ?? null;
   const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
   const recentOutcomes = observations
@@ -207,6 +216,8 @@ export function getProjectMemoryIndex(
     canonical_id: project.canonical_id,
     continuity_state: continuityState,
     continuity_summary: describeContinuityState(continuityState),
+    recall_mode: recallIndex.continuity_mode,
+    recall_items_ready: recallIndex.items.length,
     resume_freshness: classifyResumeFreshness(sourceTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,
@@ -361,6 +372,7 @@ function buildSuggestedTools(
   }
   if (requestCount > 0 || recentChatCount > 0 || observationCount > 0) {
     suggested.push("list_recall_items");
+    suggested.push("load_recall_item");
     suggested.push("resume_thread");
     suggested.push("search_recall");
   }

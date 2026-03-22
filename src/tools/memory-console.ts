@@ -15,6 +15,7 @@ import { getProjectMemoryIndex } from "./project-memory-index.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
+import { listRecallItems } from "./list-recall-items.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -27,6 +28,8 @@ export interface MemoryConsoleResult {
   capture_mode: "rich" | "observations-only";
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  recall_mode: "direct" | "indexed";
+  recall_items_ready: number;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -100,6 +103,12 @@ export function getMemoryConsole(
       user_id: input.user_id,
       limit: 6,
     });
+  const recallIndex = listRecallItems(db, {
+    cwd,
+    project_scoped: projectScoped,
+    user_id: input.user_id,
+    limit: 10,
+  });
   const projectIndex = projectScoped
     ? getProjectMemoryIndex(db, {
         cwd,
@@ -120,6 +129,8 @@ export function getMemoryConsole(
     capture_mode: requests.length > 0 || tools.length > 0 ? "rich" : "observations-only",
     continuity_state: continuityState,
     continuity_summary: projectIndex?.continuity_summary ?? describeContinuityState(continuityState),
+    recall_mode: projectIndex?.recall_mode ?? recallIndex.continuity_mode,
+    recall_items_ready: projectIndex?.recall_items_ready ?? recallIndex.items.length,
     resume_freshness: projectIndex?.resume_freshness ?? "stale",
     resume_source_session_id: projectIndex?.resume_source_session_id ?? sessions[0]?.session_id ?? null,
     resume_source_device_id: projectIndex?.resume_source_device_id ?? sessions[0]?.device_id ?? null,
@@ -167,7 +178,7 @@ function buildFallbackSuggestedTools(
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
-  if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("resume_thread", "search_recall");
+  if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("load_recall_item", "resume_thread", "search_recall");
   if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.unshift("list_recall_items");
   if ((sessionCount > 0 || chatCount > 0) && chatCoverageState !== "transcript-backed") suggested.push("repair_recall");
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");

@@ -12,6 +12,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - startup and workbench suggestions now surface `list_recall_items` ahead of lower-level recall tools, making Engrm's continuity flow more deterministic and easier to explain publicly
+- `memory_console`, `project_memory_index`, and `session_context` now expose recall-index readiness directly and suggest `load_recall_item` as the exact follow-on step after listing candidates
 
 ## 0.4.31
 

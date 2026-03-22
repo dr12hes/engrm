@@ -101,6 +101,8 @@ describe("getSessionContext", () => {
     expect(result).not.toBeNull();
     expect(result?.project_name).toBe("repo");
     expect(result?.continuity_state).toBe("fresh");
+    expect(result?.recall_mode).toBe("direct");
+    expect(result?.recall_items_ready).toBeGreaterThan(0);
     expect(result?.resume_freshness).toBe("live");
     expect(result?.resume_source_session_id).toBe("sess-1");
     expect(result?.resume_source_device_id).toBe("laptop");
@@ -121,8 +123,8 @@ describe("getSessionContext", () => {
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");
     expect(result?.suggested_tools).toContain("list_recall_items");
+    expect(result?.suggested_tools).toContain("load_recall_item");
     expect(result?.suggested_tools).toContain("resume_thread");
-    expect(result?.suggested_tools).toContain("search_recall");
     expect(result?.recent_outcomes).toContain("Exposed project memory index in MCP");
     expect(result?.hot_files).toEqual([
       { path: "src/tools/project-memory-index.ts", count: 1 },
