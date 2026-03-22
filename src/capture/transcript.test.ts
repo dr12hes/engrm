@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import {
   readTranscript,
+  readHistoryFallback,
   syncTranscriptChat,
   truncateTranscript,
   resolveTranscriptPath,
@@ -88,6 +89,95 @@ describe("syncTranscriptChat", () => {
 
     expect(again.imported).toBe(0);
     expect(db.getSessionChatMessages("sess-2", 10)).toHaveLength(2);
+  });
+
+  test("falls back to history.jsonl when session transcript is missing", async () => {
+    const fallbackCwd = join(tmpDir, "workspace");
+    const historyProject = join(tmpDir, "history-project");
+    mkdirSync(fallbackCwd, { recursive: true });
+    mkdirSync(historyProject, { recursive: true });
+    writeFileSync(join(fallbackCwd, ".engrm.json"), JSON.stringify({ project_id: "local/openclaw-shared" }));
+    writeFileSync(join(historyProject, ".engrm.json"), JSON.stringify({ project_id: "local/openclaw-shared" }));
+
+    const project = db.upsertProject({
+      canonical_id: "local/openclaw-shared",
+      name: "openclaw-shared",
+      local_path: fallbackCwd,
+    });
+    db.upsertSession("sess-hist", project.id, "david", "laptop", "claude-code");
+
+    const historyPath = join(tmpDir, "history.jsonl");
+    writeFileSync(
+      historyPath,
+      [
+        JSON.stringify({
+          display: "where is the openclaw executable",
+          project: historyProject,
+          sessionId: "other-session",
+          timestamp: Date.now(),
+        }),
+      ].join("\n")
+    );
+
+    process.env["ENGRM_CLAUDE_HISTORY_PATH"] = historyPath;
+    try {
+      const result = await syncTranscriptChat(
+        db,
+        { user_id: "david", device_id: "laptop" } as any,
+        "sess-hist",
+        fallbackCwd
+      );
+
+      expect(result.imported).toBe(1);
+      const messages = db.getSessionChatMessages("sess-hist", 10);
+      expect(messages).toHaveLength(1);
+      expect(messages[0]?.content).toContain("openclaw executable");
+      expect(messages[0]?.source_kind).toBe("hook");
+      expect(db.getSessionUserPrompts("sess-hist")).toHaveLength(1);
+    } finally {
+      delete process.env["ENGRM_CLAUDE_HISTORY_PATH"];
+    }
+  });
+});
+
+describe("readHistoryFallback", () => {
+  test("matches by project canonical id when session ids drift", () => {
+    const fallbackCwd = join(tmpdir(), `engrm-history-cwd-${Date.now()}`);
+    const historyProject = join(tmpdir(), `engrm-history-proj-${Date.now()}`);
+    mkdirSync(fallbackCwd, { recursive: true });
+    mkdirSync(historyProject, { recursive: true });
+    writeFileSync(join(fallbackCwd, ".engrm.json"), JSON.stringify({ project_id: "local/history-shared" }));
+    writeFileSync(join(historyProject, ".engrm.json"), JSON.stringify({ project_id: "local/history-shared" }));
+
+    const historyPath = join(tmpdir(), `engrm-history-${Date.now()}.jsonl`);
+    writeFileSync(
+      historyPath,
+      [
+        JSON.stringify({
+          display: "first prompt",
+          project: historyProject,
+          sessionId: "hist-a",
+          timestamp: Date.now() - 60_000,
+        }),
+        JSON.stringify({
+          display: "second prompt",
+          project: historyProject,
+          sessionId: "hist-b",
+          timestamp: Date.now(),
+        }),
+      ].join("\n")
+    );
+
+    const messages = readHistoryFallback("sess-x", fallbackCwd, {
+      historyPath,
+      startedAtEpoch: Math.floor(Date.now() / 1000) - 3600,
+      completedAtEpoch: Math.floor(Date.now() / 1000),
+    });
+
+    expect(messages.map((message) => message.text)).toEqual(["first prompt", "second prompt"]);
+    rmSync(historyPath, { force: true });
+    rmSync(fallbackCwd, { recursive: true, force: true });
+    rmSync(historyProject, { recursive: true, force: true });
   });
 });
 
