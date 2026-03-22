@@ -7,11 +7,13 @@ All notable changes to this repository should be documented here.
 ### Added
 
 - new `repair_recall` MCP tool can rehydrate recent project/session recall from transcript files or Claude `history.jsonl`, so OpenClaw-style recall failures are easier to repair in one pass instead of one session at a time
+- new `resume_thread` MCP tool builds one clear resume point from handoff, current thread, recent chat, and unified recall, so OpenClaw does not need to guess which continuity tool to call first
 
 ### Changed
 
 - `memory_console`, `project_memory_index`, `session_context`, `capture_quality`, and server text output now treat chat recall as `transcript-backed`, `history-backed`, `hook-only`, or `none`, instead of flattening everything non-transcript into the same bucket
 - startup and workbench hints now suggest `repair_recall` when recent chat exists but full transcript-backed continuity is still missing
+- startup and workbench hints now also surface `resume_thread` as the quickest “get me back into the live thread” path
 - chat/recall hints and coverage output now show `history` explicitly alongside `transcript` and `hook`, making OpenClaw-style recovery paths much easier to understand
 
 ## 0.4.29

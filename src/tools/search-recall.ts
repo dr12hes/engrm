@@ -2,6 +2,7 @@ import { detectProject } from "../storage/projects.js";
 import type { MemDatabase } from "../storage/sqlite.js";
 import { searchObservations, type SearchInput as ObservationSearchInput } from "./search.js";
 import { searchChat } from "./search-chat.js";
+import { getChatCaptureOrigin, type ChatCaptureOrigin } from "./recent-chat.js";
 
 export interface SearchRecallInput extends ObservationSearchInput {}
 
@@ -28,7 +29,7 @@ export interface SearchRecallEntry {
   title: string;
   detail: string;
   role?: "user" | "assistant";
-  source_kind?: "hook" | "transcript";
+  source_kind?: ChatCaptureOrigin;
 }
 
 export async function searchRecall(
@@ -154,8 +155,8 @@ function mergeRecallResults(
       session_id: item.session_id,
       id: item.id,
       role: item.role,
-      source_kind: item.source_kind,
-      title: `${item.role} [${item.source_kind}]`,
+      source_kind: getChatCaptureOrigin(item),
+      title: `${item.role} [${getChatCaptureOrigin(item)}]`,
       detail: item.content.replace(/\s+/g, " ").trim(),
     });
   }

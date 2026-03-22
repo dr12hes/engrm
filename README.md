@@ -227,6 +227,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
 | `repair_recall` | Rehydrate recent project/session recall from transcript or Claude history fallback when chat feels missing |
+| `resume_thread` | Build one clear resume point from handoff, current thread, recent chat, and unified recall |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
 | `search_chat` | Search recent chat recall with hybrid lexical + semantic matching, separately from reusable memory observations |
 | `search_recall` | Search durable memory and chat recall together when you do not want to guess the right lane |
@@ -335,6 +336,11 @@ For long sessions, Engrm now also supports transcript-backed chat hydration:
   - falls back to Claude `history.jsonl` when transcript/session alignment is missing
   - reports whether recovered chat is `transcript-backed`, `history-backed`, or still only `hook-only`
 
+- `resume_thread`
+  - gives OpenClaw or Claude one direct “where were we?” action
+  - combines the best handoff, the current thread, recent outcomes, recent chat, and unified recall
+  - makes Engrm usable as the primary live continuity layer instead of forcing agents to choose between low-level recall tools
+
 Before Claude compacts, Engrm now also:
 
 - refreshes transcript-backed chat recall for the active session
@@ -369,6 +375,7 @@ What each tool is good for:
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed, history-backed, or only hook-captured
 - when chat continuity is only partial, the workbench and startup hints now prefer `repair_recall`, and still suggest `refresh_chat_recall` when a single session likely just needs transcript hydration
+- `resume_thread` is now the fastest “get me back into the live thread” path when you do not want to think about which continuity lane to inspect
 - the workbench and startup hints now also prefer `search_recall` as the first “what were we just talking about?” path when recent prompts/chat/observations exist
 - `search_chat` now uses hybrid lexical + semantic ranking when sqlite-vec and local embeddings are available, so recent conversation recall is less dependent on exact wording
 - `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries

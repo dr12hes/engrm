@@ -546,6 +546,7 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
     (context.recentChatMessages?.length ?? 0) > 0 ||
     context.observations.length > 0
   ) {
+    hints.push("resume_thread");
     hints.push("search_recall");
   }
   if (context.observations.length > 0) {

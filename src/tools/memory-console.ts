@@ -159,12 +159,12 @@ function buildFallbackSuggestedTools(
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
-  if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("search_recall");
+  if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("resume_thread", "search_recall");
   if ((sessionCount > 0 || chatCount > 0) && chatCoverageState !== "transcript-backed") suggested.push("repair_recall");
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");
   if (sessionCount > 0) suggested.push("create_handoff", "recent_handoffs");
   if (handoffCount > 0) suggested.push("load_handoff");
   if (chatCount > 0 && chatCoverageState !== "transcript-backed") suggested.push("refresh_chat_recall");
   if (chatCount > 0) suggested.push("recent_chat", "search_chat");
-  return Array.from(new Set(suggested)).slice(0, 4);
+  return Array.from(new Set(suggested)).slice(0, 5);
 }

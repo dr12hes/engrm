@@ -165,6 +165,7 @@ function buildSuggestedTools(
     (context.recentChatMessages?.length ?? 0) > 0 ||
     context.observations.length > 0
   ) {
+    tools.push("resume_thread");
     tools.push("search_recall");
   }
   if (
@@ -188,5 +189,5 @@ function buildSuggestedTools(
   if ((context.recentChatMessages?.length ?? 0) > 0) {
     tools.push("recent_chat", "search_chat");
   }
-  return Array.from(new Set(tools)).slice(0, 4);
+  return Array.from(new Set(tools)).slice(0, 5);
 }

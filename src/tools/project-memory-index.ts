@@ -314,6 +314,7 @@ function buildSuggestedTools(
     suggested.push("activity_feed");
   }
   if (requestCount > 0 || recentChatCount > 0 || observationCount > 0) {
+    suggested.push("resume_thread");
     suggested.push("search_recall");
   }
   if ((sessions.length > 0 || recentChatCount > 0) && chatCoverageState !== "transcript-backed") {
@@ -331,5 +332,5 @@ function buildSuggestedTools(
   if (recentChatCount > 0) {
     suggested.push("recent_chat", "search_chat");
   }
-  return Array.from(new Set(suggested)).slice(0, 4);
+  return Array.from(new Set(suggested)).slice(0, 5);
 }

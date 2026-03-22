@@ -40,6 +40,7 @@ import { getSessionContext } from "./tools/session-context.js";
 import { captureGitWorktree } from "./tools/capture-git-worktree.js";
 import { captureRepoScan } from "./tools/capture-repo-scan.js";
 import { repairRecall } from "./tools/repair-recall.js";
+import { resumeThread } from "./tools/resume-thread.js";
 import { sendMessage } from "./tools/send-message.js";
 import { getMemoryStats } from "./tools/stats.js";
 import {
@@ -733,6 +734,63 @@ server.tool(
         {
           type: "text" as const,
           text: `${projectLine}${summaryLine}Recall search for "${params.query}":\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "resume_thread",
+  "Build a clear resume point for the current project by combining handoff, live recall, current thread, and recent chat continuity.",
+  {
+    cwd: z.string().optional().describe("Optional cwd override for the project to resume"),
+    limit: z.number().optional().describe("Max recall hits/chat snippets to include"),
+    user_id: z.string().optional().describe("Optional user override"),
+  },
+  async (params) => {
+    const result = await resumeThread(db, {
+      cwd: params.cwd ?? process.cwd(),
+      limit: params.limit,
+      user_id: params.user_id ?? config.user_id,
+      current_device_id: config.device_id,
+    });
+
+    const projectLine = result.project_name ? `Project: ${result.project_name}\n` : "";
+    const handoffLine = result.handoff
+      ? `Handoff: #${result.handoff.id} ${result.handoff.title}${result.handoff.source ? ` (${result.handoff.source})` : ""}\n`
+      : "Handoff: (none)\n";
+    const outcomes = result.recent_outcomes.length > 0
+      ? result.recent_outcomes.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
+    const chatLines = result.recent_chat.length > 0
+      ? result.recent_chat.map((item) => `- [${item.role}] [${item.source}] ${item.content.slice(0, 180)}`).join("\n")
+      : "- (none)";
+    const recallLines = result.recall_hits.length > 0
+      ? result.recall_hits.map((item) => {
+          const bits = [item.kind];
+          if (item.role) bits.push(item.role);
+          if (item.source_kind) bits.push(item.source_kind);
+          if (item.type) bits.push(item.type);
+          return `- [${bits.join(" · ")}] ${item.title}\n  ${item.detail.slice(0, 200)}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${projectLine}` +
+            `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Current thread: ${result.current_thread ?? "(unknown)"}\n` +
+            `Latest request: ${result.latest_request ?? "(none)"}\n` +
+            `${handoffLine}` +
+            `Chat recall: ${result.chat_coverage_state}\n` +
+            `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Recent outcomes:\n${outcomes}\n\n` +
+            `Recent chat:\n${chatLines}\n\n` +
+            `Recall hits:\n${recallLines}`,
         },
       ],
     };

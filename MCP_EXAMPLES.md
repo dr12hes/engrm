@@ -78,12 +78,14 @@ If you want to show continuity rather than just capture, add:
 6. `create_handoff`
 7. `recent_handoffs`
 8. `activity_feed`
-9. `refresh_chat_recall`
-10. `repair_recall`
+9. `resume_thread`
+10. `refresh_chat_recall`
+11. `repair_recall`
 
 That demo shows:
 
 - deliberate cross-device resume points
+- one direct “resume the thread” action for OpenClaw/Claude
 - synced chat recall kept separate from durable memory
 - one merged feed across prompts, tools, chat, handoffs, and observations
 - transcript-backed chat recovery for long sessions
