@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.32
+
 ### Added
 
 - new `list_recall_items` MCP tool gives Engrm a directory-style recall index of handoffs, session threads, chat snippets, and memory entries, so agents can list strong candidates first and then open an exact item instead of guessing
