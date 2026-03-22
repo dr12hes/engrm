@@ -496,6 +496,9 @@ function formatContextIndex(
   shownItems?: Set<string>
 ): { lines: string[]; observationIds: number[] } {
   const selected = pickContextIndexObservations(context, shownItems);
+  if (!hasFreshContinuitySignal(context)) {
+    return { lines: [], observationIds: [] };
+  }
   const rows = selected
     .map((obs) => {
       const icon = observationIcon(obs.type);

@@ -525,6 +525,56 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("docs/connectors/manifest-guide.md");
   });
 
+  test("startup hides context index when continuity is still thin", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 1,
+      available: 2759,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 676,
+      context: makeContext({
+        observations: [
+          {
+            id: 61,
+            type: "decision",
+            title: "License changed from ELv2 to FSL-1.1-ALv2, split model for Sentinel",
+            narrative: null,
+            facts: null,
+            files_read: null,
+            files_modified: null,
+            quality: 0.9,
+            created_at: "2026-03-10T10:00:00Z",
+            source_project: undefined,
+          },
+        ],
+        recentPrompts: [
+          {
+            id: 19,
+            session_id: "sess-19",
+            project_id: 1,
+            prompt_number: 19,
+            prompt: "please review eventservice as a thought we had addressed that issue",
+            prompt_hash: "hash-19",
+            cwd: "/Volumes/Data/devs/huginn",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            created_at_epoch: 1711159200,
+          },
+        ],
+        recentSessions: [],
+        recentHandoffs: [],
+        recentOutcomes: [],
+      }),
+    });
+
+    expect(splash).not.toContain("Handoff index:");
+    expect(splash).not.toContain("Pull detail:");
+    expect(splash).toContain("Fresh repo-local handoff is still thin");
+  });
+
   test("pull detail ids match the visible handoff index rows", () => {
     const splash = __testables.formatSplashScreen({
       projectName: "huginn",
