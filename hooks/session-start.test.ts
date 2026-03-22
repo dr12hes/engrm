@@ -80,6 +80,38 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("from Laptop");
   });
 
+  test("shows resume readiness with freshness and source cues", () => {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        recentSessions: [
+          {
+            id: 1,
+            session_id: "sess-1",
+            project_id: 1,
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            status: "active",
+            observation_count: 2,
+            started_at_epoch: nowEpoch - 120,
+            completed_at_epoch: null,
+            project_name: "huginn",
+            request: "Resume EventService routing",
+            completed: null,
+            prompt_count: 2,
+            tool_event_count: 1,
+          },
+        ],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Resume:"))).toBe(true);
+    expect(lines.join("\n")).toContain("live");
+    expect(lines.join("\n")).toContain("from Laptop");
+    expect(lines.join("\n")).toContain("sess-1");
+  });
+
   test("shows chat trail when recent prompts are absent", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({

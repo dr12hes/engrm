@@ -21,6 +21,7 @@ import type { InjectedContext } from "../src/context/inject.js";
 import { formatHandoffSource } from "../src/tools/handoffs.js";
 import {
   classifyContinuityState,
+  classifyResumeFreshness,
   describeContinuityState,
 } from "../src/tools/project-memory-index.js";
 import { detectStacksFromProject } from "../src/telemetry/stack-detect.js";
@@ -316,6 +317,11 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
     `${c.cyan}Continuity:${c.reset} ${continuityState} — ${truncateInline(describeContinuityState(continuityState), 160)}`
   );
 
+  const resumeReadiness = buildResumeReadinessLine(context);
+  if (resumeReadiness) {
+    lines.push(`${c.cyan}Resume:${c.reset} ${truncateInline(resumeReadiness, 160)}`);
+  }
+
   if (promptLines.length > 0) {
     lines.push(`${c.cyan}Asked recently:${c.reset}`);
     for (const item of promptLines) {
@@ -476,6 +482,28 @@ function buildLatestHandoffLines(context: InjectedContext): string[] {
   }
 
   return Array.from(new Set(lines.filter(Boolean))).slice(0, 2);
+}
+
+function buildResumeReadinessLine(context: InjectedContext): string | null {
+  const latestSession = context.recentSessions?.[0] ?? null;
+  const latestHandoff = context.recentHandoffs?.[0] ?? null;
+  const latestChatEpoch = (context.recentChatMessages ?? []).length > 0
+    ? context.recentChatMessages?.[context.recentChatMessages.length - 1]?.created_at_epoch ?? null
+    : null;
+  const sourceTimestamp = latestChatEpoch
+    ?? latestSession?.completed_at_epoch
+    ?? latestSession?.started_at_epoch
+    ?? latestHandoff?.created_at_epoch
+    ?? null;
+  if (!sourceTimestamp) return null;
+
+  const freshness = classifyResumeFreshness(sourceTimestamp);
+  const sourceSessionId = latestSession?.session_id ?? latestHandoff?.session_id ?? null;
+  const sourceDevice = latestSession?.device_id ?? latestHandoff?.device_id ?? null;
+  const bits = [freshness];
+  if (sourceDevice) bits.push(`from ${sourceDevice}`);
+  if (sourceSessionId) bits.push(sourceSessionId);
+  return bits.join(" · ");
 }
 
 function formatContextEconomics(data: SplashData): string[] {
