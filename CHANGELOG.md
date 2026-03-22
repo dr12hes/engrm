@@ -14,6 +14,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - local MCP text output now prints continuity summaries directly, so thin repos are described honestly instead of forcing stale memory to look active
+- startup handoff now prints the same `fresh / thin / cold` continuity state and leans toward `recent_chat`, `recent_handoffs`, and `refresh_chat_recall` when continuity is not yet fresh
 
 ## 0.4.25
 

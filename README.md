@@ -357,13 +357,13 @@ Recommended flow:
 What each tool is good for:
 
 - `capture_status` tells you whether prompt/tool hooks are live on this machine
-- `memory_console` gives the quickest project snapshot
+- `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries
 - `recent_sessions` helps you pick a session worth opening
 - `session_story` reconstructs one session in detail, including handoffs and chat recall
 - `tool_memory_index` shows which tools and plugins are actually producing durable memory
 - `session_tool_memory` shows which tool calls in one session turned into reusable memory and which did not
-- `project_memory_index` shows typed memory by repo
+- `project_memory_index` shows typed memory by repo, including continuity state and hot files
 - `workspace_memory_index` shows coverage across all repos on the machine
 
 ### Thin Tool Workflow

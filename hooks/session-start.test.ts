@@ -37,6 +37,7 @@ describe("session-start startup brief", () => {
 
     expect(lines.some((line) => line.includes("Asked recently:"))).toBe(true);
     expect(lines.some((line) => line.includes("What you're on:"))).toBe(false);
+    expect(lines.some((line) => line.includes("Continuity:"))).toBe(true);
   });
 
   test("shows the latest explicit handoff before the rest of the brief", () => {
@@ -142,6 +143,30 @@ describe("session-start startup brief", () => {
     expect(lines.some((line) => line.includes("What's moved:"))).toBe(false);
     expect(lines.join("\n")).not.toContain("License changed from ELv2");
     expect(lines.join("\n")).toContain("Fresh repo-local handoff is still thin");
+    expect(lines.join("\n")).toContain("Continuity:");
+    expect(__testables.getStartupContinuityState(
+      makeContext({
+        observations: [],
+        recentPrompts: [
+          {
+            id: 19,
+            session_id: "sess-19",
+            project_id: 1,
+            prompt_number: 19,
+            prompt: "please review eventservice as a thought we had addressed that issue",
+            prompt_hash: "hash-19",
+            cwd: "/Volumes/Data/devs/huginn",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            created_at_epoch: 1711159200,
+          },
+        ],
+        recentSessions: [],
+        recentHandoffs: [],
+        recentOutcomes: [],
+      })
+    )).toBe("thin");
   });
 
   test("shows recent work from summary outcomes before generic session rollups", () => {

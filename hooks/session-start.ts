@@ -19,6 +19,10 @@ import {
 } from "../src/context/inject.js";
 import type { InjectedContext } from "../src/context/inject.js";
 import { formatHandoffSource } from "../src/tools/handoffs.js";
+import {
+  classifyContinuityState,
+  describeContinuityState,
+} from "../src/tools/project-memory-index.js";
 import { detectStacksFromProject } from "../src/telemetry/stack-detect.js";
 import { computeAndSaveFingerprint } from "../src/telemetry/config-fingerprint.js";
 import { recommendPacks } from "../src/packs/recommender.js";
@@ -278,6 +282,7 @@ function formatSplashScreen(data: SplashData): string {
 
 function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const lines: string[] = [];
+  const continuityState = getStartupContinuityState(context);
   const latest = pickPrimarySummary(context);
   const observationFallbacks = buildObservationFallbacks(context);
   const promptFallback = buildPromptFallback(context);
@@ -306,6 +311,10 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
       rememberShownItem(shownItems, item);
     }
   }
+
+  lines.push(
+    `${c.cyan}Continuity:${c.reset} ${continuityState} — ${truncateInline(describeContinuityState(continuityState), 160)}`
+  );
 
   if (promptLines.length > 0) {
     lines.push(`${c.cyan}Asked recently:${c.reset}`);
@@ -518,6 +527,7 @@ function formatContextIndex(
 
 function formatInspectHints(context: InjectedContext, visibleObservationIds: number[] = []): string[] {
   const hints: string[] = [];
+  const continuityState = getStartupContinuityState(context);
 
   if ((context.recentSessions?.length ?? 0) > 0) {
     hints.push("recent_sessions");
@@ -540,6 +550,11 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
   }
   if ((context.recentChatMessages?.length ?? 0) > 0) {
     hints.push("recent_chat");
+  }
+  if (continuityState !== "fresh") {
+    hints.push("recent_chat");
+    hints.push("recent_handoffs");
+    hints.push("refresh_chat_recall");
   }
 
   const unique = Array.from(new Set(hints)).slice(0, 4);
@@ -1138,10 +1153,19 @@ function getFreshStartupObservations(
 }
 
 function hasFreshContinuitySignal(context: InjectedContext): boolean {
-  return (
-    (context.recentHandoffs?.length ?? 0) > 0 ||
-    (context.recentSessions?.length ?? 0) > 0 ||
-    (context.recentOutcomes?.length ?? 0) > 0
+  return getStartupContinuityState(context) === "fresh";
+}
+
+function getStartupContinuityState(
+  context: InjectedContext
+): "fresh" | "thin" | "cold" {
+  return classifyContinuityState(
+    context.recentPrompts?.length ?? 0,
+    context.recentToolEvents?.length ?? 0,
+    context.recentHandoffs?.length ?? 0,
+    context.recentChatMessages?.length ?? 0,
+    context.recentSessions ?? [],
+    context.recentOutcomes?.length ?? 0
   );
 }
 
@@ -1222,6 +1246,7 @@ function capitalize(value: string): string {
 export const __testables = {
   formatSplashScreen,
   formatVisibleStartupBrief,
+  getStartupContinuityState,
 };
 
 runHook("session-start", main);
