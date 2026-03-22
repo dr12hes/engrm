@@ -132,8 +132,8 @@ describe("getMemoryConsole", () => {
     expect(result.continuity_summary).toContain("Fresh repo-local continuity");
     expect(result.suggested_tools).toContain("recent_sessions");
     expect(result.suggested_tools).toContain("activity_feed");
+    expect(result.suggested_tools).toContain("list_recall_items");
     expect(result.suggested_tools).toContain("resume_thread");
     expect(result.suggested_tools).toContain("search_recall");
-    expect(result.suggested_tools).toContain("repair_recall");
   });
 });

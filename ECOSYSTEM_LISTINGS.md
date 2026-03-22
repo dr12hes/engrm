@@ -149,6 +149,8 @@ This is the MCP surface we should be comfortable pointing people at first:
   - show which tools are actually producing durable memory and which plugins they exercise
 - `capture_quality`
   - check whether raw chronology is healthy enough to trust memory quality on this machine
+- `list_recall_items`
+  - list the best current handoffs, session threads, chat snippets, and memory entries before opening one exact item
 - `resume_thread`
   - build one direct resume point with freshness, source, next actions, tool trail, and recent chat
 - `repair_recall`
@@ -179,11 +181,12 @@ Use prompts like these in listings, screenshots, and demos:
 Use this sequence when recording or testing Engrm for MCP directories:
 
 1. `capture_quality`
-2. `resume_thread`
-3. `tool_memory_index`
-4. `capture_git_worktree` or `capture_repo_scan`
-5. `session_tool_memory`
-6. `session_story`
+2. `list_recall_items`
+3. `resume_thread`
+4. `tool_memory_index`
+5. `capture_git_worktree` or `capture_repo_scan`
+6. `session_tool_memory`
+7. `session_story`
 
 That proves the full loop:
 

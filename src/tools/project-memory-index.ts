@@ -360,6 +360,7 @@ function buildSuggestedTools(
     suggested.push("activity_feed");
   }
   if (requestCount > 0 || recentChatCount > 0 || observationCount > 0) {
+    suggested.push("list_recall_items");
     suggested.push("resume_thread");
     suggested.push("search_recall");
   }

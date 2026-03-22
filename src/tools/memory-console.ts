@@ -168,6 +168,7 @@ function buildFallbackSuggestedTools(
   if (sessionCount > 0) suggested.push("recent_sessions");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
   if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("resume_thread", "search_recall");
+  if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.unshift("list_recall_items");
   if ((sessionCount > 0 || chatCount > 0) && chatCoverageState !== "transcript-backed") suggested.push("repair_recall");
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");
   if (sessionCount > 0) suggested.push("create_handoff", "recent_handoffs");

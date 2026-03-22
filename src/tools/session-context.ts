@@ -196,6 +196,7 @@ function buildSuggestedTools(
     (context.recentChatMessages?.length ?? 0) > 0 ||
     context.observations.length > 0
   ) {
+    tools.push("list_recall_items");
     tools.push("resume_thread");
     tools.push("search_recall");
   }

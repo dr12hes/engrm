@@ -37,6 +37,7 @@ import { getCaptureQuality } from "./tools/capture-quality.js";
 import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
+import { listRecallItems } from "./tools/list-recall-items.js";
 import { captureGitWorktree } from "./tools/capture-git-worktree.js";
 import { captureRepoScan } from "./tools/capture-repo-scan.js";
 import { repairRecall } from "./tools/repair-recall.js";
@@ -734,6 +735,56 @@ server.tool(
         {
           type: "text" as const,
           text: `${projectLine}${summaryLine}Recall search for "${params.query}":\n${rows}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "list_recall_items",
+  "USE FIRST when continuity feels fuzzy. List the best current handoffs, session threads, chat snippets, and memory entries before opening one exact item.",
+  {
+    cwd: z.string().optional().describe("Optional cwd override for project-scoped recall"),
+    project_scoped: z.boolean().optional().describe("Scope to project (default: true)"),
+    user_id: z.string().optional().describe("Optional user override"),
+    limit: z.number().optional().describe("Max recall items to list"),
+  },
+  async (params) => {
+    const result = listRecallItems(db, {
+      cwd: params.cwd ?? process.cwd(),
+      project_scoped: params.project_scoped,
+      user_id: params.user_id ?? config.user_id,
+      current_device_id: config.device_id,
+      limit: params.limit,
+    });
+
+    if (result.items.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: result.project
+              ? `No recall items found yet for project ${result.project}`
+              : "No recall items found yet.",
+          },
+        ],
+      };
+    }
+
+    const projectLine = result.project ? `Project: ${result.project}\n` : "";
+    const rows = result.items.map((item) =>
+      `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}${item.source_device_id ? ` (${item.source_device_id})` : ""}\n  ${item.detail}`
+    ).join("\n");
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${projectLine}Recall index (${result.continuity_mode} mode):\n` +
+            `${rows}\n\n` +
+            `Suggested next step: use load_handoff for handoff:* items, get_observations([...]) for obs:* items, or resume_thread when you want one merged resume point.`,
         },
       ],
     };
