@@ -1365,6 +1365,9 @@ server.tool(
     const topTypes = result.top_types.length > 0
       ? result.top_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
       : "- (none)";
+    const recallPreviewLines = result.recall_index_preview.length > 0
+      ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}`).join("\n")
+      : "- (none)";
 
     const projectLine = result.project ? `Project: ${result.project}\n\n` : "";
     const captureLine = result.capture_mode === "rich"
@@ -1386,6 +1389,7 @@ server.tool(
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Recall preview:\n${recallPreviewLines}\n\n` +
             `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Top types:\n${topTypes}\n\n` +
             `Assistant checkpoint types:\n${checkpointTypeLines}\n\n` +
@@ -1625,6 +1629,7 @@ server.tool(
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
             `Next actions: ${result.resume_next_actions.length > 0 ? result.resume_next_actions.join(" | ") : "(none)"}\n` +
+            `Recall preview: ${result.recall_index_preview.length > 0 ? result.recall_index_preview.map((item) => item.key).join(", ") : "(none)"}\n` +
             `Raw chronology active: ${result.raw_capture_active ? "yes" : "no"}\n\n` +
             result.preview,
         },
@@ -1720,6 +1725,9 @@ server.tool(
     const topTitles = result.top_titles.length > 0
       ? result.top_titles.map((item) => `- #${item.id} [${item.type}] ${item.title}`).join("\n")
       : "- (none)";
+    const recallPreviewLines = result.recall_index_preview.length > 0
+      ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}`).join("\n")
+      : "- (none)";
 
     return {
       content: [
@@ -1741,6 +1749,7 @@ server.tool(
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            `Recall preview:\n${recallPreviewLines}\n\n` +
             `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Observation counts:\n${counts}\n\n` +
             `Top types:\n${topTypes}\n\n` +

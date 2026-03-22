@@ -13,7 +13,7 @@ import { getRecentTools } from "./recent-tools.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { estimateTokens } from "../context/inject.js";
-import { listRecallItems } from "./list-recall-items.js";
+import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 
 export interface CaptureSummary {
   rich_sessions: number;
@@ -34,6 +34,7 @@ export interface ProjectMemoryIndexResult {
   continuity_summary: string;
   recall_mode: "direct" | "indexed";
   recall_items_ready: number;
+  recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title">>;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -218,6 +219,12 @@ export function getProjectMemoryIndex(
     continuity_summary: describeContinuityState(continuityState),
     recall_mode: recallIndex.continuity_mode,
     recall_items_ready: recallIndex.items.length,
+    recall_index_preview: recallIndex.items.slice(0, 3).map((item) => ({
+      key: item.key,
+      kind: item.kind,
+      freshness: item.freshness,
+      title: item.title,
+    })),
     resume_freshness: classifyResumeFreshness(sourceTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,

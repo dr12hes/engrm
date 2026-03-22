@@ -15,7 +15,7 @@ import { getProjectMemoryIndex } from "./project-memory-index.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
-import { listRecallItems } from "./list-recall-items.js";
+import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -30,6 +30,7 @@ export interface MemoryConsoleResult {
   continuity_summary: string;
   recall_mode: "direct" | "indexed";
   recall_items_ready: number;
+  recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title">>;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -131,6 +132,12 @@ export function getMemoryConsole(
     continuity_summary: projectIndex?.continuity_summary ?? describeContinuityState(continuityState),
     recall_mode: projectIndex?.recall_mode ?? recallIndex.continuity_mode,
     recall_items_ready: projectIndex?.recall_items_ready ?? recallIndex.items.length,
+    recall_index_preview: projectIndex?.recall_index_preview ?? recallIndex.items.slice(0, 3).map((item) => ({
+      key: item.key,
+      kind: item.kind,
+      freshness: item.freshness,
+      title: item.title,
+    })),
     resume_freshness: projectIndex?.resume_freshness ?? "stale",
     resume_source_session_id: projectIndex?.resume_source_session_id ?? sessions[0]?.session_id ?? null,
     resume_source_device_id: projectIndex?.resume_source_device_id ?? sessions[0]?.device_id ?? null,

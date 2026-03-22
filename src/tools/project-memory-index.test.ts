@@ -121,6 +121,8 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.project).toBe("repo");
     expect(result?.recall_mode).toBe("direct");
     expect(result?.recall_items_ready).toBeGreaterThan(0);
+    expect(result?.recall_index_preview.length).toBeGreaterThan(0);
+    expect(result?.recall_index_preview[0]?.key).toContain(":");
     expect(result?.resume_freshness).toBe("live");
     expect(result?.resume_source_session_id).toBe("sess-1");
     expect(result?.resume_source_device_id).toBe("laptop");

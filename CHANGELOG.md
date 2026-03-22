@@ -13,6 +13,7 @@ All notable changes to this repository should be documented here.
 
 - startup and workbench suggestions now surface `list_recall_items` ahead of lower-level recall tools, making Engrm's continuity flow more deterministic and easier to explain publicly
 - `memory_console`, `project_memory_index`, and `session_context` now expose recall-index readiness directly and suggest `load_recall_item` as the exact follow-on step after listing candidates
+- `memory_console`, `project_memory_index`, and `session_context` now preview a few exact recall keys and titles directly, so the list-first / load-exact protocol is easier to follow without a separate exploratory step
 - injected context now includes a compact recall index, and startup hints now point at `load_recall_item`, so the list-first / load-exact protocol is visible to both the model and the operator
 
 ## 0.4.31
