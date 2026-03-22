@@ -690,7 +690,7 @@ function buildRecentOutcomeLines(
   }
 
   if (picked.length < 2) {
-    for (const obs of context.observations) {
+    for (const obs of getFreshStartupObservations(context)) {
       if (!["bugfix", "feature", "refactor", "change", "decision"].includes(obs.type)) continue;
       const title = stripInlineSectionLabel(obs.title);
       if (!title || looksLikeFileOperationTitle(title)) continue;
@@ -721,8 +721,10 @@ function buildCurrentThreadLine(
   const request = buildPromptFallback(context);
   const outcome = buildRecentOutcomeLines(context, summary)[0] ?? null;
   const tool = buildToolFallbacks(context)[0] ?? null;
+  const hasContinuity = hasFreshContinuitySignal(context);
 
   if (outcome && tool) return `${outcome} · ${tool}`;
+  if (!hasContinuity && !outcome) return request;
   return outcome ?? request ?? null;
 }
 
@@ -1070,7 +1072,7 @@ function buildObservationFallbacks(context: InjectedContext): {
   investigated: string | null;
   completed: string | null;
 } {
-  const request = context.observations
+  const request = getFreshStartupObservations(context)
     .find((obs) => obs.type !== "decision" && !looksLikeFileOperationTitle(obs.title))
     ?.title ?? null;
 
@@ -1102,7 +1104,7 @@ function collectObservationTitles(
 ): string | null {
   const seen = new Set<string>();
   const picked: string[] = [];
-  for (const obs of context.observations) {
+  for (const obs of getFreshStartupObservations(context)) {
     if (!predicate(obs)) continue;
     const normalized = stripInlineSectionLabel(obs.title)
       .toLowerCase()
@@ -1114,6 +1116,27 @@ function collectObservationTitles(
     if (picked.length >= limit) break;
   }
   return picked.length ? picked.join("\n") : null;
+}
+
+function getFreshStartupObservations(
+  context: InjectedContext
+): InjectedContext["observations"] {
+  if (hasFreshContinuitySignal(context)) return context.observations;
+  return context.observations.filter((obs) => observationAgeDays(obs) <= 3);
+}
+
+function hasFreshContinuitySignal(context: InjectedContext): boolean {
+  return (
+    (context.recentHandoffs?.length ?? 0) > 0 ||
+    (context.recentSessions?.length ?? 0) > 0 ||
+    (context.recentOutcomes?.length ?? 0) > 0
+  );
+}
+
+function observationAgeDays(obs: InjectedContext["observations"][number]): number {
+  const createdAt = new Date(obs.created_at).getTime();
+  if (!Number.isFinite(createdAt)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, (Date.now() - createdAt) / 86400000);
 }
 
 function stripInlineSectionLabel(value: string): string {

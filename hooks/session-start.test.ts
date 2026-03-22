@@ -103,6 +103,46 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("event feed plumbed in");
   });
 
+  test("does not surface stale observations as the current thread for thin projects", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        observations: [
+          {
+            id: 61,
+            type: "decision",
+            title: "License changed from ELv2 to FSL-1.1-ALv2, split model for Sentinel",
+            narrative: null,
+            facts: null,
+            quality: 0.9,
+            created_at: "2026-03-10T10:00:00Z",
+          },
+        ],
+        recentPrompts: [
+          {
+            id: 19,
+            session_id: "sess-19",
+            project_id: 1,
+            prompt_number: 19,
+            prompt: "please review eventservice as a thought we had addressed that issue",
+            prompt_hash: "hash-19",
+            cwd: "/Volumes/Data/devs/huginn",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            created_at_epoch: 1711159200,
+          },
+        ],
+        recentSessions: [],
+        recentHandoffs: [],
+        recentOutcomes: [],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Current thread:"))).toBe(false);
+    expect(lines.some((line) => line.includes("What's moved:"))).toBe(false);
+    expect(lines.join("\n")).not.toContain("License changed from ELv2");
+  });
+
   test("shows recent work from summary outcomes before generic session rollups", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({
