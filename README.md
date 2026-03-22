@@ -360,6 +360,7 @@ What each tool is good for:
 - `capture_quality` shows whether chat recall is transcript-backed or still hook-only across the workspace
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed or only hook-captured
+- when chat continuity is only hook-captured, the workbench and startup hints now prefer `refresh_chat_recall`
 - `activity_feed` shows the merged chronology across prompts, tools, chat, handoffs, observations, and summaries
 - `recent_sessions` helps you pick a session worth opening
 - `session_story` reconstructs one session in detail, including handoffs and chat recall

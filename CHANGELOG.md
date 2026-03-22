@@ -7,6 +7,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - `memory_console`, `project_memory_index`, and `session_context` now expose chat recall coverage too, so the main workbench can show whether project recall is transcript-backed, hook-only, or absent without opening the dedicated chat tools
+- startup and workbench suggestions now prioritize `refresh_chat_recall` when chat continuity is present but still hook-only
 
 ## 0.4.26
 

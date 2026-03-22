@@ -126,7 +126,7 @@ export function getSessionContext(
     capture_state: captureState,
     raw_capture_active: recentRequests > 0 || recentTools > 0,
     estimated_read_tokens: estimateTokens(preview),
-    suggested_tools: buildSuggestedTools(context),
+    suggested_tools: buildSuggestedTools(context, recentChat.transcript_backed),
     preview,
   };
 }
@@ -157,7 +157,8 @@ function parseJsonArray(value: string | null | undefined): string[] {
 }
 
 function buildSuggestedTools(
-  context: NonNullable<ReturnType<typeof buildSessionContext>>
+  context: NonNullable<ReturnType<typeof buildSessionContext>>,
+  transcriptBackedChat: boolean
 ): string[] {
   const tools: string[] = [];
   if ((context.recentSessions?.length ?? 0) > 0) {
@@ -175,6 +176,11 @@ function buildSuggestedTools(
   if ((context.recentHandoffs?.length ?? 0) > 0) {
     tools.push("load_handoff");
   }
-  tools.push("recent_chat", "search_chat", "refresh_chat_recall");
+  if ((context.recentChatMessages?.length ?? 0) > 0 && !transcriptBackedChat) {
+    tools.push("refresh_chat_recall");
+  }
+  if ((context.recentChatMessages?.length ?? 0) > 0) {
+    tools.push("recent_chat", "search_chat");
+  }
   return Array.from(new Set(tools)).slice(0, 4);
 }

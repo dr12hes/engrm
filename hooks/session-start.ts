@@ -551,10 +551,12 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
   if ((context.recentChatMessages?.length ?? 0) > 0) {
     hints.push("recent_chat");
   }
+  if (hasHookOnlyRecentChat(context)) {
+    hints.push("refresh_chat_recall");
+  }
   if (continuityState !== "fresh") {
     hints.push("recent_chat");
     hints.push("recent_handoffs");
-    hints.push("refresh_chat_recall");
   }
 
   const unique = Array.from(new Set(hints)).slice(0, 4);
@@ -1167,6 +1169,11 @@ function getStartupContinuityState(
     context.recentSessions ?? [],
     context.recentOutcomes?.length ?? 0
   );
+}
+
+function hasHookOnlyRecentChat(context: InjectedContext): boolean {
+  const recentChat = context.recentChatMessages ?? [];
+  return recentChat.length > 0 && !recentChat.some((message) => message.source_kind === "transcript");
 }
 
 function observationAgeDays(obs: InjectedContext["observations"][number]): number {

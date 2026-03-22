@@ -174,7 +174,14 @@ export function getProjectMemoryIndex(
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
     .slice(0, 5);
-  const suggestedTools = buildSuggestedTools(recentSessions, recentRequestsCount, recentToolsCount, observations.length);
+  const suggestedTools = buildSuggestedTools(
+    recentSessions,
+    recentRequestsCount,
+    recentToolsCount,
+    observations.length,
+    recentChatCount,
+    recentChat.transcript_backed
+  );
   const estimatedReadTokens = estimateTokens(
     [
       recentOutcomes.join("\n"),
@@ -302,7 +309,9 @@ function buildSuggestedTools(
   sessions: RecentSessionRow[],
   requestCount: number,
   toolCount: number,
-  observationCount: number
+  observationCount: number,
+  recentChatCount: number,
+  transcriptBackedChat: boolean
 ): string[] {
   const suggested: string[] = [];
   if (sessions.length > 0) {
@@ -317,6 +326,11 @@ function buildSuggestedTools(
   if (sessions.length > 0) {
     suggested.push("create_handoff", "recent_handoffs");
   }
-  suggested.push("recent_chat");
+  if (recentChatCount > 0 && !transcriptBackedChat) {
+    suggested.push("refresh_chat_recall");
+  }
+  if (recentChatCount > 0) {
+    suggested.push("recent_chat", "search_chat");
+  }
   return Array.from(new Set(suggested)).slice(0, 4);
 }

@@ -150,7 +150,8 @@ export function getMemoryConsole(
       tools.length,
       observations.length,
       recentHandoffs.length,
-      recentChat.messages.length
+      recentChat.messages.length,
+      recentChat.transcript_backed
     ),
   };
 }
@@ -161,7 +162,8 @@ function buildFallbackSuggestedTools(
   toolCount: number,
   observationCount: number,
   handoffCount: number,
-  chatCount: number
+  chatCount: number,
+  transcriptBackedChat: boolean
 ): string[] {
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions");
@@ -169,6 +171,7 @@ function buildFallbackSuggestedTools(
   if (observationCount > 0) suggested.push("tool_memory_index", "capture_git_worktree");
   if (sessionCount > 0) suggested.push("create_handoff", "recent_handoffs");
   if (handoffCount > 0) suggested.push("load_handoff");
-  if (chatCount > 0) suggested.push("recent_chat");
+  if (chatCount > 0 && !transcriptBackedChat) suggested.push("refresh_chat_recall");
+  if (chatCount > 0) suggested.push("recent_chat", "search_chat");
   return Array.from(new Set(suggested)).slice(0, 4);
 }
