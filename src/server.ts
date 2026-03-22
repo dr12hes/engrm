@@ -38,6 +38,7 @@ import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
 import { listRecallItems } from "./tools/list-recall-items.js";
+import { loadRecallItem } from "./tools/load-recall-item.js";
 import { captureGitWorktree } from "./tools/capture-git-worktree.js";
 import { captureRepoScan } from "./tools/capture-repo-scan.js";
 import { repairRecall } from "./tools/repair-recall.js";
@@ -785,6 +786,107 @@ server.tool(
             `${projectLine}Recall index (${result.continuity_mode} mode):\n` +
             `${rows}\n\n` +
             `Suggested next step: use load_handoff for handoff:* items, get_observations([...]) for obs:* items, or resume_thread when you want one merged resume point.`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "load_recall_item",
+  "Load one exact recall item returned by list_recall_items. Use this after listing candidates to avoid fuzzy recall guessing.",
+  {
+    key: z.string().describe("Exact recall key from list_recall_items, such as handoff:12, session:sess-1, chat:55, or obs:402"),
+    cwd: z.string().optional().describe("Optional cwd override"),
+    user_id: z.string().optional().describe("Optional user override"),
+  },
+  async (params) => {
+    const result = loadRecallItem(db, {
+      key: params.key,
+      cwd: params.cwd ?? process.cwd(),
+      user_id: params.user_id ?? config.user_id,
+      current_device_id: config.device_id,
+    });
+
+    if (!result.payload) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `No recall item found for ${params.key}`,
+          },
+        ],
+      };
+    }
+
+    if (result.payload.type === "handoff") {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              `Recall item ${result.key} [handoff]\n` +
+              `Title: ${result.title}\n` +
+              `Session: ${result.session_id ?? "(unknown)"}\n` +
+              `Source: ${result.source_device_id ?? "(unknown)"}\n\n` +
+              `${result.payload.narrative ?? "(no narrative)"}`,
+          },
+        ],
+      };
+    }
+
+    if (result.payload.type === "thread") {
+      const outcomes = result.payload.recent_outcomes.length > 0
+        ? result.payload.recent_outcomes.map((item) => `- ${item}`).join("\n")
+        : "- (none)";
+      const hotFiles = result.payload.hot_files.length > 0
+        ? result.payload.hot_files.map((item) => `- ${item.path}${item.count > 1 ? ` (${item.count})` : ""}`).join("\n")
+        : "- (none)";
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              `Recall item ${result.key} [thread]\n` +
+              `Title: ${result.title}\n` +
+              `Session: ${result.session_id ?? "(unknown)"}\n` +
+              `Source: ${result.source_device_id ?? "(unknown)"}\n` +
+              `Latest request: ${result.payload.latest_request ?? "(none)"}\n` +
+              `Current thread: ${result.payload.current_thread ?? "(none)"}\n\n` +
+              `Recent outcomes:\n${outcomes}\n\n` +
+              `Hot files:\n${hotFiles}`,
+          },
+        ],
+      };
+    }
+
+    if (result.payload.type === "chat") {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              `Recall item ${result.key} [chat]\n` +
+              `Title: ${result.title}\n` +
+              `Session: ${result.session_id ?? "(unknown)"}\n` +
+              `Source: ${result.source_device_id ?? "(unknown)"}\n\n` +
+              `${result.payload.content}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Recall item ${result.key} [memory]\n` +
+            `Title: ${result.title}\n` +
+            `Session: ${result.session_id ?? "(unknown)"}\n` +
+            `Source: ${result.source_device_id ?? "(unknown)"}\n` +
+            `Type: ${result.payload.observation_type}\n\n` +
+            `${result.payload.narrative ?? result.payload.facts ?? "(no detail)"}`,
         },
       ],
     };

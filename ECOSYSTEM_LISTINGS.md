@@ -151,6 +151,8 @@ This is the MCP surface we should be comfortable pointing people at first:
   - check whether raw chronology is healthy enough to trust memory quality on this machine
 - `list_recall_items`
   - list the best current handoffs, session threads, chat snippets, and memory entries before opening one exact item
+- `load_recall_item`
+  - load one exact recall key after listing, so continuity recovery is more deterministic and less fuzzy
 - `resume_thread`
   - build one direct resume point with freshness, source, next actions, tool trail, and recent chat
 - `repair_recall`
@@ -182,11 +184,12 @@ Use this sequence when recording or testing Engrm for MCP directories:
 
 1. `capture_quality`
 2. `list_recall_items`
-3. `resume_thread`
-4. `tool_memory_index`
-5. `capture_git_worktree` or `capture_repo_scan`
-6. `session_tool_memory`
-7. `session_story`
+3. `load_recall_item`
+4. `resume_thread`
+5. `tool_memory_index`
+6. `capture_git_worktree` or `capture_repo_scan`
+7. `session_tool_memory`
+8. `session_story`
 
 That proves the full loop:
 

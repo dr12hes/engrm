@@ -31,6 +31,7 @@ The goal is to turn useful local work into durable memory that can be recalled l
 - `tool_memory_index`
 - `capture_quality`
 - `list_recall_items`
+- `load_recall_item`
 - `resume_thread`
 - `repair_recall`
 
@@ -65,11 +66,12 @@ For a quick public demo or MCP listing video:
 
 1. `capture_quality`
 2. `list_recall_items`
-3. `resume_thread`
-4. `tool_memory_index`
-5. `capture_git_worktree` or `capture_repo_scan`
-6. `session_tool_memory`
-7. `session_story`
+3. `load_recall_item`
+4. `resume_thread`
+5. `tool_memory_index`
+6. `capture_git_worktree` or `capture_repo_scan`
+7. `session_tool_memory`
+8. `session_story`
 
 This proves the full loop:
 
@@ -108,6 +110,7 @@ Use prompts like these in demos, screenshots, and listings:
 - "Tell me whether raw chronology is healthy on this machine."
 - "Save this OpenClaw research and posting run as reusable memory."
 - "List the best recall items for this repo before you resume anything."
+- "Load recall item `handoff:12`."
 - "Resume the current thread and tell me how fresh that resume point is."
 - "Repair recall for this repo before trying to resume the thread."
 

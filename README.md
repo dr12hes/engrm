@@ -228,6 +228,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
 | `repair_recall` | Rehydrate recent project/session recall from transcript or Claude history fallback when chat feels missing |
 | `list_recall_items` | List the best current handoffs, threads, chat snippets, and memory entries before opening one exact item |
+| `load_recall_item` | Load one exact recall item returned by `list_recall_items` |
 | `resume_thread` | Build one clear resume point from handoff, current thread, recent chat, and unified recall |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
 | `search_chat` | Search recent chat recall with hybrid lexical + semantic matching, separately from reusable memory observations |
@@ -255,6 +256,8 @@ If you are evaluating Engrm as an MCP server, start with this small set first:
   - check whether raw chronology is healthy across the workspace before judging memory quality
 - `list_recall_items`
   - list the best current handoffs, session threads, chat snippets, and memory entries before opening one exact item
+- `load_recall_item`
+  - open one exact recall key from the index without falling back to fuzzy retrieval
 - `resume_thread`
   - get one direct “where were we?” resume point with freshness, source, tool trail, and next actions
 - `repair_recall`
@@ -386,6 +389,7 @@ What each tool is good for:
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, and chat in one place
 - `list_recall_items` is the deterministic directory-first path when you want to inspect the best candidate handoffs/threads before opening one exact item
+- `load_recall_item` completes that protocol by letting agents open one exact recall key directly after listing
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed, history-backed, or only hook-captured
 - `memory_console`, `project_memory_index`, and `session_context` also expose resume-readiness directly, so you can see whether a repo is `live`, `recent`, or `stale` before drilling deeper
 - when chat continuity is only partial, the workbench and startup hints now prefer `repair_recall`, and still suggest `refresh_chat_recall` when a single session likely just needs transcript hydration
