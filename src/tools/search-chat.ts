@@ -53,9 +53,12 @@ export async function searchChat(
     }
   }
 
-  const lexical = db.searchChatMessages(input.query, projectId, limit * 3, input.user_id);
+  const recallIntent = isRecentThreadRecallQuery(normalizedQuery);
+  const lexical = recallIntent
+    ? db.getRecentChatMessages(projectId, limit * 4, input.user_id)
+    : db.searchChatMessages(input.query, projectId, limit * 3, input.user_id);
   let semantic: VecChatMatchRow[] = [];
-  const queryEmbedding = db.vecAvailable
+  const queryEmbedding = db.vecAvailable && !recallIntent
     ? await embedText(composeChatEmbeddingText(queryForEmbedding(input.query)))
     : null;
   if (queryEmbedding && db.vecAvailable) {
@@ -124,6 +127,26 @@ function queryForEmbedding(query: string): string {
 
 function normalizeQuery(query: string): string {
   return query.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function isRecentThreadRecallQuery(query: string): boolean {
+  const normalized = query.replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!normalized) return false;
+
+  return [
+    "what were we just talking about",
+    "what were we talking about",
+    "what did we just talk about",
+    "what did we talk about",
+    "what were we discussing",
+    "what were we just discussing",
+    "catch me up",
+    "resume the thread",
+    "where were we",
+    "where did we leave off",
+    "what is the current thread",
+    "what's the current thread",
+  ].some((pattern) => normalized.includes(pattern));
 }
 
 function computeChatQualityBoost(

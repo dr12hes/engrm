@@ -103,4 +103,50 @@ describe("searchChat", () => {
     expect(result.messages[0]?.session_id).toBe("sess-new");
     expect(result.messages[0]?.source_kind).toBe("transcript");
   });
+
+  test("treats meta recall queries as recent thread recovery", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+    const now = Math.floor(Date.now() / 1000);
+
+    db.insertChatMessage({
+      session_id: "sess-old",
+      project_id: project.id,
+      role: "assistant",
+      content: "Old thread about licensing and packaging.",
+      user_id: "david",
+      device_id: "desktop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+      created_at_epoch: now - 3 * 24 * 3600,
+    });
+    db.insertChatMessage({
+      session_id: "sess-live",
+      project_id: project.id,
+      role: "user",
+      content: "Let's keep working on eventservice and notification routing.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+      created_at_epoch: now - 60,
+    });
+
+    const result = await searchChat(db, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+      query: "what were we just talking about",
+      limit: 2,
+    });
+
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0]?.session_id).toBe("sess-live");
+    expect(result.messages[0]?.content).toContain("eventservice");
+    expect(result.semantic_backed).toBe(false);
+  });
 });
