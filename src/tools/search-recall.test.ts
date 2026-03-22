@@ -104,4 +104,51 @@ describe("searchRecall", () => {
     expect(result.results[0]?.kind).toBe("chat");
     expect(result.results[0]?.detail).toContain("eventservice");
   });
+
+  test("prefers entries from the most recent active session", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+    const now = Math.floor(Date.now() / 1000);
+
+    db.upsertSession("sess-old", project.id, "david", "desktop", "claude-code");
+    db.upsertSession("sess-new", project.id, "david", "laptop", "claude-code");
+
+    db.insertObservation({
+      session_id: "sess-old",
+      project_id: project.id,
+      type: "decision",
+      title: "Use eventservice as the shared event dispatch surface",
+      narrative: "Older matching memory.",
+      quality: 0.9,
+      user_id: "david",
+      device_id: "desktop",
+      created_at: new Date((now - 2 * 24 * 3600) * 1000).toISOString(),
+      created_at_epoch: now - 2 * 24 * 3600,
+    });
+
+    db.insertChatMessage({
+      session_id: "sess-new",
+      project_id: project.id,
+      role: "assistant",
+      content: "We are actively reviewing eventservice and notification flow.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+      created_at_epoch: now - 45,
+    });
+
+    const result = await searchRecall(db, {
+      query: "eventservice",
+      cwd: "/tmp/repo",
+      user_id: "david",
+    });
+
+    expect(result.results[0]?.kind).toBe("chat");
+    expect(result.results[0]?.session_id).toBe("sess-new");
+  });
 });

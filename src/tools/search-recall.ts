@@ -1,3 +1,4 @@
+import { detectProject } from "../storage/projects.js";
 import type { MemDatabase } from "../storage/sqlite.js";
 import { searchObservations, type SearchInput as ObservationSearchInput } from "./search.js";
 import { searchChat } from "./search-chat.js";
@@ -45,6 +46,21 @@ export async function searchRecall(
 
   const limit = Math.max(1, Math.min(input.limit ?? 10, 50));
   const recentThreadQuery = isRecentThreadRecallQuery(query);
+  const projectScoped = input.project_scoped !== false;
+  let projectId: number | null = null;
+  let projectName: string | undefined;
+
+  if (projectScoped) {
+    const cwd = input.cwd ?? process.cwd();
+    const detected = detectProject(cwd);
+    const project = db.getProjectByCanonicalId(detected.canonical_id);
+    if (project) {
+      projectId = project.id;
+      projectName = project.name;
+    }
+  }
+
+  const recentSessions = db.getRecentSessions(projectId, 3, input.user_id);
   const [memory, chat] = await Promise.all([
     searchObservations(db, {
       ...input,
@@ -59,11 +75,17 @@ export async function searchRecall(
     }),
   ]);
 
-  const merged = mergeRecallResults(memory.observations, chat.messages, limit, recentThreadQuery);
+  const merged = mergeRecallResults(
+    memory.observations,
+    chat.messages,
+    limit,
+    recentThreadQuery,
+    buildSessionPriorityMap(recentSessions)
+  );
 
   return {
     query,
-    project: memory.project ?? chat.project,
+    project: memory.project ?? chat.project ?? projectName,
     results: merged,
     totals: {
       memory: memory.total,
@@ -76,7 +98,8 @@ function mergeRecallResults(
   memory: Awaited<ReturnType<typeof searchObservations>>["observations"],
   chat: Awaited<ReturnType<typeof searchChat>>["messages"],
   limit: number,
-  recentThreadQuery: boolean
+  recentThreadQuery: boolean,
+  sessionPriority: Map<string, number>
 ): SearchRecallEntry[] {
   const nowEpoch = Math.floor(Date.now() / 1000);
   const scored: SearchRecallEntry[] = [];
@@ -90,7 +113,9 @@ function mergeRecallResults(
       ageHours > 24 * 7 ? 0.12 :
       ageHours > 72 ? 0.05 : 0;
     const continuityPenalty = recentThreadQuery ? 0.45 : 0;
-    const score = base + Math.max(0, item.rank) * 0.08 - freshnessPenalty - continuityPenalty;
+    const sessionBoost = item.session_id ? (sessionPriority.get(item.session_id) ?? 0) : 0;
+    const score =
+      base + Math.max(0, item.rank) * 0.08 + sessionBoost - freshnessPenalty - continuityPenalty;
     scored.push({
       kind: "memory",
       rank: score,
@@ -121,9 +146,10 @@ function mergeRecallResults(
     const recencyBoost = ageHours < 24 ? 0.18 : ageHours < 72 ? 0.08 : 0.02;
     const sourceBoost = item.source_kind === "transcript" ? 0.1 : 0.04;
     const continuityBoost = recentThreadQuery ? 0.35 : 0;
+    const sessionBoost = sessionPriority.get(item.session_id) ?? 0;
     scored.push({
       kind: "chat",
-      rank: base + immediacyBoost + recencyBoost + sourceBoost + continuityBoost,
+      rank: base + immediacyBoost + recencyBoost + sourceBoost + continuityBoost + sessionBoost,
       created_at_epoch: item.created_at_epoch,
       session_id: item.session_id,
       id: item.id,
@@ -140,6 +166,27 @@ function mergeRecallResults(
       return (b.created_at_epoch ?? 0) - (a.created_at_epoch ?? 0);
     })
     .slice(0, limit);
+}
+
+function buildSessionPriorityMap(
+  sessions: Array<{ session_id: string; started_at_epoch: number | null; completed_at_epoch: number | null }>
+): Map<string, number> {
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  const priorities = new Map<string, number>();
+
+  for (let index = 0; index < sessions.length; index++) {
+    const session = sessions[index]!;
+    const activityEpoch = session.completed_at_epoch ?? session.started_at_epoch ?? 0;
+    const ageHours = Math.max(0, (nowEpoch - activityEpoch) / 3600);
+    const freshnessBoost =
+      ageHours < 1 ? 0.28 :
+      ageHours < 6 ? 0.18 :
+      ageHours < 24 ? 0.08 : 0;
+    const rankBoost = index === 0 ? 0.12 : index === 1 ? 0.07 : 0.03;
+    priorities.set(session.session_id, freshnessBoost + rankBoost);
+  }
+
+  return priorities;
 }
 
 function isRecentThreadRecallQuery(query: string): boolean {
