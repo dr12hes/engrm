@@ -149,4 +149,41 @@ describe("searchChat", () => {
     expect(result.messages[0]?.content).toContain("eventservice");
     expect(result.semantic_backed).toBe(false);
   });
+
+  test("dedupes duplicate chat rows from multiple capture origins", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+
+    for (const row of [
+      { source_kind: "hook" as const, remote_source_id: null, transcript_index: null },
+      { source_kind: "hook" as const, remote_source_id: "history:sess-1:111:abc", transcript_index: null },
+      { source_kind: "transcript" as const, remote_source_id: null, transcript_index: 1 },
+    ]) {
+      db.insertChatMessage({
+        session_id: "sess-1",
+        project_id: project.id,
+        role: "assistant",
+        content: "The eventservice thread is still active.",
+        user_id: "david",
+        device_id: "desktop",
+        agent: "claude-code",
+        source_kind: row.source_kind,
+        remote_source_id: row.remote_source_id,
+        transcript_index: row.transcript_index,
+      });
+    }
+
+    const result = await searchChat(db, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+      query: "eventservice",
+    });
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]?.source_kind).toBe("transcript");
+    expect(result.source_summary).toEqual({ transcript: 1, history: 0, hook: 0 });
+  });
 });

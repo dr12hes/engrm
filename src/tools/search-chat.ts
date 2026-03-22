@@ -2,7 +2,7 @@ import { detectProject } from "../storage/projects.js";
 import { embedText } from "../embeddings/embedder.js";
 import { composeChatEmbeddingText } from "../embeddings/embedder.js";
 import type { ChatMessageRow, MemDatabase, VecChatMatchRow } from "../storage/sqlite.js";
-import { getChatCaptureOrigin } from "./recent-chat.js";
+import { dedupeChatMessages, getChatCaptureOrigin } from "./recent-chat.js";
 
 export interface SearchChatInput {
   query: string;
@@ -67,7 +67,9 @@ export async function searchChat(
     semantic = db.searchChatVec(queryEmbedding, projectId, limit * 3, input.user_id);
   }
   const messageIds = mergeChatResults(db, lexical, semantic, normalizedQuery, limit);
-  const messages = messageIds.length > 0 ? db.getChatMessagesByIds(messageIds) : [];
+  const messages = messageIds.length > 0
+    ? dedupeChatMessages(db.getChatMessagesByIds(messageIds)).slice(0, limit)
+    : [];
 
   return {
     messages,

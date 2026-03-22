@@ -69,4 +69,54 @@ describe("getRecentChat", () => {
     expect(result.source_summary).toEqual({ transcript: 2, history: 0, hook: 1 });
     expect(result.transcript_backed).toBe(true);
   });
+
+  test("dedupes the same message across hook/history/transcript capture lanes", () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "assistant",
+      content: "We should keep the live thread resumable across machines.",
+      user_id: "david",
+      device_id: "desktop",
+      agent: "claude-code",
+      source_kind: "hook",
+    });
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "assistant",
+      content: "We should keep the live thread resumable across machines.",
+      user_id: "david",
+      device_id: "desktop",
+      agent: "claude-code",
+      source_kind: "hook",
+      remote_source_id: "history:sess-1:123:abc",
+    });
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "assistant",
+      content: "We should keep the live thread resumable across machines.",
+      user_id: "david",
+      device_id: "desktop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
+
+    const result = getRecentChat(db, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+    });
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]?.source_kind).toBe("transcript");
+    expect(result.source_summary).toEqual({ transcript: 1, history: 0, hook: 0 });
+  });
 });

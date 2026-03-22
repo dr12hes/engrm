@@ -139,13 +139,16 @@ function mergeRecallResults(
 
   for (let index = 0; index < chat.length; index++) {
     const item = chat[index]!;
+    const origin = getChatCaptureOrigin(item);
     const base = 1 / (60 + index + 1);
     const ageHours = Math.max(0, (nowEpoch - item.created_at_epoch) / 3600);
     const immediacyBoost =
       ageHours < 1 ? 1.2 :
       ageHours < 6 ? 0.55 : 0;
     const recencyBoost = ageHours < 24 ? 0.18 : ageHours < 72 ? 0.08 : 0.02;
-    const sourceBoost = item.source_kind === "transcript" ? 0.1 : 0.04;
+    const sourceBoost =
+      origin === "transcript" ? 0.1 :
+      origin === "history" ? 0.07 : 0.04;
     const continuityBoost = recentThreadQuery ? 0.35 : 0;
     const sessionBoost = sessionPriority.get(item.session_id) ?? 0;
     scored.push({
@@ -155,8 +158,8 @@ function mergeRecallResults(
       session_id: item.session_id,
       id: item.id,
       role: item.role,
-      source_kind: getChatCaptureOrigin(item),
-      title: `${item.role} [${getChatCaptureOrigin(item)}]`,
+      source_kind: origin,
+      title: `${item.role} [${origin}]`,
       detail: item.content.replace(/\s+/g, " ").trim(),
     });
   }

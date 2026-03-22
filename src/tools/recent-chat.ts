@@ -26,6 +26,23 @@ export interface RecentChatResult {
   coverage_state: ChatCoverageState;
 }
 
+export function dedupeChatMessages(messages: ChatMessageRow[]): ChatMessageRow[] {
+  const bestByKey = new Map<string, ChatMessageRow>();
+
+  for (const message of messages) {
+    const key = buildDedupKey(message);
+    const existing = bestByKey.get(key);
+    if (!existing || compareChatPriority(message, existing) < 0) {
+      bestByKey.set(key, message);
+    }
+  }
+
+  return Array.from(bestByKey.values()).sort((a, b) => {
+    if (b.created_at_epoch !== a.created_at_epoch) return b.created_at_epoch - a.created_at_epoch;
+    return b.id - a.id;
+  });
+}
+
 export function getRecentChat(
   db: MemDatabase,
   input: RecentChatInput
@@ -33,7 +50,8 @@ export function getRecentChat(
   const limit = Math.max(1, Math.min(input.limit ?? 20, 100));
 
   if (input.session_id) {
-    const messages = db.getSessionChatMessages(input.session_id, limit).slice(-limit).reverse();
+    const messages = dedupeChatMessages(db.getSessionChatMessages(input.session_id, limit * 3))
+      .slice(0, limit);
     return {
       messages,
       session_count: countDistinctSessions(messages),
@@ -57,7 +75,8 @@ export function getRecentChat(
     }
   }
 
-  const messages = db.getRecentChatMessages(projectId, limit, input.user_id);
+  const messages = dedupeChatMessages(db.getRecentChatMessages(projectId, limit * 3, input.user_id))
+    .slice(0, limit);
   return {
     messages,
     project: projectName,
@@ -100,4 +119,23 @@ export function getChatCaptureOrigin(message: Pick<ChatMessageRow, "source_kind"
     return "history";
   }
   return "hook";
+}
+
+function buildDedupKey(message: ChatMessageRow): string {
+  return [
+    message.session_id,
+    message.role,
+    message.content.toLowerCase().replace(/\s+/g, " ").trim(),
+  ].join("::");
+}
+
+function compareChatPriority(a: ChatMessageRow, b: ChatMessageRow): number {
+  const originScore = (message: ChatMessageRow): number => {
+    const origin = getChatCaptureOrigin(message);
+    return origin === "transcript" ? 0 : origin === "history" ? 1 : 2;
+  };
+  const originDelta = originScore(a) - originScore(b);
+  if (originDelta !== 0) return originDelta;
+  if (b.created_at_epoch !== a.created_at_epoch) return b.created_at_epoch - a.created_at_epoch;
+  return b.id - a.id;
 }
