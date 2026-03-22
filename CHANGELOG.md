@@ -4,6 +4,11 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Changed
+
+- `search_chat` now prefers fresher transcript-backed matches over stale hook-only chat when both are plausible, so live recall behaves more like an active thread than an archive
+- `search_recall` now penalizes older memory slightly and boosts very recent chat harder, so “what were we just talking about?” is less likely to get drowned by week-old project memory
+
 ## 0.4.28
 
 ### Added

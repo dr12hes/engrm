@@ -59,4 +59,48 @@ describe("searchChat", () => {
     expect(result.source_summary).toEqual({ transcript: 1, hook: 1 });
     expect(result.transcript_backed).toBe(true);
   });
+
+  test("prefers fresher transcript-backed chat over older hook matches", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+    const now = Math.floor(Date.now() / 1000);
+
+    db.insertChatMessage({
+      session_id: "sess-old",
+      project_id: project.id,
+      role: "assistant",
+      content: "We talked about eventservice last week.",
+      user_id: "david",
+      device_id: "desktop",
+      agent: "claude-code",
+      source_kind: "hook",
+      created_at_epoch: now - 7 * 24 * 3600,
+    });
+    db.insertChatMessage({
+      session_id: "sess-new",
+      project_id: project.id,
+      role: "user",
+      content: "Please review eventservice because I think we already addressed it.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+      created_at_epoch: now - 120,
+    });
+
+    const result = await searchChat(db, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+      query: "eventservice",
+      limit: 2,
+    });
+
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0]?.session_id).toBe("sess-new");
+    expect(result.messages[0]?.source_kind).toBe("transcript");
+  });
 });

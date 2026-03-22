@@ -79,12 +79,17 @@ function mergeRecallResults(
   for (let index = 0; index < memory.length; index++) {
     const item = memory[index]!;
     const base = 1 / (60 + index + 1);
-    const score = base + Math.max(0, item.rank) * 0.08;
+    const createdAtEpoch = Math.floor(new Date(item.created_at).getTime() / 1000) || undefined;
+    const ageHours = createdAtEpoch ? Math.max(0, (nowEpoch - createdAtEpoch) / 3600) : 9999;
+    const freshnessPenalty =
+      ageHours > 24 * 7 ? 0.12 :
+      ageHours > 72 ? 0.05 : 0;
+    const score = base + Math.max(0, item.rank) * 0.08 - freshnessPenalty;
     scored.push({
       kind: "memory",
       rank: score,
       created_at: item.created_at,
-      created_at_epoch: Math.floor(new Date(item.created_at).getTime() / 1000) || undefined,
+      created_at_epoch: createdAtEpoch,
       project_name: item.project_name,
       observation_id: item.id,
       id: item.id,
@@ -104,9 +109,11 @@ function mergeRecallResults(
     const item = chat[index]!;
     const base = 1 / (60 + index + 1);
     const ageHours = Math.max(0, (nowEpoch - item.created_at_epoch) / 3600);
-    const immediacyBoost = ageHours < 1 ? 1.0 : 0;
-    const recencyBoost = ageHours < 24 ? 0.12 : ageHours < 72 ? 0.05 : 0.02;
-    const sourceBoost = item.source_kind === "transcript" ? 0.06 : 0.03;
+    const immediacyBoost =
+      ageHours < 1 ? 1.2 :
+      ageHours < 6 ? 0.55 : 0;
+    const recencyBoost = ageHours < 24 ? 0.18 : ageHours < 72 ? 0.08 : 0.02;
+    const sourceBoost = item.source_kind === "transcript" ? 0.1 : 0.04;
     scored.push({
       kind: "chat",
       rank: base + immediacyBoost + recencyBoost + sourceBoost,
