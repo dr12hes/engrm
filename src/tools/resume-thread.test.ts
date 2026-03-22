@@ -37,6 +37,8 @@ describe("resumeThread", () => {
       completed: "Wired the explicit event list into the events page",
       next_steps: null,
       current_thread: "Review EventService routing and explicit notifications",
+      recent_tool_names: JSON.stringify(["Edit", "Bash"]),
+      hot_files: JSON.stringify(["AIServer/app/services/eventservice.py", "AIServer/app/routers/events.py"]),
     });
     db.insertUserPrompt({
       session_id: "sess-1",
@@ -83,9 +85,13 @@ describe("resumeThread", () => {
     expect(result.resume_confidence).toBe("strong");
     expect(result.resume_basis).toContain("explicit handoff available");
     expect(result.resume_basis).toContain("current thread recovered");
+    expect(result.resume_basis).toContain("recent tool trail available");
+    expect(result.resume_basis).toContain("hot files available");
     expect(result.current_thread).toContain("EventService");
     expect(result.latest_request).toContain("EventService");
     expect(result.handoff?.title).toContain("Handoff:");
+    expect(result.tool_trail).toEqual(["Edit", "Bash"]);
+    expect(result.hot_files[0]?.path).toBe("AIServer/app/services/eventservice.py");
     expect(result.chat_coverage_state).toBe("transcript-backed");
     expect(result.recent_chat[0]?.content).toContain("explicit notification events");
     expect(result.recall_hits.length).toBeGreaterThan(0);

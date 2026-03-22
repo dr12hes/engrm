@@ -34,6 +34,8 @@ export interface ResumeThreadResult {
     title: string;
     source: string | null;
   } | null;
+  tool_trail: string[];
+  hot_files: Array<{ path: string; count: number }>;
   recent_outcomes: string[];
   chat_coverage_state: ChatCoverageState;
   recent_chat: Array<{
@@ -89,6 +91,8 @@ export async function resumeThread(
     || context?.recent_outcomes[0]
     || recentChat.messages[recentChat.messages.length - 1]?.content.replace(/\s+/g, " ").trim().slice(0, 180)
     || null;
+  const toolTrail = collectToolTrail(latestSession);
+  const hotFiles = collectHotFiles(latestSession, context?.hot_files ?? []);
 
   const resumeBasis = buildResumeBasis({
     handoff,
@@ -98,6 +102,8 @@ export async function resumeThread(
     currentThread,
     recallHits: recall.results,
     recentOutcomes: context?.recent_outcomes ?? [],
+    toolTrail,
+    hotFiles,
   });
   const resumeConfidence = classifyResumeConfidence({
     handoff,
@@ -138,6 +144,8 @@ export async function resumeThread(
           source: extractHandoffSource(handoff),
         }
       : null,
+    tool_trail: toolTrail,
+    hot_files: hotFiles,
     recent_outcomes: context?.recent_outcomes ?? [],
     chat_coverage_state: recentChat.coverage_state,
     recent_chat: recentChat.messages
@@ -246,16 +254,48 @@ function buildResumeBasis(input: {
   currentThread: string | null;
   recallHits: SearchRecallEntry[];
   recentOutcomes: string[];
+  toolTrail: string[];
+  hotFiles: Array<{ path: string; count: number }>;
 }): string[] {
   const basis: string[] = [];
   if (input.handoff) basis.push("explicit handoff available");
   if (input.currentThread) basis.push("current thread recovered");
   if (input.latestRequest) basis.push("latest request recovered");
   if (input.recentOutcomes.length > 0) basis.push("recent outcomes available");
+  if (input.toolTrail.length > 0) basis.push("recent tool trail available");
+  if (input.hotFiles.length > 0) basis.push("hot files available");
   if (input.recallHits.some((item) => item.kind === "chat")) basis.push("live chat recall available");
   if (input.chatCoverageState === "transcript-backed") basis.push("transcript-backed chat continuity");
   if (input.chatCoverageState === "history-backed") basis.push("history-backed chat continuity");
   if (input.continuityState === "fresh") basis.push("fresh repo-local continuity");
   if (basis.length === 0) basis.push("thin fallback only");
-  return basis.slice(0, 5);
+  return basis.slice(0, 6);
+}
+
+function collectToolTrail(
+  session: { recent_tool_names?: string | null } | null
+): string[] {
+  const parsed = parseJsonArray(session?.recent_tool_names);
+  return parsed.slice(0, 5);
+}
+
+function collectHotFiles(
+  session: { hot_files?: string | null } | null,
+  fallback: Array<{ path: string; count: number }>
+): Array<{ path: string; count: number }> {
+  const parsed = parseJsonArray(session?.hot_files).map((path) => ({ path, count: 1 }));
+  if (parsed.length > 0) return parsed.slice(0, 5);
+  return fallback.slice(0, 5);
+}
+
+function parseJsonArray(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
 }

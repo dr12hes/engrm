@@ -765,6 +765,12 @@ server.tool(
     const basisLines = result.resume_basis.length > 0
       ? result.resume_basis.map((item) => `- ${item}`).join("\n")
       : "- (none)";
+    const toolTrailLines = result.tool_trail.length > 0
+      ? result.tool_trail.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
+    const hotFileLines = result.hot_files.length > 0
+      ? result.hot_files.map((item) => `- ${item.path}${item.count > 1 ? ` (${item.count})` : ""}`).join("\n")
+      : "- (none)";
     const repairLine = result.repair_attempted
       ? `Recall repair: attempted${result.repair_result ? ` · imported ${result.repair_result.imported_chat_messages} chat across ${result.repair_result.sessions_with_imports} session(s)` : ""}\n`
       : "";
@@ -799,6 +805,8 @@ server.tool(
             `Chat recall: ${result.chat_coverage_state}\n` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             `Resume basis:\n${basisLines}\n\n` +
+            `Tool trail:\n${toolTrailLines}\n\n` +
+            `Hot files:\n${hotFileLines}\n\n` +
             `Recent outcomes:\n${outcomes}\n\n` +
             `Recent chat:\n${chatLines}\n\n` +
             `Recall hits:\n${recallLines}`,
