@@ -91,6 +91,48 @@ describe("buildSessionContext", () => {
     expect(ctx!.total_active).toBe(0);
   });
 
+  test("does not pull unrelated workspace prompts, tools, or handoffs into an unknown project", async () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+    });
+    db.upsertSession("sess-1", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: project.id,
+      prompt: "please review eventservice",
+      cwd: "/Volumes/Data/devs/huginn",
+      user_id: "david",
+      device_id: "laptop",
+    });
+    db.insertToolEvent({
+      session_id: "sess-1",
+      project_id: project.id,
+      tool_name: "Edit",
+      file_path: "AIServer/app/services/event_service.py",
+      user_id: "david",
+      device_id: "laptop",
+    });
+    const handoff = db.insertObservation({
+      session_id: "sess-1",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: EventService follow-up",
+      quality: 0.8,
+      user_id: "david",
+      device_id: "laptop",
+      agent: "engrm-handoff",
+    });
+    db.db.query("UPDATE observations SET concepts = ? WHERE id = ?")
+      .run(JSON.stringify(["handoff", "session-handoff"]), handoff.id);
+
+    const ctx = buildSessionContext(db, "/tmp/brand-new-repo");
+    expect(ctx).not.toBeNull();
+    expect(ctx!.recentPrompts).toBeUndefined();
+    expect(ctx!.recentToolEvents).toBeUndefined();
+    expect(ctx!.recentHandoffs).toBeUndefined();
+  });
+
   test("returns pinned observations first", () => {
     const project = db.upsertProject({
       canonical_id: "local/testproject",

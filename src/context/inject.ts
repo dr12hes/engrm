@@ -355,16 +355,12 @@ export function buildSessionContext(
   if (maxCount !== undefined) {
     const remaining = Math.max(0, maxCount - pinned.length - dedupedRecent.length);
     const all = [...pinned, ...dedupedRecent, ...sorted.slice(0, remaining)];
-    const recentPrompts = db.getRecentUserPrompts(
-      isNewProject ? null : projectId,
-      isNewProject ? 8 : 6,
-      opts.userId
-    );
-    const recentToolEvents = db.getRecentToolEvents(
-      isNewProject ? null : projectId,
-      isNewProject ? 8 : 6,
-      opts.userId
-    );
+    const recentPrompts = isNewProject
+      ? []
+      : db.getRecentUserPrompts(projectId, 6, opts.userId);
+    const recentToolEvents = isNewProject
+      ? []
+      : db.getRecentToolEvents(projectId, 6, opts.userId);
     const recentSessions = isNewProject
       ? []
       : db.getRecentSessions(projectId, 5, opts.userId);
@@ -374,13 +370,15 @@ export function buildSessionContext(
     const recentOutcomes = isNewProject
       ? undefined
       : getRecentOutcomes(db, projectId, opts.userId, recentSessions);
-    const recentHandoffs = getRecentHandoffs(db, {
-      cwd,
-      project_scoped: !isNewProject,
-      user_id: opts.userId,
-      current_device_id: opts.currentDeviceId,
-      limit: 3,
-    }).handoffs;
+    const recentHandoffs = isNewProject
+      ? []
+      : getRecentHandoffs(db, {
+          cwd,
+          project_scoped: true,
+          user_id: opts.userId,
+          current_device_id: opts.currentDeviceId,
+          limit: 3,
+        }).handoffs;
     const recentChatMessages =
       !isNewProject && project ? db.getRecentChatMessages(project.id, 4, opts.userId) : [];
     return {
@@ -429,16 +427,12 @@ export function buildSessionContext(
   // Fetch recent session summaries for lessons learned
   const summaries = isNewProject ? [] : db.getRecentSummaries(projectId, 5);
 
-  const recentPrompts = db.getRecentUserPrompts(
-    isNewProject ? null : projectId,
-    isNewProject ? 8 : 6,
-    opts.userId
-  );
-  const recentToolEvents = db.getRecentToolEvents(
-    isNewProject ? null : projectId,
-    isNewProject ? 8 : 6,
-    opts.userId
-  );
+  const recentPrompts = isNewProject
+    ? []
+    : db.getRecentUserPrompts(projectId, 6, opts.userId);
+  const recentToolEvents = isNewProject
+    ? []
+    : db.getRecentToolEvents(projectId, 6, opts.userId);
   const recentSessions = isNewProject
     ? []
     : db.getRecentSessions(projectId, 5, opts.userId);
@@ -448,13 +442,15 @@ export function buildSessionContext(
   const recentOutcomes = isNewProject
     ? undefined
     : getRecentOutcomes(db, projectId, opts.userId, recentSessions);
-  const recentHandoffs = getRecentHandoffs(db, {
-    cwd,
-    project_scoped: !isNewProject,
-    user_id: opts.userId,
-    current_device_id: opts.currentDeviceId,
-    limit: 3,
-  }).handoffs;
+  const recentHandoffs = isNewProject
+    ? []
+    : getRecentHandoffs(db, {
+        cwd,
+        project_scoped: true,
+        user_id: opts.userId,
+        current_device_id: opts.currentDeviceId,
+        limit: 3,
+      }).handoffs;
   const recentChatMessages =
     !isNewProject ? db.getRecentChatMessages(projectId, 4, opts.userId) : [];
 
