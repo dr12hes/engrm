@@ -133,6 +133,26 @@ describe("buildSessionContext", () => {
     expect(ctx!.recentHandoffs).toBeUndefined();
   });
 
+  test("does not auto-load stale project observations when fresh continuity is absent", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/dr12hes/huginn",
+      name: "huginn",
+    });
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    db.db
+      .query(
+        `INSERT INTO observations (project_id, type, title, quality, lifecycle,
+         user_id, device_id, created_at, created_at_epoch)
+         VALUES (?, 'decision', 'License changed from ELv2 to FSL-1.1-ALv2, split model for Sentinel', 0.9, 'active',
+         'david', 'laptop', datetime('now'), ?)`
+      )
+      .run(project.id, nowEpoch - 7 * 86400);
+
+    const ctx = buildSessionContext(db, "/tmp/huginn", { tokenBudget: 800 });
+    expect(ctx).not.toBeNull();
+    expect(ctx!.observations).toEqual([]);
+  });
+
   test("returns pinned observations first", () => {
     const project = db.upsertProject({
       canonical_id: "local/testproject",

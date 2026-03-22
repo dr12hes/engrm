@@ -105,6 +105,8 @@ export interface ContextObservation {
 
 export { computeBlendedScore, computeObservationPriority, observationTypeBoost } from "../intelligence/observation-priority.js";
 
+const FRESH_CONTINUITY_WINDOW_DAYS = 3;
+
 function tokenizeProjectHint(text: string): string[] {
   return Array.from(
     new Set(
@@ -354,7 +356,7 @@ export function buildSessionContext(
   // If using legacy maxCount mode, just slice
   if (maxCount !== undefined) {
     const remaining = Math.max(0, maxCount - pinned.length - dedupedRecent.length);
-    const all = [...pinned, ...dedupedRecent, ...sorted.slice(0, remaining)];
+    let all = [...pinned, ...dedupedRecent, ...sorted.slice(0, remaining)];
     const recentPrompts = isNewProject
       ? []
       : db.getRecentUserPrompts(projectId, 6, opts.userId);
@@ -381,6 +383,17 @@ export function buildSessionContext(
         }).handoffs;
     const recentChatMessages =
       !isNewProject && project ? db.getRecentChatMessages(project.id, 4, opts.userId) : [];
+    all = filterAutoLoadedObservationsForContinuity(
+      all,
+      pinned,
+      isNewProject,
+      recentPrompts,
+      recentToolEvents,
+      recentSessions,
+      recentHandoffs,
+      recentChatMessages,
+      summariesFromRecentSessions(db, projectId, recentSessions)
+    );
     return {
       project_name: projectName,
       canonical_id: canonicalId,
@@ -453,6 +466,17 @@ export function buildSessionContext(
       }).handoffs;
   const recentChatMessages =
     !isNewProject ? db.getRecentChatMessages(projectId, 4, opts.userId) : [];
+  const filteredSelected = filterAutoLoadedObservationsForContinuity(
+    selected,
+    pinned,
+    isNewProject,
+    recentPrompts,
+    recentToolEvents,
+    recentSessions,
+    recentHandoffs,
+    recentChatMessages,
+    summaries
+  );
 
   // Fetch recent security findings (last 7 days) for risk awareness
   let securityFindings: SecurityFindingRow[] = [];
@@ -531,8 +555,8 @@ export function buildSessionContext(
   return {
     project_name: projectName,
     canonical_id: canonicalId,
-    observations: selected.map(toContextObservation),
-    session_count: selected.length,
+    observations: filteredSelected.map(toContextObservation),
+    session_count: filteredSelected.length,
     total_active: totalActive,
     summaries: summaries.length > 0 ? summaries : undefined,
     securityFindings: securityFindings.length > 0 ? securityFindings : undefined,
@@ -546,6 +570,70 @@ export function buildSessionContext(
     recentHandoffs: recentHandoffs.length > 0 ? recentHandoffs : undefined,
     recentChatMessages: recentChatMessages.length > 0 ? recentChatMessages : undefined,
   };
+}
+
+function filterAutoLoadedObservationsForContinuity(
+  observations: ObservationRow[],
+  pinned: ObservationRow[],
+  isNewProject: boolean,
+  recentPrompts: UserPromptRow[],
+  recentToolEvents: ToolEventRow[],
+  recentSessions: RecentSessionRow[],
+  recentHandoffs: HandoffRow[],
+  recentChatMessages: ChatMessageRow[],
+  summaries: SessionSummaryRow[]
+): ObservationRow[] {
+  if (isNewProject) return observations;
+  if (hasFreshProjectContinuity(recentPrompts, recentToolEvents, recentSessions, recentHandoffs, recentChatMessages, summaries)) {
+    return observations;
+  }
+
+  const pinnedIds = new Set(pinned.map((obs) => obs.id));
+  return observations.filter((obs) => {
+    if (pinnedIds.has(obs.id)) return true;
+    return observationAgeDays(obs.created_at_epoch) <= FRESH_CONTINUITY_WINDOW_DAYS;
+  });
+}
+
+function hasFreshProjectContinuity(
+  recentPrompts: UserPromptRow[],
+  recentToolEvents: ToolEventRow[],
+  recentSessions: RecentSessionRow[],
+  recentHandoffs: HandoffRow[],
+  recentChatMessages: ChatMessageRow[],
+  summaries: SessionSummaryRow[]
+): boolean {
+  const freshEnough = (epoch: number | null | undefined): boolean =>
+    typeof epoch === "number" && observationAgeDays(epoch) <= FRESH_CONTINUITY_WINDOW_DAYS;
+
+  return (
+    recentPrompts.some((item) => freshEnough(item.created_at_epoch)) ||
+    recentToolEvents.some((item) => freshEnough(item.created_at_epoch)) ||
+    recentSessions.some((item) => freshEnough(item.completed_at_epoch ?? item.started_at_epoch)) ||
+    recentHandoffs.some((item) => freshEnough(item.created_at_epoch)) ||
+    recentChatMessages.some((item) => freshEnough(item.created_at_epoch)) ||
+    summaries.some((item) => freshEnough(item.created_at_epoch))
+  );
+}
+
+function summariesFromRecentSessions(
+  db: MemDatabase,
+  projectId: number,
+  recentSessions: RecentSessionRow[]
+): SessionSummaryRow[] {
+  const seen = new Set<string>();
+  const rows: SessionSummaryRow[] = [];
+  for (const session of recentSessions) {
+    if (seen.has(session.session_id)) continue;
+    seen.add(session.session_id);
+    const summary = db.getSessionSummary(session.session_id);
+    if (summary && summary.project_id === projectId) rows.push(summary);
+  }
+  return rows;
+}
+
+function observationAgeDays(createdAtEpoch: number): number {
+  return Math.max(0, (Math.floor(Date.now() / 1000) - createdAtEpoch) / 86400);
 }
 
 /**
