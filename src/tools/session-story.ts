@@ -18,6 +18,11 @@ export interface SessionStoryResult {
   summary: SessionSummaryRow | null;
   prompts: UserPromptRow[];
   chat_messages: ChatMessageRow[];
+  chat_source_summary: {
+    transcript: number;
+    hook: number;
+  };
+  chat_coverage_state: "transcript-backed" | "hook-only" | "none";
   tool_events: ToolEventRow[];
   observations: ObservationRow[];
   handoffs: ObservationRow[];
@@ -65,6 +70,12 @@ export function getSessionStory(
     summary,
     prompts,
     chat_messages: chatMessages,
+    chat_source_summary: summarizeChatSources(chatMessages),
+    chat_coverage_state: chatMessages.some((message) => message.source_kind === "transcript")
+      ? "transcript-backed"
+      : chatMessages.length > 0
+        ? "hook-only"
+        : "none",
     tool_events: toolEvents,
     observations,
     handoffs,
@@ -178,4 +189,14 @@ function collectProvenanceSummary(observations: ObservationRow[]): Array<{ tool:
     .map(([tool, count]) => ({ tool, count }))
     .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
     .slice(0, 6);
+}
+
+function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; hook: number } {
+  return messages.reduce(
+    (summary, message) => {
+      summary[message.source_kind] += 1;
+      return summary;
+    },
+    { transcript: 0, hook: 0 }
+  );
 }

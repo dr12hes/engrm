@@ -1930,7 +1930,7 @@ server.tool(
       ? result.prompts.map((prompt) => `- #${prompt.prompt_number} ${prompt.prompt.replace(/\s+/g, " ").trim()}`).join("\n")
       : "- (none)";
     const chatLines = result.chat_messages.length > 0
-      ? result.chat_messages.slice(-12).map((msg) => `- [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`).join("\n")
+      ? result.chat_messages.slice(-12).map((msg) => `- [${msg.role}] [${msg.source_kind}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`).join("\n")
       : "- (none)";
 
     const toolLines = result.tool_events.length > 0
@@ -1977,6 +1977,7 @@ server.tool(
             `Metrics: ${metrics}\n\n` +
             `Summary:\n${summaryLines}\n\n` +
             `Prompts:\n${promptLines}\n\n` +
+            `Chat recall: ${result.chat_coverage_state} (transcript ${result.chat_source_summary.transcript}, hook ${result.chat_source_summary.hook})\n\n` +
             `Chat:\n${chatLines}\n\n` +
             `Tools:\n${toolLines}\n\n` +
             `Handoffs:\n${handoffLines}\n\n` +

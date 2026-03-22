@@ -109,6 +109,17 @@ describe("getSessionStory", () => {
       next_steps: null,
     });
     db.incrementSessionMetrics("sess-1", { toolCalls: 1, files: 1 });
+    db.insertChatMessage({
+      session_id: "sess-1",
+      project_id: project.id,
+      role: "assistant",
+      content: "I fixed the auth redirect and the transcript-backed thread should be resumable.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
 
     const story = getSessionStory(db, { session_id: "sess-1" });
     expect(story.session?.session_id).toBe("sess-1");
@@ -116,6 +127,9 @@ describe("getSessionStory", () => {
     expect(story.tool_events).toHaveLength(1);
     expect(story.observations).toHaveLength(1);
     expect(story.summary?.request).toBe("Fix auth flow");
+    expect(story.chat_messages).toHaveLength(1);
+    expect(story.chat_source_summary).toEqual({ transcript: 1, hook: 0 });
+    expect(story.chat_coverage_state).toBe("transcript-backed");
     expect(story.metrics?.tool_calls_count).toBe(1);
     expect(story.capture_state).toBe("rich");
     expect(story.capture_gaps).toEqual([]);

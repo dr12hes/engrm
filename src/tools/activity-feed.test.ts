@@ -275,7 +275,7 @@ describe("getActivityFeed", () => {
     const toolEvent = result.events.find((event) => event.kind === "tool");
     expect(toolEvent?.detail).toBe("src/audit.ts");
     const chatEvent = result.events.find((event) => event.kind === "chat");
-    expect(chatEvent?.title).toBe("assistant");
+    expect(chatEvent?.title).toBe("assistant [hook]");
     expect(chatEvent?.detail).toContain("wiring the persistence next");
     expect(result.events.some((event) => event.kind === "prompt")).toBe(true);
     expect(result.events.some((event) => event.kind === "tool")).toBe(true);

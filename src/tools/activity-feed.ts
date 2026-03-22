@@ -76,7 +76,7 @@ function toChatEvent(message: ChatMessageRow): ActivityFeedEvent {
     created_at_epoch: message.created_at_epoch,
     session_id: message.session_id,
     id: message.id,
-    title: message.role === "user" ? "user" : "assistant",
+    title: `${message.role} [${message.source_kind}]`,
     detail: content.slice(0, 220),
   };
 }
