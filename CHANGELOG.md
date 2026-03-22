@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.27
+
 ### Added
 
 - `search_recall` now searches durable memory and live chat recall together, so “what were we just talking about?” no longer depends on choosing `search` versus `search_chat` first
