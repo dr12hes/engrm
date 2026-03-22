@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.26
+
 ### Added
 
 - `memory_console`, `project_memory_index`, and `session_context` now expose a continuity state:
