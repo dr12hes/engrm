@@ -226,10 +226,10 @@ The MCP server exposes tools that supported agents can call directly:
 | `recent_handoffs` | List recent saved handoffs for the current project or workspace |
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
-| `repair_recall` | Rehydrate recent project/session recall from transcript or Claude history fallback when chat feels missing |
-| `list_recall_items` | List the best current handoffs, threads, chat snippets, and memory entries before opening one exact item |
-| `load_recall_item` | Load one exact recall item returned by `list_recall_items` |
-| `resume_thread` | Build one clear resume point from handoff, current thread, recent chat, and unified recall |
+| `repair_recall` | Use when continuity feels thin; rehydrate recent recall from transcript or Claude history fallback |
+| `list_recall_items` | Use first when continuity feels fuzzy; list the best current handoffs, threads, chat snippets, and memory entries |
+| `load_recall_item` | Use after `list_recall_items`; load one exact recall item key |
+| `resume_thread` | Use first when you want one direct "where were we?" answer from handoff, current thread, recent chat, and unified recall |
 | `recent_chat` | Inspect the separate synced chat lane without mixing it into durable memory |
 | `search_chat` | Search recent chat recall with hybrid lexical + semantic matching, separately from reusable memory observations |
 | `search_recall` | Search durable memory and chat recall together when you do not want to guess the right lane |
@@ -270,6 +270,22 @@ These are the tools we should be comfortable pointing people to publicly first:
 - durable memory output instead of raw transcript dumping
 - easy local inspection after capture
 - clear continuity recovery when switching devices or resuming long sessions
+
+### Recall Protocol
+
+When continuity feels fuzzy, the default path is:
+
+1. `resume_thread`
+2. `list_recall_items`
+3. `load_recall_item`
+4. `repair_recall`
+
+How to use it:
+
+- `resume_thread` is the fastest "get me back into the live thread" action
+- `list_recall_items` is the deterministic directory-first path when you want to inspect candidates before opening one
+- `load_recall_item` opens an exact handoff, thread, chat, or memory key returned by the index
+- `repair_recall` is the repair step when continuity is still thin, hook-only, or under-captured
 
 ### Thin Tools, Thick Memory
 

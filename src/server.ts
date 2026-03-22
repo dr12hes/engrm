@@ -794,7 +794,7 @@ server.tool(
 
 server.tool(
   "load_recall_item",
-  "Load one exact recall item returned by list_recall_items. Use this after listing candidates to avoid fuzzy recall guessing.",
+  "USE AFTER list_recall_items. Load one exact recall item key so you can inspect a specific handoff, thread, chat message, or memory entry without fuzzy recall guessing.",
   {
     key: z.string().describe("Exact recall key from list_recall_items, such as handoff:12, session:sess-1, chat:55, or obs:402"),
     cwd: z.string().optional().describe("Optional cwd override"),
@@ -895,7 +895,7 @@ server.tool(
 
 server.tool(
   "resume_thread",
-  "Build a clear resume point for the current project by combining handoff, live recall, current thread, and recent chat continuity.",
+  "USE FIRST when you want one direct 'where were we?' answer. Build a clear resume point for the current project by combining handoff, live recall, current thread, and recent chat continuity.",
   {
     cwd: z.string().optional().describe("Optional cwd override for the project to resume"),
     limit: z.number().optional().describe("Max recall hits/chat snippets to include"),
@@ -1969,7 +1969,7 @@ server.tool(
 
 server.tool(
   "repair_recall",
-  "Rehydrate recent session recall for the current project from Claude transcripts or history fallback when chat feels missing or under-captured",
+  "USE WHEN recall feels thin or under-captured. Rehydrate recent session recall for the current project from Claude transcripts or history fallback before resuming.",
   {
     session_id: z.string().optional().describe("Optional single session ID to repair instead of scanning recent project sessions"),
     cwd: z.string().optional().describe("Project directory used to resolve project sessions and Claude history/transcript files"),

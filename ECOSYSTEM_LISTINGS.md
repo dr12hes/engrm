@@ -119,6 +119,13 @@ Engrm is a memory layer for coding agents and operator workflows. It captures us
 
 Engrm helps agents keep continuity across devices, sessions, and tools. It captures prompts, tool use, observations, assistant checkpoints, chat recall, and reduced plugin outputs in a local memory store, then exposes that memory through startup handoff, session inspection, and MCP tools. The current public MCP surface is intentionally small: thin local tools capture meaningful git diffs, repo scans, and OpenClaw content work, while continuity tools like `resume_thread` and `repair_recall` help agents recover the live thread when a session is long, compacted, or moved to another machine. Inspection tools like `tool_memory_index` and `capture_quality` show whether those tools are actually producing durable memory and whether recall is transcript-backed, history-backed, or still thin. The goal is not more schema in context. The goal is to preserve useful work so the next agent or session can pick up faster.
 
+Recommended continuity protocol:
+
+1. `resume_thread`
+2. `list_recall_items`
+3. `load_recall_item`
+4. `repair_recall`
+
 ### Feature Bullets
 
 - Thin MCP tools that create reusable memory instead of dumping raw output

@@ -35,6 +35,22 @@ The goal is to turn useful local work into durable memory that can be recalled l
 - `resume_thread`
 - `repair_recall`
 
+## Recall Protocol
+
+The recommended continuity flow is:
+
+1. `resume_thread`
+2. `list_recall_items`
+3. `load_recall_item`
+4. `repair_recall`
+
+Use it like this:
+
+- start with `resume_thread` when you want one direct recovery answer
+- switch to `list_recall_items` when you want an index-first, deterministic path
+- use `load_recall_item` to open one exact candidate instead of guessing with search
+- run `repair_recall` when recall is still thin, hook-only, or clearly under-captured
+
 ## Explicit Handoff Flow
 
 Use this when you are moving between machines and want a reliable resume point:
