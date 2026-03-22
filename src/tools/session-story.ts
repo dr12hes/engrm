@@ -7,6 +7,7 @@
 
 import type { ChatMessageRow, MemDatabase, ObservationRow, SessionRow, SessionSummaryRow, ToolEventRow, UserPromptRow } from "../storage/sqlite.js";
 import { isDraftHandoff, looksLikeHandoff } from "./handoffs.js";
+import { getChatCaptureOrigin } from "./recent-chat.js";
 
 export interface SessionStoryInput {
   session_id: string;
@@ -20,6 +21,7 @@ export interface SessionStoryResult {
   chat_messages: ChatMessageRow[];
   chat_source_summary: {
     transcript: number;
+    history: number;
     hook: number;
   };
   chat_coverage_state: "transcript-backed" | "hook-only" | "none";
@@ -191,12 +193,12 @@ function collectProvenanceSummary(observations: ObservationRow[]): Array<{ tool:
     .slice(0, 6);
 }
 
-function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; hook: number } {
+function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; history: number; hook: number } {
   return messages.reduce(
     (summary, message) => {
-      summary[message.source_kind] += 1;
+      summary[getChatCaptureOrigin(message)] += 1;
       return summary;
     },
-    { transcript: 0, hook: 0 }
+    { transcript: 0, history: 0, hook: 0 }
   );
 }

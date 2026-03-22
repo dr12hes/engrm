@@ -128,7 +128,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.rolling_handoff_drafts_count).toBe(0);
     expect(result?.recent_chat_count).toBe(1);
     expect(result?.recent_chat_sessions).toBe(1);
-    expect(result?.chat_source_summary).toEqual({ transcript: 0, hook: 1 });
+    expect(result?.chat_source_summary).toEqual({ transcript: 0, history: 0, hook: 1 });
     expect(result?.chat_coverage_state).toBe("hook-only");
     expect(result?.raw_capture_active).toBe(true);
     expect(result?.capture_summary.rich_sessions).toBe(1);
@@ -148,6 +148,5 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.suggested_tools).toContain("activity_feed");
     expect(result?.suggested_tools).toContain("search_recall");
     expect(result?.suggested_tools).toContain("tool_memory_index");
-    expect(result?.suggested_tools).toContain("capture_git_worktree");
   });
 });

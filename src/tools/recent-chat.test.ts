@@ -66,7 +66,7 @@ describe("getRecentChat", () => {
 
     expect(result.project).toBe("repo");
     expect(result.session_count).toBe(2);
-    expect(result.source_summary).toEqual({ transcript: 2, hook: 1 });
+    expect(result.source_summary).toEqual({ transcript: 2, history: 0, hook: 1 });
     expect(result.transcript_backed).toBe(true);
   });
 });

@@ -20,7 +20,7 @@ import { getTimeline } from "./tools/timeline.js";
 import { pinObservation } from "./tools/pin.js";
 import { getRecentActivity } from "./tools/recent.js";
 import { getRecentRequests } from "./tools/recent-prompts.js";
-import { getRecentChat } from "./tools/recent-chat.js";
+import { getChatCaptureOrigin, getRecentChat } from "./tools/recent-chat.js";
 import { searchChat } from "./tools/search-chat.js";
 import { createHandoff, formatHandoffSource, getRecentHandoffs, isDraftHandoff, loadHandoff, upsertRollingHandoff } from "./tools/handoffs.js";
 import { getRecentTools } from "./tools/recent-tools.js";
@@ -1808,12 +1808,12 @@ server.tool(
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
     const coverageLine =
       `Coverage: ${result.messages.length} messages across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
-      `· transcript ${result.source_summary.transcript} · hook ${result.source_summary.hook}\n` +
+      `· transcript ${result.source_summary.transcript} · history ${result.source_summary.history} · hook ${result.source_summary.hook}\n` +
       `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
-          return `- ${stamp} [${msg.role}] [${msg.source_kind}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
+          return `- ${stamp} [${msg.role}] [${getChatCaptureOrigin(msg)}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
         }).join("\n")
       : "- (none)";
 
@@ -1843,13 +1843,13 @@ server.tool(
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
     const coverageLine =
       `Coverage: ${result.messages.length} matches across ${result.session_count} session${result.session_count === 1 ? "" : "s"} ` +
-      `· transcript ${result.source_summary.transcript} · hook ${result.source_summary.hook}` +
+      `· transcript ${result.source_summary.transcript} · history ${result.source_summary.history} · hook ${result.source_summary.hook}` +
       `${result.semantic_backed ? " · semantic yes" : ""}\n` +
       `${result.transcript_backed ? "" : "Hint: run refresh_chat_recall if this looks under-captured.\n"}`;
     const rows = result.messages.length > 0
       ? result.messages.map((msg) => {
           const stamp = new Date(msg.created_at_epoch * 1000).toISOString().split("T")[0];
-          return `- ${stamp} [${msg.role}] [${msg.source_kind}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
+          return `- ${stamp} [${msg.role}] [${getChatCaptureOrigin(msg)}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 200)}`;
         }).join("\n")
       : "- (none)";
 

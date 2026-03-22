@@ -1,6 +1,8 @@
 import { detectProject } from "../storage/projects.js";
 import type { ChatMessageRow, MemDatabase } from "../storage/sqlite.js";
 
+export type ChatCaptureOrigin = "transcript" | "history" | "hook";
+
 export interface RecentChatInput {
   limit?: number;
   project_scoped?: boolean;
@@ -15,6 +17,7 @@ export interface RecentChatResult {
   session_count: number;
   source_summary: {
     transcript: number;
+    history: number;
     hook: number;
   };
   transcript_backed: boolean;
@@ -63,13 +66,21 @@ export function getRecentChat(
 function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; hook: number } {
   return messages.reduce(
     (summary, message) => {
-      summary[message.source_kind] += 1;
+      summary[getChatCaptureOrigin(message)] += 1;
       return summary;
     },
-    { transcript: 0, hook: 0 }
+    { transcript: 0, history: 0, hook: 0 }
   );
 }
 
 function countDistinctSessions(messages: ChatMessageRow[]): number {
   return new Set(messages.map((message) => message.session_id)).size;
+}
+
+export function getChatCaptureOrigin(message: Pick<ChatMessageRow, "source_kind" | "remote_source_id">): ChatCaptureOrigin {
+  if (message.source_kind === "transcript") return "transcript";
+  if (typeof message.remote_source_id === "string" && message.remote_source_id.startsWith("history:")) {
+    return "history";
+  }
+  return "hook";
 }

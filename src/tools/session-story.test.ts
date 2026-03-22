@@ -128,7 +128,7 @@ describe("getSessionStory", () => {
     expect(story.observations).toHaveLength(1);
     expect(story.summary?.request).toBe("Fix auth flow");
     expect(story.chat_messages).toHaveLength(1);
-    expect(story.chat_source_summary).toEqual({ transcript: 1, hook: 0 });
+    expect(story.chat_source_summary).toEqual({ transcript: 1, history: 0, hook: 0 });
     expect(story.chat_coverage_state).toBe("transcript-backed");
     expect(story.metrics?.tool_calls_count).toBe(1);
     expect(story.capture_state).toBe("rich");

@@ -16,7 +16,7 @@ import type {
   UserPromptRow,
 } from "../storage/sqlite.js";
 import { getRecentActivity } from "./recent.js";
-import { getRecentChat } from "./recent-chat.js";
+import { getChatCaptureOrigin, getRecentChat } from "./recent-chat.js";
 import { getRecentRequests } from "./recent-prompts.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentTools } from "./recent-tools.js";
@@ -71,12 +71,13 @@ function toToolEvent(tool: ToolEventRow): ActivityFeedEvent {
 
 function toChatEvent(message: ChatMessageRow): ActivityFeedEvent {
   const content = message.content.replace(/\s+/g, " ").trim();
+  const origin = getChatCaptureOrigin(message);
   return {
     kind: "chat",
     created_at_epoch: message.created_at_epoch,
     session_id: message.session_id,
     id: message.id,
-    title: `${message.role} [${message.source_kind}]`,
+    title: `${message.role} [${origin}]`,
     detail: content.slice(0, 220),
   };
 }

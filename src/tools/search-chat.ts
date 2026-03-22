@@ -2,6 +2,7 @@ import { detectProject } from "../storage/projects.js";
 import { embedText } from "../embeddings/embedder.js";
 import { composeChatEmbeddingText } from "../embeddings/embedder.js";
 import type { ChatMessageRow, MemDatabase, VecChatMatchRow } from "../storage/sqlite.js";
+import { getChatCaptureOrigin } from "./recent-chat.js";
 
 export interface SearchChatInput {
   query: string;
@@ -17,6 +18,7 @@ export interface SearchChatResult {
   session_count: number;
   source_summary: {
     transcript: number;
+    history: number;
     hook: number;
   };
   transcript_backed: boolean;
@@ -158,7 +160,10 @@ function computeChatQualityBoost(
   const ageHours = Math.max(0, (nowEpoch - message.created_at_epoch) / 3600);
   const directPhraseBoost = normalizedContent.includes(query) ? 0.3 : 0;
   const termBoost = allQueryTermsPresent(normalizedContent, query) ? 0.12 : 0;
-  const sourceBoost = message.source_kind === "transcript" ? 0.12 : 0.04;
+  const origin = getChatCaptureOrigin(message);
+  const sourceBoost =
+    origin === "transcript" ? 0.12 :
+    origin === "history" ? 0.08 : 0.04;
   const recencyBoost =
     ageHours < 1 ? 0.35 :
     ageHours < 6 ? 0.22 :
@@ -173,13 +178,13 @@ function allQueryTermsPresent(content: string, query: string): boolean {
   return terms.length > 0 && terms.every((term) => content.includes(term));
 }
 
-function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; hook: number } {
+function summarizeChatSources(messages: ChatMessageRow[]): { transcript: number; history: number; hook: number } {
   return messages.reduce(
     (summary, message) => {
-      summary[message.source_kind] += 1;
+      summary[getChatCaptureOrigin(message)] += 1;
       return summary;
     },
-    { transcript: 0, hook: 0 }
+    { transcript: 0, history: 0, hook: 0 }
   );
 }
 

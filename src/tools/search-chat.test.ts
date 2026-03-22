@@ -56,7 +56,7 @@ describe("searchChat", () => {
 
     expect(result.messages).toHaveLength(2);
     expect(result.session_count).toBe(2);
-    expect(result.source_summary).toEqual({ transcript: 1, hook: 1 });
+    expect(result.source_summary).toEqual({ transcript: 1, history: 0, hook: 1 });
     expect(result.transcript_backed).toBe(true);
   });
 
