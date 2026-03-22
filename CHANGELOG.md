@@ -4,10 +4,17 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.29
+
+### Added
+
+- transcript/chat recall now falls back to Claude `history.jsonl` when session transcript files are missing or session IDs drift, so OpenClaw-style sessions can still recover recent prompts into chat recall and prompt chronology
+
 ### Changed
 
-- `search_chat` now prefers fresher transcript-backed matches over stale hook-only chat when both are plausible, so live recall behaves more like an active thread than an archive
-- `search_recall` now penalizes older memory slightly and boosts very recent chat harder, so “what were we just talking about?” is less likely to get drowned by week-old project memory
+- chat recall surfaces now distinguish capture origin as `transcript`, `history`, or `hook`, so recovered history-backed chat is visible instead of masquerading as thin hook-edge recall
+- `search_chat` now prefers fresher transcript/history-backed matches over stale hook-only chat when both are plausible, and treats “what were we just talking about?” style prompts as recent-thread recovery
+- `search_recall` now penalizes older memory slightly, boosts very recent chat harder, and prefers results from the most recent active session so live continuity is less likely to get drowned by week-old project memory
 
 ## 0.4.28
 
