@@ -771,6 +771,9 @@ server.tool(
     const hotFileLines = result.hot_files.length > 0
       ? result.hot_files.map((item) => `- ${item.path}${item.count > 1 ? ` (${item.count})` : ""}`).join("\n")
       : "- (none)";
+    const nextActionLines = result.next_actions.length > 0
+      ? result.next_actions.map((item) => `- ${item}`).join("\n")
+      : "- (none)";
     const repairLine = result.repair_attempted
       ? `Recall repair: attempted${result.repair_result ? ` · imported ${result.repair_result.imported_chat_messages} chat across ${result.repair_result.sessions_with_imports} session(s)` : ""}\n`
       : "";
@@ -797,6 +800,8 @@ server.tool(
           text:
             `${projectLine}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
+            `Freshness: ${result.resume_freshness}\n` +
+            `Source: ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Resume confidence: ${result.resume_confidence}\n` +
             repairLine +
             `Current thread: ${result.current_thread ?? "(unknown)"}\n` +
@@ -807,6 +812,7 @@ server.tool(
             `Resume basis:\n${basisLines}\n\n` +
             `Tool trail:\n${toolTrailLines}\n\n` +
             `Hot files:\n${hotFileLines}\n\n` +
+            `Next actions:\n${nextActionLines}\n\n` +
             `Recent outcomes:\n${outcomes}\n\n` +
             `Recent chat:\n${chatLines}\n\n` +
             `Recall hits:\n${recallLines}`,

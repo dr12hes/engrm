@@ -4,6 +4,10 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Changed
+
+- `resume_thread` now includes `next_actions`, source session/device cues, and a `live / recent / stale` freshness signal, so the default continuity tool reads more like a coworker handoff than a generic recap
+
 ## 0.4.30
 
 ### Added

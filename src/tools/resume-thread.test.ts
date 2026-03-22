@@ -35,7 +35,8 @@ describe("resumeThread", () => {
       investigated: null,
       learned: null,
       completed: "Wired the explicit event list into the events page",
-      next_steps: null,
+      next_steps:
+        "Verify only explicit notification events appear in the events page.\nExpose the rule path to chat for follow-up questions.",
       current_thread: "Review EventService routing and explicit notifications",
       recent_tool_names: JSON.stringify(["Edit", "Bash"]),
       hot_files: JSON.stringify(["AIServer/app/services/eventservice.py", "AIServer/app/routers/events.py"]),
@@ -82,16 +83,19 @@ describe("resumeThread", () => {
 
     expect(result.project_name).toBe("repo");
     expect(result.repair_attempted).toBe(false);
+    expect(result.resume_freshness).toBe("live");
+    expect(result.resume_source_session_id).toBe("sess-1");
+    expect(result.resume_source_device_id).toBe("laptop");
     expect(result.resume_confidence).toBe("strong");
     expect(result.resume_basis).toContain("explicit handoff available");
     expect(result.resume_basis).toContain("current thread recovered");
     expect(result.resume_basis).toContain("recent tool trail available");
-    expect(result.resume_basis).toContain("hot files available");
+    expect(result.resume_basis).toContain("next actions available");
     expect(result.current_thread).toContain("EventService");
     expect(result.latest_request).toContain("EventService");
     expect(result.handoff?.title).toContain("Handoff:");
     expect(result.tool_trail).toEqual(["Edit", "Bash"]);
-    expect(result.hot_files[0]?.path).toBe("AIServer/app/services/eventservice.py");
+    expect(result.next_actions[0]).toContain("Verify only explicit notification events appear");
     expect(result.chat_coverage_state).toBe("transcript-backed");
     expect(result.recent_chat[0]?.content).toContain("explicit notification events");
     expect(result.recall_hits.length).toBeGreaterThan(0);
@@ -140,6 +144,8 @@ describe("resumeThread", () => {
 
     expect(result.repair_attempted).toBe(true);
     expect(result.repair_result).not.toBeNull();
+    expect(result.resume_source_session_id).toBe("sess-2");
+    expect(result.resume_source_device_id).toBe("desktop");
     expect(result.resume_confidence).toBe("usable");
     expect(result.chat_coverage_state).toBe("history-backed");
     expect(result.resume_basis).toContain("history-backed chat continuity");

@@ -20,6 +20,9 @@ export interface ResumeThreadResult {
   project_name: string | null;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
+  resume_freshness: "live" | "recent" | "stale";
+  resume_source_session_id: string | null;
+  resume_source_device_id: string | null;
   resume_confidence: "strong" | "usable" | "thin";
   resume_basis: string[];
   repair_attempted: boolean;
@@ -36,6 +39,7 @@ export interface ResumeThreadResult {
   } | null;
   tool_trail: string[];
   hot_files: Array<{ path: string; count: number }>;
+  next_actions: string[];
   recent_outcomes: string[];
   chat_coverage_state: ChatCoverageState;
   recent_chat: Array<{
@@ -80,6 +84,7 @@ export async function resumeThread(
   const { context, handoff, recentChat, recentSessions, recall } = snapshot;
 
   const latestSession = recentSessions[0] ?? null;
+  const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
   const inferredRequest =
     latestSession?.request?.trim()
     || null;
@@ -93,6 +98,8 @@ export async function resumeThread(
     || null;
   const toolTrail = collectToolTrail(latestSession);
   const hotFiles = collectHotFiles(latestSession, context?.hot_files ?? []);
+  const nextActions = collectNextActions(latestSummary?.next_steps);
+  const sourceTimestamp = pickSourceTimestamp(latestSession, recentChat.messages);
 
   const resumeBasis = buildResumeBasis({
     handoff,
@@ -104,6 +111,7 @@ export async function resumeThread(
     recentOutcomes: context?.recent_outcomes ?? [],
     toolTrail,
     hotFiles,
+    nextActions,
   });
   const resumeConfidence = classifyResumeConfidence({
     handoff,
@@ -126,6 +134,9 @@ export async function resumeThread(
     project_name: project?.name ?? context?.project_name ?? null,
     continuity_state: context?.continuity_state ?? "cold",
     continuity_summary: context?.continuity_summary ?? "No fresh repo-local continuity yet; older memory should be treated cautiously.",
+    resume_freshness: classifyResumeFreshness(sourceTimestamp),
+    resume_source_session_id: latestSession?.session_id ?? null,
+    resume_source_device_id: handoff?.device_id ?? latestSession?.device_id ?? null,
     resume_confidence: resumeConfidence,
     resume_basis: resumeBasis,
     repair_attempted: shouldRepair,
@@ -146,6 +157,7 @@ export async function resumeThread(
       : null,
     tool_trail: toolTrail,
     hot_files: hotFiles,
+    next_actions: nextActions,
     recent_outcomes: context?.recent_outcomes ?? [],
     chat_coverage_state: recentChat.coverage_state,
     recent_chat: recentChat.messages
@@ -228,6 +240,27 @@ function extractHandoffSource(handoff: HandoffRow): string | null {
   return handoff.device_id ?? null;
 }
 
+function pickSourceTimestamp(
+  latestSession: ReturnType<typeof getRecentSessions>["sessions"][number] | null,
+  messages: ReturnType<typeof getRecentChat>["messages"]
+): number | null {
+  const latestChatEpoch = messages.length > 0
+    ? messages[messages.length - 1]?.created_at_epoch ?? null
+    : null;
+  return latestChatEpoch
+    ?? latestSession?.completed_at_epoch
+    ?? latestSession?.started_at_epoch
+    ?? null;
+}
+
+function classifyResumeFreshness(sourceTimestamp: number | null): ResumeThreadResult["resume_freshness"] {
+  if (!sourceTimestamp) return "stale";
+  const ageMs = Date.now() - sourceTimestamp * 1000;
+  if (ageMs <= 15 * 60 * 1000) return "live";
+  if (ageMs <= 3 * 24 * 60 * 60 * 1000) return "recent";
+  return "stale";
+}
+
 function classifyResumeConfidence(input: {
   handoff: HandoffRow | null;
   continuityState: "fresh" | "thin" | "cold";
@@ -256,12 +289,14 @@ function buildResumeBasis(input: {
   recentOutcomes: string[];
   toolTrail: string[];
   hotFiles: Array<{ path: string; count: number }>;
+  nextActions: string[];
 }): string[] {
   const basis: string[] = [];
   if (input.handoff) basis.push("explicit handoff available");
   if (input.currentThread) basis.push("current thread recovered");
   if (input.latestRequest) basis.push("latest request recovered");
   if (input.recentOutcomes.length > 0) basis.push("recent outcomes available");
+  if (input.nextActions.length > 0) basis.push("next actions available");
   if (input.toolTrail.length > 0) basis.push("recent tool trail available");
   if (input.hotFiles.length > 0) basis.push("hot files available");
   if (input.recallHits.some((item) => item.kind === "chat")) basis.push("live chat recall available");
@@ -286,6 +321,20 @@ function collectHotFiles(
   const parsed = parseJsonArray(session?.hot_files).map((path) => ({ path, count: 1 }));
   if (parsed.length > 0) return parsed.slice(0, 5);
   return fallback.slice(0, 5);
+}
+
+function collectNextActions(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const normalized = value
+    .split(/\n+/)
+    .map((line) => line.replace(/^[\s*-]+/, "").trim())
+    .filter((line) => line.length > 0);
+  if (normalized.length > 1) return normalized.slice(0, 5);
+  return value
+    .split(/[.;](?:\s+|$)/)
+    .map((item) => item.replace(/^[\s*-]+/, "").trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 5);
 }
 
 function parseJsonArray(value: string | null | undefined): string[] {
