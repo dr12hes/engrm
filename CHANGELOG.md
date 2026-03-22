@@ -4,6 +4,17 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.25
+
+### Added
+
+- `refresh_chat_recall` MCP tool can now hydrate the separate chat lane from the current Claude transcript for long sessions
+
+### Changed
+
+- long sessions can now fill the chat lane from transcript-backed messages, and chat views label whether each message came from a transcript import or hook-edge capture
+- `PreCompact` now refreshes transcript-backed chat recall and the rolling handoff draft before Claude compacts, so context compression preserves the current thread instead of acting like the conversation vanished
+
 ## 0.4.24
 
 ### Added
