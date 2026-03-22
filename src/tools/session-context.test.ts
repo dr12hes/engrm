@@ -90,6 +90,7 @@ describe("getSessionContext", () => {
 
     expect(result).not.toBeNull();
     expect(result?.project_name).toBe("repo");
+    expect(result?.continuity_state).toBe("fresh");
     expect(result?.recent_requests).toBe(1);
     expect(result?.recent_tools).toBe(1);
     expect(result?.capture_state).toBe("rich");
@@ -107,6 +108,7 @@ describe("getSessionContext", () => {
     expect(result?.hot_files).toEqual([
       { path: "src/tools/project-memory-index.ts", count: 1 },
     ]);
+    expect(result?.continuity_summary).toContain("Fresh repo-local continuity");
     expect(result?.preview).toContain("## Recent Handoffs");
     expect(result?.preview).toContain("## Recent Requests");
     expect(result?.preview).toContain("## Recent Tools");

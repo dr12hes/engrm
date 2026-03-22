@@ -4,6 +4,17 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Added
+
+- `memory_console`, `project_memory_index`, and `session_context` now expose a continuity state:
+  - `fresh`
+  - `thin`
+  - `cold`
+
+### Changed
+
+- local MCP text output now prints continuity summaries directly, so thin repos are described honestly instead of forcing stale memory to look active
+
 ## 0.4.25
 
 ### Added

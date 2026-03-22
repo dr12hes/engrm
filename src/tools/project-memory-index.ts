@@ -29,6 +29,8 @@ export interface ProjectMemoryIndexInput {
 export interface ProjectMemoryIndexResult {
   project: string;
   canonical_id: string;
+  continuity_state: "fresh" | "thin" | "cold";
+  continuity_summary: string;
   observation_counts: Record<string, number>;
   recent_sessions: RecentSessionRow[];
   recent_outcomes: string[];
@@ -173,10 +175,20 @@ export function getProjectMemoryIndex(
       hotFiles.map((item) => `${item.path} (${item.count})`).join("\n"),
     ].filter(Boolean).join("\n")
   );
+  const continuityState = classifyContinuityState(
+    recentRequestsCount,
+    recentToolsCount,
+    recentHandoffsCount.length,
+    recentChatCount,
+    recentSessions,
+    recentOutcomes.length
+  );
 
   return {
     project: project.name,
     canonical_id: project.canonical_id,
+    continuity_state: continuityState,
+    continuity_summary: describeContinuityState(continuityState),
     observation_counts: counts,
     recent_sessions: recentSessions,
     recent_outcomes: recentOutcomes,
@@ -197,6 +209,36 @@ export function getProjectMemoryIndex(
     estimated_read_tokens: estimatedReadTokens,
     suggested_tools: suggestedTools,
   };
+}
+
+export function classifyContinuityState(
+  recentRequestsCount: number,
+  recentToolsCount: number,
+  recentHandoffsCount: number,
+  recentChatCount: number,
+  recentSessions: RecentSessionRow[],
+  recentOutcomesCount: number
+): ProjectMemoryIndexResult["continuity_state"] {
+  const hasRaw = recentRequestsCount > 0 || recentToolsCount > 0;
+  const hasResume = recentHandoffsCount > 0 || recentChatCount > 0;
+  const hasSessionThread = recentSessions.length > 0 || recentOutcomesCount > 0;
+
+  if (hasRaw && (hasResume || hasSessionThread)) return "fresh";
+  if (hasRaw || hasResume || hasSessionThread) return "thin";
+  return "cold";
+}
+
+export function describeContinuityState(
+  state: ProjectMemoryIndexResult["continuity_state"]
+): string {
+  switch (state) {
+    case "fresh":
+      return "Fresh repo-local continuity is available.";
+    case "thin":
+      return "Only partial continuity is available; recent prompts/chat are safer than older memory.";
+    default:
+      return "No fresh repo-local continuity yet; older memory should be treated cautiously.";
+  }
 }
 
 function extractPaths(value: string | null): string[] {

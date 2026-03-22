@@ -14,6 +14,7 @@ import { getRecentSessions } from "./recent-sessions.js";
 import { getProjectMemoryIndex } from "./project-memory-index.js";
 import { getRecentChat } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
+import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -24,6 +25,8 @@ export interface MemoryConsoleInput {
 export interface MemoryConsoleResult {
   project?: string;
   capture_mode: "rich" | "observations-only";
+  continuity_state: "fresh" | "thin" | "cold";
+  continuity_summary: string;
   capture_summary?: ReturnType<typeof getProjectMemoryIndex>["capture_summary"];
   sessions: ReturnType<typeof getRecentSessions>["sessions"];
   requests: ReturnType<typeof getRecentRequests>["prompts"];
@@ -96,10 +99,20 @@ export function getMemoryConsole(
         user_id: input.user_id,
       })
     : null;
+  const continuityState = projectIndex?.continuity_state ?? classifyContinuityState(
+    requests.length,
+    tools.length,
+    recentHandoffs.length,
+    recentChat.length,
+    sessions,
+    (projectIndex?.recent_outcomes ?? []).length
+  );
 
   return {
     project: project?.name,
     capture_mode: requests.length > 0 || tools.length > 0 ? "rich" : "observations-only",
+    continuity_state: continuityState,
+    continuity_summary: projectIndex?.continuity_summary ?? describeContinuityState(continuityState),
     sessions,
     requests,
     tools,

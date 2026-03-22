@@ -102,6 +102,7 @@ describe("getMemoryConsole", () => {
 
     expect(result.project).toBe("repo");
     expect(result.capture_mode).toBe("rich");
+    expect(result.continuity_state).toBe("fresh");
     expect(result.sessions).toHaveLength(1);
     expect(result.requests).toHaveLength(1);
     expect(result.tools).toHaveLength(1);
@@ -121,6 +122,7 @@ describe("getMemoryConsole", () => {
     expect(result.assistant_checkpoint_count).toBe(1);
     expect(result.top_types[0]).toEqual({ type: "bugfix", count: 1 });
     expect(result.estimated_read_tokens).toBeGreaterThan(0);
+    expect(result.continuity_summary).toContain("Fresh repo-local continuity");
     expect(result.suggested_tools).toContain("recent_sessions");
     expect(result.suggested_tools).toContain("activity_feed");
     expect(result.suggested_tools).toContain("capture_git_worktree");

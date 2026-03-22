@@ -212,8 +212,8 @@ The MCP server exposes tools that supported agents can call directly:
 | `memory_stats` | View high-level capture and sync health |
 | `capture_status` | Check whether local hooks are registered and raw prompt/tool chronology is actually being captured |
 | `activity_feed` | Inspect one chronological local feed across prompts, tools, chat, handoffs, observations, and summaries |
-| `memory_console` | Show a high-signal local memory console for the current project |
-| `project_memory_index` | Show typed local memory by project, including hot files and recent sessions |
+| `memory_console` | Show a high-signal local memory console for the current project, including continuity state |
+| `project_memory_index` | Show typed local memory by project, including hot files, recent sessions, and continuity state |
 | `workspace_memory_index` | Show cross-project local memory coverage across the whole workspace |
 | `tool_memory_index` | Show which source tools and plugins are creating durable memory |
 | `session_tool_memory` | Show which tools in one session produced reusable memory and which produced none |

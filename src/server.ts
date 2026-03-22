@@ -1079,6 +1079,7 @@ server.tool(
           text:
             `${projectLine}` +
             `${captureLine}` +
+            `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
@@ -1306,6 +1307,7 @@ server.tool(
           text:
             `Project: ${result.project_name}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
+            `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Loaded observations: ${result.session_count}\n` +
             `Searchable total: ${result.total_active}\n` +
             `Recent requests: ${result.recent_requests}\n` +
@@ -1418,6 +1420,7 @@ server.tool(
           text:
             `Project: ${result.project}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
+            `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Recent requests captured: ${result.recent_requests_count}\n` +
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
             `Recent handoffs captured: ${result.recent_handoffs_count}\n` +

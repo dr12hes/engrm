@@ -135,8 +135,9 @@ describe("buildSessionContext", () => {
 
   test("does not auto-load stale project observations when fresh continuity is absent", () => {
     const project = db.upsertProject({
-      canonical_id: "github.com/dr12hes/huginn",
+      canonical_id: "local/huginn",
       name: "huginn",
+      local_path: "/tmp/huginn",
     });
     const nowEpoch = Math.floor(Date.now() / 1000);
     db.db
@@ -1200,9 +1201,19 @@ describe("blended scoring in buildSessionContext", () => {
     const project = db.upsertProject({
       canonical_id: "local/testproject",
       name: "testproject",
+      local_path: "/tmp/testproject",
     });
-
     const nowEpoch = Math.floor(Date.now() / 1000);
+    db.upsertSession("sess-1", project.id, "david", "laptop", "claude-code");
+    db.insertUserPrompt({
+      session_id: "sess-1",
+      project_id: project.id,
+      prompt: "review why the recent discovery should outrank the old decision",
+      cwd: "/tmp/testproject",
+      user_id: "david",
+      device_id: "laptop",
+      created_at_epoch: nowEpoch - 3600,
+    });
 
     // Insert old high-quality observation (25 days ago)
     // We need to directly manipulate created_at_epoch

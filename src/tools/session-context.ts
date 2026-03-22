@@ -14,6 +14,7 @@ import {
   type ContextOptions,
 } from "../context/inject.js";
 import { getRecentChat } from "./recent-chat.js";
+import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
 
 export interface SessionContextInput {
   cwd?: string;
@@ -26,6 +27,8 @@ export interface SessionContextInput {
 export interface SessionContextResult {
   project_name: string;
   canonical_id: string;
+  continuity_state: "fresh" | "thin" | "cold";
+  continuity_summary: string;
   session_count: number;
   total_active: number;
   recent_requests: number;
@@ -80,10 +83,20 @@ export function getSessionContext(
         ? "partial"
         : "summary-only";
   const hotFiles = buildHotFiles(context);
+  const continuityState = classifyContinuityState(
+    recentRequests,
+    recentTools,
+    recentHandoffs,
+    recentChatMessages,
+    context.recentSessions ?? [],
+    (context.recentOutcomes ?? []).length
+  );
 
   return {
     project_name: context.project_name,
     canonical_id: context.canonical_id,
+    continuity_state: continuityState,
+    continuity_summary: describeContinuityState(continuityState),
     session_count: context.session_count,
     total_active: context.total_active,
     recent_requests: recentRequests,
