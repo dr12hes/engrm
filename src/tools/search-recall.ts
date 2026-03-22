@@ -44,8 +44,12 @@ export async function searchRecall(
   }
 
   const limit = Math.max(1, Math.min(input.limit ?? 10, 50));
+  const recentThreadQuery = isRecentThreadRecallQuery(query);
   const [memory, chat] = await Promise.all([
-    searchObservations(db, input),
+    searchObservations(db, {
+      ...input,
+      limit: recentThreadQuery ? Math.max(1, Math.ceil(limit / 2)) : input.limit,
+    }),
     searchChat(db, {
       query,
       limit: limit * 2,
@@ -55,7 +59,7 @@ export async function searchRecall(
     }),
   ]);
 
-  const merged = mergeRecallResults(memory.observations, chat.messages, limit);
+  const merged = mergeRecallResults(memory.observations, chat.messages, limit, recentThreadQuery);
 
   return {
     query,
@@ -71,7 +75,8 @@ export async function searchRecall(
 function mergeRecallResults(
   memory: Awaited<ReturnType<typeof searchObservations>>["observations"],
   chat: Awaited<ReturnType<typeof searchChat>>["messages"],
-  limit: number
+  limit: number,
+  recentThreadQuery: boolean
 ): SearchRecallEntry[] {
   const nowEpoch = Math.floor(Date.now() / 1000);
   const scored: SearchRecallEntry[] = [];
@@ -84,7 +89,8 @@ function mergeRecallResults(
     const freshnessPenalty =
       ageHours > 24 * 7 ? 0.12 :
       ageHours > 72 ? 0.05 : 0;
-    const score = base + Math.max(0, item.rank) * 0.08 - freshnessPenalty;
+    const continuityPenalty = recentThreadQuery ? 0.45 : 0;
+    const score = base + Math.max(0, item.rank) * 0.08 - freshnessPenalty - continuityPenalty;
     scored.push({
       kind: "memory",
       rank: score,
@@ -114,9 +120,10 @@ function mergeRecallResults(
       ageHours < 6 ? 0.55 : 0;
     const recencyBoost = ageHours < 24 ? 0.18 : ageHours < 72 ? 0.08 : 0.02;
     const sourceBoost = item.source_kind === "transcript" ? 0.1 : 0.04;
+    const continuityBoost = recentThreadQuery ? 0.35 : 0;
     scored.push({
       kind: "chat",
-      rank: base + immediacyBoost + recencyBoost + sourceBoost,
+      rank: base + immediacyBoost + recencyBoost + sourceBoost + continuityBoost,
       created_at_epoch: item.created_at_epoch,
       session_id: item.session_id,
       id: item.id,
@@ -133,6 +140,30 @@ function mergeRecallResults(
       return (b.created_at_epoch ?? 0) - (a.created_at_epoch ?? 0);
     })
     .slice(0, limit);
+}
+
+function isRecentThreadRecallQuery(query: string): boolean {
+  const normalized = query
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return false;
+
+  return [
+    "what were we just talking about",
+    "what were we talking about",
+    "what did we just talk about",
+    "what did we talk about",
+    "what were we discussing",
+    "what were we just discussing",
+    "catch me up",
+    "resume the thread",
+    "where were we",
+    "where did we leave off",
+    "what is the current thread",
+    "what s the current thread",
+  ].some((pattern) => normalized.includes(pattern));
 }
 
 function parseFactsPreview(facts: string | null): string | null {

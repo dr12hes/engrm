@@ -62,4 +62,46 @@ describe("searchRecall", () => {
     expect(result.results[0]?.kind).toBe("chat");
     expect(result.results[0]?.source_kind).toBe("transcript");
   });
+
+  test("treats meta recall queries as continuity-first", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+    const now = Math.floor(Date.now() / 1000);
+
+    db.insertObservation({
+      project_id: project.id,
+      type: "decision",
+      title: "License changed from ELv2 to FSL-1.1-ALv2",
+      narrative: "Older repo memory that should not beat the live thread.",
+      quality: 0.9,
+      user_id: "david",
+      device_id: "desktop",
+      created_at: new Date((now - 9 * 24 * 3600) * 1000).toISOString(),
+      created_at_epoch: now - 9 * 24 * 3600,
+    });
+    db.insertChatMessage({
+      session_id: "sess-live",
+      project_id: project.id,
+      role: "assistant",
+      content: "We were just talking about eventservice and alert routing.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+      created_at_epoch: now - 90,
+    });
+
+    const result = await searchRecall(db, {
+      query: "what were we just talking about",
+      cwd: "/tmp/repo",
+      user_id: "david",
+    });
+
+    expect(result.results[0]?.kind).toBe("chat");
+    expect(result.results[0]?.detail).toContain("eventservice");
+  });
 });
