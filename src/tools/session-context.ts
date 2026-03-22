@@ -167,6 +167,13 @@ function buildSuggestedTools(
   if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
     tools.push("activity_feed");
   }
+  if (
+    (context.recentPrompts?.length ?? 0) > 0 ||
+    (context.recentChatMessages?.length ?? 0) > 0 ||
+    context.observations.length > 0
+  ) {
+    tools.push("search_recall");
+  }
   if (context.observations.length > 0) {
     tools.push("tool_memory_index", "capture_git_worktree");
   }

@@ -541,6 +541,13 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
   ) {
     hints.push("activity_feed");
   }
+  if (
+    (context.recentPrompts?.length ?? 0) > 0 ||
+    (context.recentChatMessages?.length ?? 0) > 0 ||
+    context.observations.length > 0
+  ) {
+    hints.push("search_recall");
+  }
   if (context.observations.length > 0) {
     hints.push("memory_console");
   }

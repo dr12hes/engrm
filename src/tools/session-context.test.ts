@@ -106,6 +106,7 @@ describe("getSessionContext", () => {
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);
     expect(result?.suggested_tools).toContain("recent_sessions");
     expect(result?.suggested_tools).toContain("activity_feed");
+    expect(result?.suggested_tools).toContain("search_recall");
     expect(result?.suggested_tools).toContain("tool_memory_index");
     expect(result?.recent_outcomes).toContain("Exposed project memory index in MCP");
     expect(result?.hot_files).toEqual([

@@ -320,6 +320,9 @@ function buildSuggestedTools(
   if (requestCount > 0 || toolCount > 0) {
     suggested.push("activity_feed");
   }
+  if (requestCount > 0 || recentChatCount > 0 || observationCount > 0) {
+    suggested.push("search_recall");
+  }
   if (observationCount > 0) {
     suggested.push("tool_memory_index", "capture_git_worktree");
   }
