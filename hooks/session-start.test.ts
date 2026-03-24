@@ -501,6 +501,20 @@ describe("session-start startup brief", () => {
             created_at_epoch: 1,
           },
         ],
+        recentChatMessages: [
+          {
+            id: 77,
+            session_id: "sess-1",
+            project_id: 1,
+            role: "assistant",
+            content: "We already traced the ELK edge rendering bug to the topology route.",
+            user_id: "david",
+            device_id: "BackupMac",
+            agent: "claude-code",
+            created_at_epoch: 2,
+            remote_source_id: null,
+          },
+        ],
         recentSessions: [
           {
             id: 1,
@@ -529,6 +543,9 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("Handoff");
     expect(splash).toContain("Legend:");
     expect(splash).toContain("Handoff index:");
+    expect(splash).toContain("Recall preview:");
+    expect(splash).toContain("session:sess-1");
+    expect(splash).toContain("chat:77");
     expect(splash).toContain("Next look:");
     expect(splash).toContain("Pull detail:");
     expect(splash).toContain("recent_sessions");
@@ -631,6 +648,37 @@ describe("session-start startup brief", () => {
     expect(splash).not.toContain("Handoff index:");
     expect(splash).not.toContain("Pull detail:");
     expect(splash).toContain("Fresh repo-local handoff is still thin");
+  });
+
+  test("startup still shows recall preview when continuity is thin but recent chat exists", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 1,
+      available: 12,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 220,
+      context: makeContext({
+        recentChatMessages: [
+          {
+            id: 55,
+            session_id: "sess-chat",
+            project_id: 1,
+            role: "assistant",
+            content: "We were just wiring EventService alerts into the notifications flow.",
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            created_at_epoch: Math.floor(Date.now() / 1000) - 60,
+            remote_source_id: null,
+          },
+        ],
+      }),
+    });
+
+    expect(splash).toContain("Recall preview:");
+    expect(splash).toContain("chat:55");
   });
 
   test("pull detail ids match the visible handoff index rows", () => {

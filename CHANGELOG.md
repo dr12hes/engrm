@@ -4,6 +4,10 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+### Changed
+
+- startup handoff now shows a compact recall preview with exact keys like `handoff:*`, `session:*`, and `chat:*`, so the deterministic recall protocol is visible before an agent even reaches for MCP
+
 ## 0.4.32
 
 ### Added

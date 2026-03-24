@@ -268,6 +268,14 @@ function formatSplashScreen(data: SplashData): string {
     }
   }
 
+  const recallPreview = formatStartupRecallPreview(data.context);
+  if (recallPreview.length > 0) {
+    lines.push("");
+    for (const line of recallPreview) {
+      lines.push(`  ${line}`);
+    }
+  }
+
   const inspectHints = formatInspectHints(data.context, contextIndex.observationIds);
   if (inspectHints.length > 0) {
     lines.push("");
@@ -606,6 +614,100 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
     `${c.dim}Next look:${c.reset} ${unique.join(" · ")}`,
     ...(fetchHint ? [`${c.dim}Pull detail:${c.reset} ${fetchHint}`] : []),
   ];
+}
+
+function formatStartupRecallPreview(context: InjectedContext): string[] {
+  const items = buildStartupRecallItems(context).slice(0, 3);
+  if (items.length === 0) return [];
+  return [
+    `${c.dim}Recall preview:${c.reset} exact keys you can open now`,
+    ...items.map((item) => `${item.key} [${item.kind} · ${item.freshness}] ${truncateInline(item.title, 110)}`),
+  ];
+}
+
+function buildStartupRecallItems(context: InjectedContext): Array<{
+  key: string;
+  kind: "handoff" | "thread" | "chat" | "memory";
+  freshness: "live" | "recent" | "stale";
+  title: string;
+}> {
+  const items: Array<{
+    key: string;
+    kind: "handoff" | "thread" | "chat" | "memory";
+    freshness: "live" | "recent" | "stale";
+    title: string;
+    score: number;
+  }> = [];
+
+  for (const handoff of context.recentHandoffs?.slice(0, 2) ?? []) {
+    const title = handoff.title
+      .replace(/^Handoff(?: Draft)?:\s*/i, "")
+      .replace(/\s+·\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}Z$/, "")
+      .trim();
+    if (!title) continue;
+    const freshness = classifyResumeFreshness(handoff.created_at_epoch);
+    items.push({
+      key: `handoff:${handoff.id}`,
+      kind: "handoff",
+      freshness,
+      title,
+      score: freshnessScore(freshness) + 40,
+    });
+  }
+
+  for (const session of context.recentSessions?.slice(0, 2) ?? []) {
+    const title = chooseMeaningfulSessionSummary(session.request, session.completed);
+    if (!title) continue;
+    const sourceEpoch = session.completed_at_epoch ?? session.started_at_epoch ?? null;
+    const freshness = classifyResumeFreshness(sourceEpoch);
+    items.push({
+      key: `session:${session.session_id}`,
+      kind: "thread",
+      freshness,
+      title,
+      score: freshnessScore(freshness) + 30,
+    });
+  }
+
+  for (const message of context.recentChatMessages?.slice(-2) ?? []) {
+    if (!message.content.trim()) continue;
+    const freshness = classifyResumeFreshness(message.created_at_epoch);
+    items.push({
+      key: `chat:${message.id}`,
+      kind: "chat",
+      freshness,
+      title: `[${message.role}] ${message.content.replace(/\s+/g, " ").trim()}`,
+      score: freshnessScore(freshness) + 20,
+    });
+  }
+
+  for (const obs of pickContextIndexObservations(context).slice(0, 2)) {
+    const createdAtEpoch = Math.floor(new Date(obs.created_at).getTime() / 1000);
+    const freshness = classifyResumeFreshness(Number.isFinite(createdAtEpoch) ? createdAtEpoch : null);
+    items.push({
+      key: `obs:${obs.id}`,
+      kind: "memory",
+      freshness,
+      title: obs.title,
+      score: freshnessScore(freshness) + 10,
+    });
+  }
+
+  const seen = new Set<string>();
+  return items
+    .sort((a, b) => b.score - a.score || a.key.localeCompare(b.key))
+    .filter((item) => {
+      if (seen.has(item.key)) return false;
+      seen.add(item.key);
+      return true;
+    })
+    .map(({ score: _score, ...item }) => item);
+}
+
+function freshnessScore(freshness: "live" | "recent" | "stale"): number {
+  if (freshness === "live") return 3;
+  if (freshness === "recent") return 2;
+  return 1;
 }
 
 function rememberShownItem(shown: Set<string>, value: string | null | undefined): void {
