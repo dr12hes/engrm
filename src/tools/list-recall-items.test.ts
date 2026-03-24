@@ -84,6 +84,7 @@ describe("listRecallItems", () => {
     expect(result.items[0]?.kind).toBe("handoff");
     expect(result.items[0]?.key).toBe("handoff:1");
     expect(result.items[0]?.source_device_id).toBe("laptop");
+    expect(result.items[0]?.source_agent).toBe("claude-code");
     expect(result.items.some((item) => item.kind === "thread" && item.session_id === "sess-1")).toBe(true);
     expect(result.items.some((item) => item.kind === "chat" && item.detail.includes("explicit notification filter"))).toBe(true);
     expect(result.items.some((item) => item.kind === "memory" && item.title.includes("Wired the explicit event list"))).toBe(true);

@@ -648,13 +648,14 @@ function formatStartupRecallPreview(
     kind: "handoff" | "thread" | "chat" | "memory";
     freshness: "live" | "recent" | "stale";
     title: string;
+    source_agent?: string | null;
   }>
 ): string[] {
   const items = recallItems.slice(0, 3);
   if (items.length === 0) return [];
   return [
     `${c.dim}Recall preview:${c.reset} exact keys you can open now`,
-    ...items.map((item) => `${item.key} [${item.kind} · ${item.freshness}] ${truncateInline(item.title, 110)}`),
+    ...items.map((item) => `${item.key} [${item.kind} · ${item.freshness}${item.source_agent ? ` · ${item.source_agent}` : ""}] ${truncateInline(item.title, 110)}`),
   ];
 }
 
@@ -663,12 +664,14 @@ function buildStartupRecallItems(context: InjectedContext): Array<{
   kind: "handoff" | "thread" | "chat" | "memory";
   freshness: "live" | "recent" | "stale";
   title: string;
+  source_agent?: string | null;
 }> {
   const items: Array<{
     key: string;
     kind: "handoff" | "thread" | "chat" | "memory";
     freshness: "live" | "recent" | "stale";
     title: string;
+    source_agent?: string | null;
     score: number;
   }> = [];
 
@@ -684,6 +687,7 @@ function buildStartupRecallItems(context: InjectedContext): Array<{
       kind: "handoff",
       freshness,
       title,
+      source_agent: (context.recentSessions ?? []).find((session) => session.session_id === handoff.session_id)?.agent ?? null,
       score: freshnessScore(freshness) + 40,
     });
   }
@@ -698,6 +702,7 @@ function buildStartupRecallItems(context: InjectedContext): Array<{
       kind: "thread",
       freshness,
       title,
+      source_agent: session.agent ?? null,
       score: freshnessScore(freshness) + 30,
     });
   }
@@ -710,6 +715,7 @@ function buildStartupRecallItems(context: InjectedContext): Array<{
       kind: "chat",
       freshness,
       title: `[${message.role}] ${message.content.replace(/\s+/g, " ").trim()}`,
+      source_agent: message.agent ?? null,
       score: freshnessScore(freshness) + 20,
     });
   }

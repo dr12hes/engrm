@@ -776,7 +776,7 @@ server.tool(
 
     const projectLine = result.project ? `Project: ${result.project}\n` : "";
     const rows = result.items.map((item) =>
-      `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}${item.source_device_id ? ` (${item.source_device_id})` : ""}\n  ${item.detail}`
+      `- ${item.key} [${item.kind} · ${item.freshness}${item.source_agent ? ` · ${item.source_agent}` : ""}] ${item.title}${item.source_device_id ? ` (${item.source_device_id})` : ""}\n  ${item.detail}`
     ).join("\n");
 
     return {
@@ -829,7 +829,8 @@ server.tool(
               `Recall item ${result.key} [handoff]\n` +
               `Title: ${result.title}\n` +
               `Session: ${result.session_id ?? "(unknown)"}\n` +
-              `Source: ${result.source_device_id ?? "(unknown)"}\n\n` +
+              `Source: ${result.source_device_id ?? "(unknown)"}\n` +
+              `Agent: ${result.source_agent ?? "(unknown)"}\n\n` +
               `${result.payload.narrative ?? "(no narrative)"}`,
           },
         ],
@@ -852,6 +853,7 @@ server.tool(
               `Title: ${result.title}\n` +
               `Session: ${result.session_id ?? "(unknown)"}\n` +
               `Source: ${result.source_device_id ?? "(unknown)"}\n` +
+              `Agent: ${result.source_agent ?? "(unknown)"}\n` +
               `Latest request: ${result.payload.latest_request ?? "(none)"}\n` +
               `Current thread: ${result.payload.current_thread ?? "(none)"}\n\n` +
               `Recent outcomes:\n${outcomes}\n\n` +
@@ -870,7 +872,8 @@ server.tool(
               `Recall item ${result.key} [chat]\n` +
               `Title: ${result.title}\n` +
               `Session: ${result.session_id ?? "(unknown)"}\n` +
-              `Source: ${result.source_device_id ?? "(unknown)"}\n\n` +
+              `Source: ${result.source_device_id ?? "(unknown)"}\n` +
+              `Agent: ${result.source_agent ?? "(unknown)"}\n\n` +
               `${result.payload.content}`,
           },
         ],
@@ -883,11 +886,12 @@ server.tool(
           type: "text" as const,
           text:
             `Recall item ${result.key} [memory]\n` +
-            `Title: ${result.title}\n` +
-            `Session: ${result.session_id ?? "(unknown)"}\n` +
-            `Source: ${result.source_device_id ?? "(unknown)"}\n` +
-            `Type: ${result.payload.observation_type}\n\n` +
-            `${result.payload.narrative ?? result.payload.facts ?? "(no detail)"}`,
+              `Title: ${result.title}\n` +
+              `Session: ${result.session_id ?? "(unknown)"}\n` +
+              `Source: ${result.source_device_id ?? "(unknown)"}\n` +
+              `Agent: ${result.source_agent ?? "(unknown)"}\n` +
+              `Type: ${result.payload.observation_type}\n\n` +
+              `${result.payload.narrative ?? result.payload.facts ?? "(no detail)"}`,
         },
       ],
     };
@@ -1371,7 +1375,7 @@ server.tool(
       ? result.top_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
       : "- (none)";
     const recallPreviewLines = result.recall_index_preview.length > 0
-      ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}`).join("\n")
+      ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}${item.source_agent ? ` · ${item.source_agent}` : ""}] ${item.title}`).join("\n")
       : "- (none)";
     const openExactLine = result.best_recall_key
       ? `Open exact: load_recall_item("${result.best_recall_key}")${result.best_recall_title ? `  # ${result.best_recall_title}` : ""}\n`
@@ -1779,7 +1783,7 @@ server.tool(
       ? result.top_titles.map((item) => `- #${item.id} [${item.type}] ${item.title}`).join("\n")
       : "- (none)";
     const recallPreviewLines = result.recall_index_preview.length > 0
-      ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}`).join("\n")
+      ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}${item.source_agent ? ` · ${item.source_agent}` : ""}] ${item.title}`).join("\n")
       : "- (none)";
     const openExactLine = result.best_recall_key
       ? `Open exact: load_recall_item("${result.best_recall_key}")${result.best_recall_title ? `  # ${result.best_recall_title}` : ""}\n`

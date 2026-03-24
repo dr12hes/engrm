@@ -22,6 +22,7 @@ export interface RecallIndexItem {
   freshness: "live" | "recent" | "stale";
   session_id: string | null;
   source_device_id: string | null;
+  source_agent: string | null;
 }
 
 export interface ListRecallItemsResult {
@@ -70,6 +71,11 @@ export function listRecallItems(
     user_id: input.user_id,
     limit: Math.min(limit * 2, 24),
   }).observations;
+  const sessionAgentById = new Map(
+    sessions
+      .filter((session) => Boolean(session.session_id))
+      .map((session) => [session.session_id, session.agent ?? null] as const)
+  );
 
   const items: RecallIndexItem[] = [
     ...handoffs.map((handoff) => ({
@@ -81,6 +87,7 @@ export function listRecallItems(
       freshness: classifyFreshness(handoff.created_at_epoch),
       session_id: handoff.session_id,
       source_device_id: handoff.device_id ?? null,
+      source_agent: handoff.session_id ? sessionAgentById.get(handoff.session_id) ?? null : null,
     })),
     ...sessions
       .filter((session) => Boolean(session.request || session.completed || session.current_thread))
@@ -93,6 +100,7 @@ export function listRecallItems(
         freshness: classifyFreshness(session.completed_at_epoch ?? session.started_at_epoch ?? null),
         session_id: session.session_id,
         source_device_id: session.device_id ?? null,
+        source_agent: session.agent ?? null,
       })),
     ...dedupeChatIndex(chat).map((message) => {
       const origin = getChatCaptureOrigin(message);
@@ -105,6 +113,7 @@ export function listRecallItems(
         freshness: classifyFreshness(message.created_at_epoch),
         session_id: message.session_id,
         source_device_id: message.device_id ?? null,
+        source_agent: message.agent ?? null,
       };
     }),
     ...observations
@@ -119,6 +128,7 @@ export function listRecallItems(
         freshness: classifyFreshness(obs.created_at_epoch),
         session_id: obs.session_id ?? null,
         source_device_id: obs.device_id ?? null,
+        source_agent: null,
       })),
   ];
 

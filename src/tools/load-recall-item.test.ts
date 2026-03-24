@@ -80,14 +80,18 @@ describe("loadRecallItem", () => {
 
     expect(handoff.kind).toBe("handoff");
     expect(handoff.payload?.type).toBe("handoff");
+    expect(handoff.source_agent).toBe("claude-code");
     expect(thread.kind).toBe("thread");
     expect(thread.payload?.type).toBe("thread");
     expect(thread.payload?.current_thread).toContain("EventService");
+    expect(thread.source_agent).toBe("claude-code");
     expect(chat.kind).toBe("chat");
     expect(chat.payload?.type).toBe("chat");
     expect(chat.payload?.source).toBe("transcript");
+    expect(chat.source_agent).toBe("claude-code");
     expect(memory.kind).toBe("memory");
     expect(memory.payload?.type).toBe("memory");
     expect(memory.payload?.observation_type).toBe("change");
+    expect(memory.source_agent).toBe("claude-code");
   });
 });

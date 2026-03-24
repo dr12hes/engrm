@@ -18,6 +18,7 @@ export interface LoadRecallItemResult {
   detail: string | null;
   session_id: string | null;
   source_device_id: string | null;
+  source_agent: string | null;
   payload:
     | { type: "handoff"; handoff_id: number; narrative: string | null }
     | { type: "thread"; latest_request: string | null; current_thread: string | null; recent_outcomes: string[]; hot_files: Array<{ path: string; count: number }> }
@@ -39,6 +40,7 @@ export function loadRecallItem(
       detail: "Malformed recall key",
       session_id: null,
       source_device_id: null,
+      source_agent: null,
       payload: null,
     };
   }
@@ -61,6 +63,7 @@ export function loadRecallItem(
       detail: summarizeNarrative(result.handoff.narrative),
       session_id: result.handoff.session_id ?? null,
       source_device_id: result.handoff.device_id ?? null,
+      source_agent: result.handoff.session_id ? lookupSessionAgent(db, result.handoff.session_id) : null,
       payload: {
         type: "handoff",
         handoff_id: result.handoff.id,
@@ -81,6 +84,7 @@ export function loadRecallItem(
       detail: story.summary?.next_steps ?? story.summary?.completed ?? null,
       session_id: story.session.session_id,
       source_device_id: story.session.device_id ?? null,
+      source_agent: story.session.agent ?? null,
       payload: {
         type: "thread",
         latest_request: story.latest_request,
@@ -116,6 +120,7 @@ export function loadRecallItem(
       detail: message.content,
       session_id: message.session_id,
       source_device_id: message.device_id ?? null,
+      source_agent: message.agent ?? null,
       payload: {
         type: "chat",
         role: message.role,
@@ -142,6 +147,7 @@ export function loadRecallItem(
       detail: obs.narrative ?? obs.facts ?? null,
       session_id: obs.session_id ?? null,
       source_device_id: obs.device_id ?? null,
+      source_agent: obs.session_id ? lookupSessionAgent(db, obs.session_id) : (obs.agent?.startsWith("engrm-") ? null : obs.agent ?? null),
       payload: {
         type: "memory",
         observation_id: obs.id,
@@ -163,6 +169,13 @@ function summarizeNarrative(value: string | null): string | null {
     .find(Boolean) ?? null;
 }
 
+function lookupSessionAgent(db: MemDatabase, sessionId: string): string | null {
+  const row = db.db
+    .query<{ agent: string | null }, [string]>("SELECT agent FROM sessions WHERE session_id = ? LIMIT 1")
+    .get(sessionId);
+  return row?.agent ?? null;
+}
+
 function missing(key: string, kind: LoadRecallItemResult["kind"]): LoadRecallItemResult {
   return {
     kind,
@@ -171,6 +184,7 @@ function missing(key: string, kind: LoadRecallItemResult["kind"]): LoadRecallIte
     detail: "Recall item not found",
     session_id: null,
     source_device_id: null,
+    source_agent: null,
     payload: null,
   };
 }

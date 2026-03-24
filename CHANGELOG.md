@@ -10,6 +10,7 @@ All notable changes to this repository should be documented here.
 
 - new `agent_memory_index` MCP tool compares continuity and capture health across Claude Code, Codex, OpenClaw, and other agents on the same repo or workspace, so cross-agent validation is explicit instead of inferred
 - `memory_console`, `project_memory_index`, `session_context`, and startup hints now surface active agents and suggest `agent_memory_index` when multiple agents are active on the same repo, so cross-agent comparison shows up in the normal continuity flow
+- recall previews and exact recall loading now carry source-agent provenance, so handoffs, threads, and chat snippets stay clearly attributable when multiple agents touch the same repo
 - startup handoff now shows a compact recall preview with exact keys like `handoff:*`, `session:*`, and `chat:*`, so the deterministic recall protocol is visible before an agent even reaches for MCP
 - `resume_thread` now returns the best exact recall key to open next and server output shows the matching `load_recall_item("...")` call, so the main continuity tool can hand off directly into deterministic item loading
 - `memory_console`, `project_memory_index`, and `session_context` now expose and print the same best exact recall key, so the MCP workbench itself can suggest one direct `load_recall_item("...")` jump instead of only showing recall previews

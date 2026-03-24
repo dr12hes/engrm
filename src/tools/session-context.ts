@@ -34,7 +34,7 @@ export interface SessionContextResult {
   continuity_summary: string;
   recall_mode: "direct" | "indexed";
   recall_items_ready: number;
-  recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title">>;
+  recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title" | "source_agent">>;
   best_recall_key: string | null;
   best_recall_title: string | null;
   best_recall_kind: "handoff" | "thread" | "chat" | "memory" | null;
@@ -141,6 +141,7 @@ export function getSessionContext(
       kind: item.kind,
       freshness: item.freshness,
       title: item.title,
+      source_agent: item.source_agent,
     })),
     best_recall_key: bestRecallItem?.key ?? null,
     best_recall_title: bestRecallItem?.title ?? null,

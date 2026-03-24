@@ -405,6 +405,7 @@ What each tool is good for:
 - `capture_quality` shows whether chat recall is transcript-backed, history-backed, or still hook-only across the workspace
 - `agent_memory_index` lets you compare Claude Code, Codex, and other agent sessions on the same repo, so cross-agent validation stops being guesswork
 - when multiple agents are active on the same repo, startup plus the MCP workbench now surface the active agent set and suggest `agent_memory_index` automatically
+- recall previews and `load_recall_item` now show source-agent provenance too, so exact recall stays readable when Claude, Codex, and OpenClaw all touch the same project
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, chat, and one exact `load_recall_item(...)` suggestion in one place
 - `list_recall_items` is the deterministic directory-first path when you want to inspect the best candidate handoffs/threads before opening one exact item
