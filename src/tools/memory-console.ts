@@ -31,6 +31,9 @@ export interface MemoryConsoleResult {
   recall_mode: "direct" | "indexed";
   recall_items_ready: number;
   recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title">>;
+  best_recall_key: string | null;
+  best_recall_title: string | null;
+  best_recall_kind: "handoff" | "thread" | "chat" | "memory" | null;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -138,6 +141,9 @@ export function getMemoryConsole(
       freshness: item.freshness,
       title: item.title,
     })),
+    best_recall_key: projectIndex?.best_recall_key ?? (recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null)?.key ?? null,
+    best_recall_title: projectIndex?.best_recall_title ?? (recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null)?.title ?? null,
+    best_recall_kind: projectIndex?.best_recall_kind ?? (recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null)?.kind ?? null,
     resume_freshness: projectIndex?.resume_freshness ?? "stale",
     resume_source_session_id: projectIndex?.resume_source_session_id ?? sessions[0]?.session_id ?? null,
     resume_source_device_id: projectIndex?.resume_source_device_id ?? sessions[0]?.device_id ?? null,

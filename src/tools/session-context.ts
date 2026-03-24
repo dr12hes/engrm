@@ -33,6 +33,9 @@ export interface SessionContextResult {
   recall_mode: "direct" | "indexed";
   recall_items_ready: number;
   recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title">>;
+  best_recall_key: string | null;
+  best_recall_title: string | null;
+  best_recall_kind: "handoff" | "thread" | "chat" | "memory" | null;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -119,6 +122,7 @@ export function getSessionContext(
     ?? latestSession?.completed_at_epoch
     ?? latestSession?.started_at_epoch
     ?? null;
+  const bestRecallItem = recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null;
 
   return {
     project_name: context.project_name,
@@ -133,6 +137,9 @@ export function getSessionContext(
       freshness: item.freshness,
       title: item.title,
     })),
+    best_recall_key: bestRecallItem?.key ?? null,
+    best_recall_title: bestRecallItem?.title ?? null,
+    best_recall_kind: bestRecallItem?.kind ?? null,
     resume_freshness: classifyResumeFreshness(resumeTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,

@@ -35,6 +35,9 @@ export interface ProjectMemoryIndexResult {
   recall_mode: "direct" | "indexed";
   recall_items_ready: number;
   recall_index_preview: Array<Pick<RecallIndexItem, "key" | "kind" | "freshness" | "title">>;
+  best_recall_key: string | null;
+  best_recall_title: string | null;
+  best_recall_kind: "handoff" | "thread" | "chat" | "memory" | null;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -211,6 +214,7 @@ export function getProjectMemoryIndex(
     recentOutcomes.length
   );
   const sourceTimestamp = pickResumeSourceTimestamp(latestSession, recentChat.messages);
+  const bestRecallItem = pickBestRecallItem(recallIndex.items);
 
   return {
     project: project.name,
@@ -225,6 +229,9 @@ export function getProjectMemoryIndex(
       freshness: item.freshness,
       title: item.title,
     })),
+    best_recall_key: bestRecallItem?.key ?? null,
+    best_recall_title: bestRecallItem?.title ?? null,
+    best_recall_kind: bestRecallItem?.kind ?? null,
     resume_freshness: classifyResumeFreshness(sourceTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,
@@ -252,6 +259,10 @@ export function getProjectMemoryIndex(
     estimated_read_tokens: estimatedReadTokens,
     suggested_tools: suggestedTools,
   };
+}
+
+function pickBestRecallItem(items: RecallIndexItem[]): RecallIndexItem | null {
+  return items.find((item) => item.kind !== "memory") ?? items[0] ?? null;
 }
 
 function pickResumeSourceTimestamp(

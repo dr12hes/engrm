@@ -1372,6 +1372,9 @@ server.tool(
     const recallPreviewLines = result.recall_index_preview.length > 0
       ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}`).join("\n")
       : "- (none)";
+    const openExactLine = result.best_recall_key
+      ? `Open exact: load_recall_item("${result.best_recall_key}")${result.best_recall_title ? `  # ${result.best_recall_title}` : ""}\n`
+      : "";
 
     const projectLine = result.project ? `Project: ${result.project}\n\n` : "";
     const captureLine = result.capture_mode === "rich"
@@ -1393,6 +1396,7 @@ server.tool(
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            openExactLine +
             `Recall preview:\n${recallPreviewLines}\n\n` +
             `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Top types:\n${topTypes}\n\n` +
@@ -1621,6 +1625,7 @@ server.tool(
             `Canonical ID: ${result.canonical_id}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
+            `Open exact: ${result.best_recall_key ? `load_recall_item("${result.best_recall_key}")` : "(none)"}\n` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Loaded observations: ${result.session_count}\n` +
             `Searchable total: ${result.total_active}\n` +
@@ -1732,6 +1737,9 @@ server.tool(
     const recallPreviewLines = result.recall_index_preview.length > 0
       ? result.recall_index_preview.map((item) => `- ${item.key} [${item.kind} · ${item.freshness}] ${item.title}`).join("\n")
       : "- (none)";
+    const openExactLine = result.best_recall_key
+      ? `Open exact: load_recall_item("${result.best_recall_key}")${result.best_recall_title ? `  # ${result.best_recall_title}` : ""}\n`
+      : "";
 
     return {
       content: [
@@ -1753,6 +1761,7 @@ server.tool(
             `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` +
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
+            openExactLine +
             `Recall preview:\n${recallPreviewLines}\n\n` +
             `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Observation counts:\n${counts}\n\n` +

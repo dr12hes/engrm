@@ -406,6 +406,7 @@ What each tool is good for:
 - `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, chat, and one exact `load_recall_item(...)` suggestion in one place
 - `list_recall_items` is the deterministic directory-first path when you want to inspect the best candidate handoffs/threads before opening one exact item
 - `load_recall_item` completes that protocol by letting agents open one exact recall key directly after listing
+- `memory_console`, `project_memory_index`, and `session_context` now also surface one best exact `load_recall_item(...)` jump, so the workbench can hand you the right deterministic next step instead of only showing recall counts
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed, history-backed, or only hook-captured
 - `memory_console`, `project_memory_index`, and `session_context` also expose resume-readiness directly, so you can see whether a repo is `live`, `recent`, or `stale` before drilling deeper
 - when chat continuity is only partial, the workbench and startup hints now prefer `repair_recall`, and still suggest `refresh_chat_recall` when a single session likely just needs transcript hydration

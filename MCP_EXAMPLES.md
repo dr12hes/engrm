@@ -51,6 +51,7 @@ Use it like this:
 - use `load_recall_item` to open one exact candidate instead of guessing with search
 - run `repair_recall` when recall is still thin, hook-only, or clearly under-captured
 - when `resume_thread` already shows a strong `load_recall_item("...")` hint, you can jump straight to that exact item without listing first
+- the workbench tools now do the same thing, so `memory_console` or `session_context` can also hand you the best exact recall key directly
 
 ## Explicit Handoff Flow
 

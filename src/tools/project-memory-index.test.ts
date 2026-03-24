@@ -123,6 +123,9 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.recall_items_ready).toBeGreaterThan(0);
     expect(result?.recall_index_preview.length).toBeGreaterThan(0);
     expect(result?.recall_index_preview[0]?.key).toContain(":");
+    expect(result?.best_recall_key).toBe("handoff:5");
+    expect(result?.best_recall_kind).toBe("handoff");
+    expect(result?.best_recall_title).toContain("Resume auth cleanup from home machine");
     expect(result?.resume_freshness).toBe("live");
     expect(result?.resume_source_session_id).toBe("sess-1");
     expect(result?.resume_source_device_id).toBe("laptop");
