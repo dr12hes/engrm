@@ -904,6 +904,7 @@ server.tool(
   {
     cwd: z.string().optional().describe("Optional cwd override for the project to resume"),
     limit: z.number().optional().describe("Max recall hits/chat snippets to include"),
+    agent: z.string().optional().describe("Optional agent to resume specifically, such as claude-code or codex-cli"),
     user_id: z.string().optional().describe("Optional user override"),
     repair_if_needed: z.boolean().optional().describe("If true, attempt recall repair before resuming when continuity is still weak"),
   },
@@ -911,6 +912,7 @@ server.tool(
     const result = await resumeThread(db, config, {
       cwd: params.cwd ?? process.cwd(),
       limit: params.limit,
+      agent: params.agent,
       user_id: params.user_id ?? config.user_id,
       current_device_id: config.device_id,
       repair_if_needed: params.repair_if_needed,
@@ -960,6 +962,7 @@ server.tool(
           type: "text" as const,
           text:
             `${projectLine}` +
+            `${result.target_agent ? `Target agent: ${result.target_agent}\n` : ""}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Freshness: ${result.resume_freshness}\n` +
             `Source: ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +

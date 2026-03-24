@@ -1,7 +1,7 @@
 import type { Config } from "../config.js";
 import { detectProject } from "../storage/projects.js";
 import type { MemDatabase } from "../storage/sqlite.js";
-import { loadHandoff, type HandoffRow } from "./handoffs.js";
+import { getRecentHandoffs, loadHandoff, type HandoffRow } from "./handoffs.js";
 import { getRecentChat, type ChatCoverageState } from "./recent-chat.js";
 import { searchRecall, type SearchRecallEntry } from "./search-recall.js";
 import { getSessionContext } from "./session-context.js";
@@ -15,10 +15,12 @@ export interface ResumeThreadInput {
   current_device_id?: string;
   limit?: number;
   repair_if_needed?: boolean;
+  agent?: string;
 }
 
 export interface ResumeThreadResult {
   project_name: string | null;
+  target_agent: string | null;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
   resume_freshness: "live" | "recent" | "stale";
@@ -68,6 +70,9 @@ export async function resumeThread(
   const project = db.getProjectByCanonicalId(detected.canonical_id);
 
   let snapshot = await buildResumeSnapshot(db, cwd, input.user_id, input.current_device_id, limit);
+  if (input.agent) {
+    snapshot = filterResumeSnapshotByAgent(snapshot, input.agent, input.current_device_id);
+  }
   let repairResult: RepairRecallResult | null = null;
   const shouldRepair =
     repairIfNeeded &&
@@ -82,6 +87,9 @@ export async function resumeThread(
     });
     if (repairResult.imported_chat_messages > 0) {
       snapshot = await buildResumeSnapshot(db, cwd, input.user_id, input.current_device_id, limit);
+      if (input.agent) {
+        snapshot = filterResumeSnapshotByAgent(snapshot, input.agent, input.current_device_id);
+      }
     }
   }
 
@@ -138,6 +146,7 @@ export async function resumeThread(
 
   return {
     project_name: project?.name ?? context?.project_name ?? null,
+    target_agent: input.agent ?? null,
     continuity_state: context?.continuity_state ?? "cold",
     continuity_summary: context?.continuity_summary ?? "No fresh repo-local continuity yet; older memory should be treated cautiously.",
     resume_freshness: classifyResumeFreshness(sourceTimestamp),
@@ -195,6 +204,7 @@ async function buildResumeSnapshot(
 ): Promise<{
   context: ReturnType<typeof getSessionContext>;
   handoff: HandoffRow | null;
+  recentHandoffs: ReturnType<typeof getRecentHandoffs>["handoffs"];
   recentChat: ReturnType<typeof getRecentChat>;
   recentSessions: ReturnType<typeof getRecentSessions>["sessions"];
   recall: Awaited<ReturnType<typeof searchRecall>>;
@@ -211,6 +221,13 @@ async function buildResumeSnapshot(
     user_id: userId,
     current_device_id: currentDeviceId,
   });
+  const recentHandoffs = getRecentHandoffs(db, {
+    cwd,
+    project_scoped: true,
+    user_id: userId,
+    current_device_id: currentDeviceId,
+    limit: Math.max(limit, 4),
+  }).handoffs;
   const recentChat = getRecentChat(db, {
     cwd,
     project_scoped: true,
@@ -241,6 +258,7 @@ async function buildResumeSnapshot(
   return {
     context,
     handoff: handoffResult.handoff,
+    recentHandoffs,
     recentChat,
     recentSessions,
     recall,
@@ -248,8 +266,64 @@ async function buildResumeSnapshot(
   };
 }
 
+function filterResumeSnapshotByAgent(
+  snapshot: {
+    context: ReturnType<typeof getSessionContext>;
+    handoff: HandoffRow | null;
+    recentHandoffs: ReturnType<typeof getRecentHandoffs>["handoffs"];
+    recentChat: ReturnType<typeof getRecentChat>;
+    recentSessions: ReturnType<typeof getRecentSessions>["sessions"];
+    recall: Awaited<ReturnType<typeof searchRecall>>;
+    recallIndex: ReturnType<typeof listRecallItems>;
+  },
+  agent: string,
+  currentDeviceId?: string
+) {
+  const recentSessions = snapshot.recentSessions.filter((session) => session.agent === agent);
+  const sessionIds = new Set(recentSessions.map((session) => session.session_id));
+  const recentChatMessages = snapshot.recentChat.messages.filter((message) => message.agent === agent);
+  const handoff = snapshot.recentHandoffs
+    .filter((item) => item.session_id && sessionIds.has(item.session_id))
+    .sort((a, b) => compareRecallCandidates(a.created_at_epoch, b.created_at_epoch, a.device_id ?? null, b.device_id ?? null, currentDeviceId))[0] ?? null;
+  const recallIndex = {
+    ...snapshot.recallIndex,
+    items: snapshot.recallIndex.items.filter((item) => item.source_agent === agent),
+  };
+  const recall = {
+    ...snapshot.recall,
+    results: snapshot.recall.results.filter((entry) => entry.session_id ? sessionIds.has(entry.session_id) : false),
+  };
+
+  return {
+    ...snapshot,
+    handoff,
+    recentHandoffs: snapshot.recentHandoffs.filter((item) => item.session_id && sessionIds.has(item.session_id)),
+    recentSessions,
+    recentChat: {
+      ...snapshot.recentChat,
+      messages: recentChatMessages,
+      session_count: new Set(recentChatMessages.map((message) => message.session_id)).size,
+    },
+    recall,
+    recallIndex,
+  };
+}
+
 function pickBestRecallItem(items: ReturnType<typeof listRecallItems>["items"]) {
   return items.find((item) => item.kind !== "memory") ?? items[0] ?? null;
+}
+
+function compareRecallCandidates(
+  epochA: number,
+  epochB: number,
+  deviceA: string | null,
+  deviceB: string | null,
+  currentDeviceId?: string
+): number {
+  const remoteBoostA = currentDeviceId && deviceA && deviceA !== currentDeviceId ? 1 : 0;
+  const remoteBoostB = currentDeviceId && deviceB && deviceB !== currentDeviceId ? 1 : 0;
+  if (remoteBoostA !== remoteBoostB) return remoteBoostB - remoteBoostA;
+  return epochB - epochA;
 }
 
 function extractCurrentThread(handoff: HandoffRow | null): string | null {

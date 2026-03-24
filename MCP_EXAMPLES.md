@@ -34,6 +34,7 @@ The goal is to turn useful local work into durable memory that can be recalled l
 - `list_recall_items`
 - `load_recall_item`
 - `resume_thread`
+  - optional `agent` filter when you want the Claude, Codex, or OpenClaw thread specifically
 - `repair_recall`
 
 ## Recall Protocol

@@ -158,4 +158,90 @@ describe("resumeThread", () => {
     expect(result.suggested_tools).toContain("load_recall_item");
     expect(result.suggested_tools).toContain("refresh_chat_recall");
   });
+
+  test("can resume a specific agent thread when multiple agents are active", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+
+    db.upsertSession("claude-sess", project.id, "david", "laptop", "claude-code");
+    db.insertSessionSummary({
+      session_id: "claude-sess",
+      project_id: project.id,
+      user_id: "david",
+      request: "Review Claude-side event routing",
+      investigated: null,
+      learned: null,
+      completed: "Claude routing notes captured",
+      next_steps: "Verify the Claude recall path still prefers the handoff.",
+      current_thread: "Review Claude-side event routing",
+    });
+    db.insertChatMessage({
+      session_id: "claude-sess",
+      project_id: project.id,
+      role: "assistant",
+      content: "Claude still needs the explicit handoff to win the resume flow.",
+      user_id: "david",
+      device_id: "laptop",
+      agent: "claude-code",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
+    db.insertObservation({
+      session_id: "claude-sess",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume Claude-side event routing · 2026-03-24 18:20Z",
+      narrative: "Current thread: Review Claude-side event routing",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.8,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "create_handoff",
+    });
+
+    db.upsertSession("codex-sess", project.id, "david", "desktop", "codex-cli");
+    db.insertSessionSummary({
+      session_id: "codex-sess",
+      project_id: project.id,
+      user_id: "david",
+      request: "Audit Codex-side event routing",
+      investigated: null,
+      learned: null,
+      completed: null,
+      next_steps: "Verify the Codex resume flow stays separate.",
+      current_thread: "Audit Codex-side event routing",
+    });
+    db.insertChatMessage({
+      session_id: "codex-sess",
+      project_id: project.id,
+      role: "assistant",
+      content: "Codex is following a different routing thread here.",
+      user_id: "david",
+      device_id: "desktop",
+      agent: "codex-cli",
+      source_kind: "transcript",
+      transcript_index: 1,
+    });
+
+    const result = await resumeThread(db, {
+      user_id: "david",
+      device_id: "desktop",
+    } as any, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+      current_device_id: "desktop",
+      agent: "claude-code",
+    });
+
+    expect(result.target_agent).toBe("claude-code");
+    expect(result.resume_source_session_id).toBe("claude-sess");
+    expect(result.resume_source_device_id).toBe("laptop");
+    expect(result.best_recall_key).toBe("handoff:1");
+    expect(result.best_recall_kind).toBe("handoff");
+    expect(result.current_thread).toContain("Claude-side event routing");
+    expect(result.recent_chat.every((item) => item.content.includes("Claude") || item.content.includes("handoff"))).toBe(true);
+  });
 });
