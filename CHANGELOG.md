@@ -4,7 +4,7 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
-## 0.4.33
+## 0.4.34
 
 ### Changed
 
