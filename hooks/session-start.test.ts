@@ -547,6 +547,8 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("session:sess-1");
     expect(splash).toContain("chat:77");
     expect(splash).toContain("Next look:");
+    expect(splash).toContain('Open now:');
+    expect(splash).toContain('load_recall_item("session:sess-1")');
     expect(splash).toContain("Pull detail:");
     expect(splash).toContain("recent_sessions");
     expect(splash).toContain("activity_feed");
@@ -679,6 +681,8 @@ describe("session-start startup brief", () => {
 
     expect(splash).toContain("Recall preview:");
     expect(splash).toContain("chat:55");
+    expect(splash).toContain('Open now:');
+    expect(splash).toContain('load_recall_item("chat:55")');
   });
 
   test("pull detail ids match the visible handoff index rows", () => {

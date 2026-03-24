@@ -268,7 +268,8 @@ function formatSplashScreen(data: SplashData): string {
     }
   }
 
-  const recallPreview = formatStartupRecallPreview(data.context);
+  const recallItems = buildStartupRecallItems(data.context);
+  const recallPreview = formatStartupRecallPreview(recallItems);
   if (recallPreview.length > 0) {
     lines.push("");
     for (const line of recallPreview) {
@@ -276,7 +277,7 @@ function formatSplashScreen(data: SplashData): string {
     }
   }
 
-  const inspectHints = formatInspectHints(data.context, contextIndex.observationIds);
+  const inspectHints = formatInspectHints(data.context, contextIndex.observationIds, recallItems);
   if (inspectHints.length > 0) {
     lines.push("");
     for (const line of inspectHints) {
@@ -561,7 +562,16 @@ function formatContextIndex(
   };
 }
 
-function formatInspectHints(context: InjectedContext, visibleObservationIds: number[] = []): string[] {
+function formatInspectHints(
+  context: InjectedContext,
+  visibleObservationIds: number[] = [],
+  recallItems: Array<{
+    key: string;
+    kind: "handoff" | "thread" | "chat" | "memory";
+    freshness: "live" | "recent" | "stale";
+    title: string;
+  }> = []
+): string[] {
   const hints: string[] = [];
   const continuityState = getStartupContinuityState(context);
 
@@ -609,15 +619,24 @@ function formatInspectHints(context: InjectedContext, visibleObservationIds: num
   const unique = Array.from(new Set(hints)).slice(0, 4);
   if (unique.length === 0) return [];
   const ids = visibleObservationIds.slice(0, 5);
+  const openNowItem = recallItems.find((item) => item.kind !== "memory") ?? null;
   const fetchHint = ids.length > 0 ? `get_observations([${ids.join(", ")}])` : null;
   return [
     `${c.dim}Next look:${c.reset} ${unique.join(" · ")}`,
+    ...(openNowItem ? [`${c.dim}Open now:${c.reset} load_recall_item("${openNowItem.key}")`] : []),
     ...(fetchHint ? [`${c.dim}Pull detail:${c.reset} ${fetchHint}`] : []),
   ];
 }
 
-function formatStartupRecallPreview(context: InjectedContext): string[] {
-  const items = buildStartupRecallItems(context).slice(0, 3);
+function formatStartupRecallPreview(
+  recallItems: Array<{
+    key: string;
+    kind: "handoff" | "thread" | "chat" | "memory";
+    freshness: "live" | "recent" | "stale";
+    title: string;
+  }>
+): string[] {
+  const items = recallItems.slice(0, 3);
   if (items.length === 0) return [];
   return [
     `${c.dim}Recall preview:${c.reset} exact keys you can open now`,
