@@ -61,6 +61,7 @@ Implemented:
 Improved:
 - cross-project recent activity now includes project attribution
 - `message` observations now meet the quality threshold as intended
+- cross-agent validation now has a dedicated MCP surface via `agent_memory_index`, so Claude Code, Codex, and OpenClaw-style sessions can be compared directly on the same repo
 
 ## Honest Website Copy
 
@@ -71,6 +72,7 @@ Safe claims now:
 - "OpenClaw support is available through Engrm skills"
 - "Deep automatic tool-level capture and Sentinel auditing in Claude Code"
 - "Codex support currently includes MCP, session-start memory, and stop/session summaries"
+- "Engrm can compare continuity and capture quality across agents on the same project"
 
 Claims to reserve until supported:
 - "Full Claude parity in Codex"

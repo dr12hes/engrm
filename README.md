@@ -226,6 +226,7 @@ The MCP server exposes tools that supported agents can call directly:
 | `recent_handoffs` | List recent saved handoffs for the current project or workspace |
 | `load_handoff` | Open a saved handoff as a resume point for a new session |
 | `refresh_chat_recall` | Rehydrate the separate chat lane from a Claude transcript when a long session feels under-captured |
+| `agent_memory_index` | Compare continuity and capture health across Claude Code, Codex, OpenClaw, and other agents |
 | `repair_recall` | Use when continuity feels thin; rehydrate recent recall from transcript or Claude history fallback |
 | `list_recall_items` | Use first when continuity feels fuzzy; list the best current handoffs, threads, chat snippets, and memory entries |
 | `load_recall_item` | Use after `list_recall_items`; load one exact recall item key |
@@ -402,6 +403,7 @@ What each tool is good for:
 
 - `capture_status` tells you whether prompt/tool hooks are live on this machine
 - `capture_quality` shows whether chat recall is transcript-backed, history-backed, or still hook-only across the workspace
+- `agent_memory_index` lets you compare Claude Code, Codex, and other agent sessions on the same repo, so cross-agent validation stops being guesswork
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, chat, and one exact `load_recall_item(...)` suggestion in one place
 - `list_recall_items` is the deterministic directory-first path when you want to inspect the best candidate handoffs/threads before opening one exact item

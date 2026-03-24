@@ -34,6 +34,7 @@ import { reclassifyProjectMemory } from "./tools/reclassify-project-memory.js";
 import { getActivityFeed } from "./tools/activity-feed.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
 import { getCaptureQuality } from "./tools/capture-quality.js";
+import { getAgentMemoryIndex } from "./tools/agent-memory-index.js";
 import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
@@ -1502,6 +1503,47 @@ server.tool(
             `Observation provenance:\n${provenanceLines}\n\n` +
             `Provenance type mix:\n${provenanceMixLines}\n\n` +
             `Top projects:\n${projectLines}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: tool_memory_index
+server.tool(
+  "agent_memory_index",
+  "Compare continuity and capture health across Claude Code, Codex, OpenClaw, and other agents for the current project or workspace.",
+  {
+    cwd: z.string().optional().describe("Project path to inspect. Defaults to the current working directory."),
+    project_scoped: z.boolean().optional().describe("If true, limit results to the current project instead of the whole workspace."),
+    user_id: z.string().optional().describe("Optional user override; defaults to the configured user."),
+  },
+  async (params) => {
+    const result = getAgentMemoryIndex(db, {
+      cwd: params.cwd ?? process.cwd(),
+      project_scoped: params.project_scoped,
+      user_id: params.user_id ?? config.user_id,
+    });
+
+    const rows = result.agents.length > 0
+      ? result.agents.map((agent) => {
+          const lastSeen = agent.last_seen_epoch
+            ? new Date(agent.last_seen_epoch * 1000).toISOString().replace("T", " ").slice(0, 16)
+            : "unknown";
+          const latest = agent.latest_summary ? ` latest="${agent.latest_summary.replace(/\s+/g, " ").trim().slice(0, 120)}"` : "";
+          const devices = agent.devices.length > 0 ? ` devices=[${agent.devices.join(", ")}]` : "";
+          return `- ${agent.agent}: continuity=${agent.continuity_state} capture=${agent.capture_state} chat=${agent.chat_coverage_state} sessions=${agent.session_count} prompts=${agent.prompt_count} tools=${agent.tool_event_count} obs=${agent.observation_count} handoffs=${agent.handoff_count} chat_msgs=${agent.chat_message_count} last_seen=${lastSeen}${devices}${latest}`;
+        }).join("\n")
+      : "- (none)";
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `${result.project ? `Project: ${result.project}\n\n` : ""}` +
+            `Agent memory index:\n${rows}\n\n` +
+            `Suggested next step: ${result.suggested_tools.join(", ") || "(none)"}`,
         },
       ],
     };

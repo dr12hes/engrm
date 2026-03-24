@@ -29,6 +29,7 @@ The goal is to turn useful local work into durable memory that can be recalled l
 - `capture_repo_scan`
 - `capture_openclaw_content`
 - `tool_memory_index`
+- `agent_memory_index`
 - `capture_quality`
 - `list_recall_items`
 - `load_recall_item`
@@ -83,17 +84,19 @@ What makes this better than a plain summary:
 For a quick public demo or MCP listing video:
 
 1. `capture_quality`
-2. `list_recall_items`
-3. `load_recall_item`
-4. `resume_thread`
-5. `tool_memory_index`
-6. `capture_git_worktree` or `capture_repo_scan`
-7. `session_tool_memory`
-8. `session_story`
+2. `agent_memory_index`
+3. `list_recall_items`
+4. `load_recall_item`
+5. `resume_thread`
+6. `tool_memory_index`
+7. `capture_git_worktree` or `capture_repo_scan`
+8. `session_tool_memory`
+9. `session_story`
 
 This proves the full loop:
 
 - capture current work
+- compare agent continuity on the same repo
 - recover the live thread honestly
 - reduce it into durable memory
 - inspect which tool/plugin produced it
