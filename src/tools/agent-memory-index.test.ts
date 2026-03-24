@@ -132,6 +132,9 @@ describe("getAgentMemoryIndex", () => {
     expect(claude?.chat_coverage_state).toBe("transcript-backed");
     expect(claude?.latest_session_id).toBe("claude-sess");
     expect(claude?.devices).toEqual(["laptop"]);
+    expect(claude?.best_recall_key).toBe("handoff:1");
+    expect(claude?.best_recall_kind).toBe("handoff");
+    expect(claude?.resume_freshness).toBe("live");
 
     expect(codex).toBeTruthy();
     expect(codex?.capture_state).toBe("partial");
@@ -141,8 +144,12 @@ describe("getAgentMemoryIndex", () => {
     expect(codex?.chat_coverage_state).toBe("history-backed");
     expect(codex?.latest_session_id).toBe("codex-sess");
     expect(codex?.devices).toEqual(["desktop"]);
+    expect(codex?.best_recall_key).toBe("session:codex-sess");
+    expect(codex?.best_recall_kind).toBe("thread");
+    expect(codex?.resume_freshness).toBe("live");
 
     expect(result.suggested_tools).toContain("recent_sessions");
     expect(result.suggested_tools).toContain("capture_quality");
+    expect(result.suggested_tools).toContain("load_recall_item");
   });
 });

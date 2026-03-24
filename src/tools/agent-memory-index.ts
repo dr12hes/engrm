@@ -1,6 +1,7 @@
 import { detectProject } from "../storage/projects.js";
 import type { MemDatabase, RecentSessionRow } from "../storage/sqlite.js";
 import type { ChatCoverageState } from "./recent-chat.js";
+import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 
 export interface AgentMemoryIndexInput {
   cwd?: string;
@@ -24,6 +25,10 @@ export interface AgentMemorySummary {
   latest_session_id: string | null;
   latest_summary: string | null;
   devices: string[];
+  best_recall_key: string | null;
+  best_recall_title: string | null;
+  best_recall_kind: RecallIndexItem["kind"] | null;
+  resume_freshness: RecallIndexItem["freshness"] | "stale";
 }
 
 export interface AgentMemoryIndexResult {
@@ -155,6 +160,12 @@ export function getAgentMemoryIndex(
 
   const recentSessions = db.getRecentSessions(projectId, 200, input.user_id)
     .filter((session) => !isInternalAgent(session.agent));
+  const recallItems = listRecallItems(db, {
+    cwd,
+    project_scoped: projectScoped,
+    user_id: input.user_id,
+    limit: 30,
+  }).items;
   const latestByAgent = new Map<string, RecentSessionRow>();
   const devicesByAgent = new Map<string, Set<string>>();
   for (const session of recentSessions) {
@@ -188,6 +199,7 @@ export function getAgentMemoryIndex(
         hook_count: 0,
       };
       const latestSession = latestByAgent.get(agent) ?? null;
+      const bestRecall = pickBestRecallForAgent(recallItems, agent);
       return {
         agent,
         session_count: session.session_count,
@@ -224,6 +236,10 @@ export function getAgentMemoryIndex(
         latest_session_id: latestSession?.session_id ?? null,
         latest_summary: latestSession?.current_thread ?? latestSession?.request ?? latestSession?.completed ?? null,
         devices: Array.from(devicesByAgent.get(agent) ?? []).sort(),
+        best_recall_key: bestRecall?.key ?? null,
+        best_recall_title: bestRecall?.title ?? null,
+        best_recall_kind: bestRecall?.kind ?? null,
+        resume_freshness: bestRecall?.freshness ?? "stale",
       };
     })
     .sort((a, b) => {
@@ -275,6 +291,12 @@ function classifyAgentCaptureState(
 function buildSuggestedTools(agents: AgentMemorySummary[]): string[] {
   if (agents.length === 0) return [];
   const suggestions = ["recent_sessions", "capture_quality"];
+  if (agents.length > 1) {
+    suggestions.push("list_recall_items");
+  }
+  if (agents.some((agent) => agent.best_recall_key)) {
+    suggestions.push("load_recall_item");
+  }
   if (agents.some((agent) => agent.continuity_state !== "fresh")) {
     suggestions.push("resume_thread");
   }
@@ -282,4 +304,11 @@ function buildSuggestedTools(agents: AgentMemorySummary[]): string[] {
     suggestions.push("repair_recall");
   }
   return suggestions;
+}
+
+function pickBestRecallForAgent(
+  items: RecallIndexItem[],
+  agent: string
+): RecallIndexItem | null {
+  return items.find((item) => item.source_agent === agent) ?? null;
 }

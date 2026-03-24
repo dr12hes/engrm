@@ -97,6 +97,7 @@ This proves the full loop:
 
 - capture current work
 - compare agent continuity on the same repo
+- jump straight into the best exact recall item for a specific agent
 - recover the live thread honestly
 - reduce it into durable memory
 - inspect which tool/plugin produced it

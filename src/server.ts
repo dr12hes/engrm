@@ -1537,7 +1537,10 @@ server.tool(
             : "unknown";
           const latest = agent.latest_summary ? ` latest="${agent.latest_summary.replace(/\s+/g, " ").trim().slice(0, 120)}"` : "";
           const devices = agent.devices.length > 0 ? ` devices=[${agent.devices.join(", ")}]` : "";
-          return `- ${agent.agent}: continuity=${agent.continuity_state} capture=${agent.capture_state} chat=${agent.chat_coverage_state} sessions=${agent.session_count} prompts=${agent.prompt_count} tools=${agent.tool_event_count} obs=${agent.observation_count} handoffs=${agent.handoff_count} chat_msgs=${agent.chat_message_count} last_seen=${lastSeen}${devices}${latest}`;
+          const exact = agent.best_recall_key
+            ? ` open=load_recall_item("${agent.best_recall_key}")`
+            : "";
+          return `- ${agent.agent}: continuity=${agent.continuity_state} capture=${agent.capture_state} resume=${agent.resume_freshness} chat=${agent.chat_coverage_state} sessions=${agent.session_count} prompts=${agent.prompt_count} tools=${agent.tool_event_count} obs=${agent.observation_count} handoffs=${agent.handoff_count} chat_msgs=${agent.chat_message_count} last_seen=${lastSeen}${devices}${latest}${exact}`;
         }).join("\n")
       : "- (none)";
 
