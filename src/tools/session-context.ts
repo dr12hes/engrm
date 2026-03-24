@@ -14,7 +14,7 @@ import {
   type ContextOptions,
 } from "../context/inject.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
-import { classifyContinuityState, classifyResumeFreshness, describeContinuityState } from "./project-memory-index.js";
+import { classifyContinuityState, classifyResumeFreshness, collectActiveAgents, describeContinuityState } from "./project-memory-index.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 
 export interface SessionContextInput {
@@ -28,6 +28,8 @@ export interface SessionContextInput {
 export interface SessionContextResult {
   project_name: string;
   canonical_id: string;
+  active_agents: string[];
+  cross_agent_active: boolean;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
   recall_mode: "direct" | "indexed";
@@ -123,10 +125,13 @@ export function getSessionContext(
     ?? latestSession?.started_at_epoch
     ?? null;
   const bestRecallItem = recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null;
+  const activeAgents = collectActiveAgents(context.recentSessions ?? []);
 
   return {
     project_name: context.project_name,
     canonical_id: context.canonical_id,
+    active_agents: activeAgents,
+    cross_agent_active: activeAgents.length > 1,
     continuity_state: continuityState,
     continuity_summary: describeContinuityState(continuityState),
     recall_mode: recallIndex.continuity_mode,
@@ -162,7 +167,7 @@ export function getSessionContext(
     capture_state: captureState,
     raw_capture_active: recentRequests > 0 || recentTools > 0,
     estimated_read_tokens: estimateTokens(preview),
-    suggested_tools: buildSuggestedTools(context, recentChat.coverage_state),
+    suggested_tools: buildSuggestedTools(context, recentChat.coverage_state, activeAgents.length),
     preview,
   };
 }
@@ -208,11 +213,15 @@ function parseJsonArray(value: string | null | undefined): string[] {
 
 function buildSuggestedTools(
   context: NonNullable<ReturnType<typeof buildSessionContext>>,
-  chatCoverageState: ChatCoverageState
+  chatCoverageState: ChatCoverageState,
+  activeAgentCount: number
 ): string[] {
   const tools: string[] = [];
   if ((context.recentSessions?.length ?? 0) > 0) {
     tools.push("recent_sessions");
+  }
+  if (activeAgentCount > 1) {
+    tools.push("agent_memory_index");
   }
   if ((context.recentPrompts?.length ?? 0) > 0 || (context.recentToolEvents?.length ?? 0) > 0) {
     tools.push("activity_feed");
@@ -248,5 +257,5 @@ function buildSuggestedTools(
   if ((context.recentChatMessages?.length ?? 0) > 0) {
     tools.push("recent_chat", "search_chat");
   }
-  return Array.from(new Set(tools)).slice(0, 5);
+  return Array.from(new Set(tools)).slice(0, 6);
 }

@@ -1389,6 +1389,7 @@ server.tool(
           text:
             `${projectLine}` +
             `${captureLine}` +
+            `${result.active_agents.length > 0 ? `Agents active: ${result.active_agents.join(", ")}\n` : ""}` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
@@ -1665,6 +1666,7 @@ server.tool(
           text:
             `Project: ${result.project_name}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
+            `Agents active: ${result.active_agents.join(", ") || "(none)"}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Open exact: ${result.best_recall_key ? `load_recall_item("${result.best_recall_key}")` : "(none)"}\n` +
@@ -1790,6 +1792,7 @@ server.tool(
           text:
             `Project: ${result.project}\n` +
             `Canonical ID: ${result.canonical_id}\n` +
+            `Agents active: ${result.active_agents.join(", ") || "(none)"}\n` +
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +

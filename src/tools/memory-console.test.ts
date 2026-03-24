@@ -94,6 +94,17 @@ describe("getMemoryConsole", () => {
       device_id: "laptop",
       agent: "claude-code",
     });
+    db.upsertSession("sess-2", project.id, "david", "desktop", "codex-cli");
+    db.insertSessionSummary({
+      session_id: "sess-2",
+      project_id: project.id,
+      user_id: "david",
+      request: "Audit desktop resume",
+      investigated: null,
+      learned: null,
+      completed: null,
+      next_steps: null,
+    });
 
     const result = getMemoryConsole(db, {
       cwd: "/tmp/repo",
@@ -101,6 +112,8 @@ describe("getMemoryConsole", () => {
     });
 
     expect(result.project).toBe("repo");
+    expect(result.active_agents).toEqual(["claude-code", "codex-cli"]);
+    expect(result.cross_agent_active).toBe(true);
     expect(result.capture_mode).toBe("rich");
     expect(result.continuity_state).toBe("fresh");
     expect(result.recall_mode).toBe("direct");
@@ -138,6 +151,7 @@ describe("getMemoryConsole", () => {
     expect(result.estimated_read_tokens).toBeGreaterThan(0);
     expect(result.continuity_summary).toContain("Fresh repo-local continuity");
     expect(result.suggested_tools).toContain("recent_sessions");
+    expect(result.suggested_tools).toContain("agent_memory_index");
     expect(result.suggested_tools).toContain("activity_feed");
     expect(result.suggested_tools).toContain("list_recall_items");
     expect(result.suggested_tools).toContain("load_recall_item");

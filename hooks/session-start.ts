@@ -574,11 +574,15 @@ function formatInspectHints(
 ): string[] {
   const hints: string[] = [];
   const continuityState = getStartupContinuityState(context);
+  const activeAgents = collectStartupAgents(context);
 
   if ((context.recentSessions?.length ?? 0) > 0) {
     hints.push("recent_sessions");
     hints.push("session_story");
     hints.push("create_handoff");
+  }
+  if (activeAgents.length > 1) {
+    hints.push("agent_memory_index");
   }
   if (
     (context.recentPrompts?.length ?? 0) > 0 ||
@@ -626,6 +630,16 @@ function formatInspectHints(
     ...(openNowItem ? [`${c.dim}Open now:${c.reset} load_recall_item("${openNowItem.key}")`] : []),
     ...(fetchHint ? [`${c.dim}Pull detail:${c.reset} ${fetchHint}`] : []),
   ];
+}
+
+function collectStartupAgents(context: InjectedContext): string[] {
+  return Array.from(
+    new Set(
+      (context.recentSessions ?? [])
+        .map((session) => session.agent?.trim())
+        .filter((agent): agent is string => Boolean(agent) && !agent.startsWith("engrm-"))
+    )
+  ).sort();
 }
 
 function formatStartupRecallPreview(

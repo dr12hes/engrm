@@ -440,6 +440,59 @@ describe("session-start startup brief", () => {
     expect(splash).toContain("recent_chat");
   });
 
+  test("startup inspect hints include cross-agent comparison when multiple agents are active", () => {
+    const splash = __testables.formatSplashScreen({
+      projectName: "huginn",
+      loaded: 2,
+      available: 10,
+      securityFindings: 0,
+      unreadMessages: 0,
+      synced: 0,
+      estimatedReadTokens: 200,
+      context: makeContext({
+        recentSessions: [
+          {
+            id: 1,
+            session_id: "sess-claude",
+            project_id: 1,
+            user_id: "david",
+            device_id: "Laptop",
+            agent: "claude-code",
+            status: "active",
+            observation_count: 2,
+            started_at_epoch: 1,
+            completed_at_epoch: 2,
+            project_name: "huginn",
+            request: "Review event feed assumptions",
+            completed: null,
+            prompt_count: 1,
+            tool_event_count: 1,
+          },
+          {
+            id: 2,
+            session_id: "sess-codex",
+            project_id: 1,
+            user_id: "david",
+            device_id: "Desktop",
+            agent: "codex-cli",
+            status: "active",
+            observation_count: 1,
+            started_at_epoch: 3,
+            completed_at_epoch: 4,
+            project_name: "huginn",
+            request: "Audit routing assumptions",
+            completed: null,
+            prompt_count: 1,
+            tool_event_count: 0,
+          },
+        ],
+      }),
+    });
+
+    expect(splash).toContain("Next look:");
+    expect(splash).toContain("agent_memory_index");
+  });
+
   test("filters generic summary wrapper lines from recent work", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({

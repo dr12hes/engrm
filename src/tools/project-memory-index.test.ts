@@ -112,6 +112,17 @@ describe("getProjectMemoryIndex", () => {
       completed: "Added retry",
       next_steps: "Verify retry headers in the auth flow.\nConfirm the home-machine handoff still loads cleanly.",
     });
+    db.upsertSession("sess-2", project.id, "david", "desktop", "codex-cli");
+    db.insertSessionSummary({
+      session_id: "sess-2",
+      project_id: project.id,
+      user_id: "david",
+      request: "Check desktop resume cues",
+      investigated: null,
+      learned: null,
+      completed: null,
+      next_steps: null,
+    });
 
     const result = getProjectMemoryIndex(db, {
       cwd: "/tmp/repo",
@@ -119,6 +130,8 @@ describe("getProjectMemoryIndex", () => {
     });
 
     expect(result?.project).toBe("repo");
+    expect(result?.active_agents).toEqual(["claude-code", "codex-cli"]);
+    expect(result?.cross_agent_active).toBe(true);
     expect(result?.recall_mode).toBe("direct");
     expect(result?.recall_items_ready).toBeGreaterThan(0);
     expect(result?.recall_index_preview.length).toBeGreaterThan(0);
@@ -156,6 +169,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.top_types[0]).toEqual({ type: "change", count: 2 });
     expect(result?.estimated_read_tokens).toBeGreaterThan(0);
     expect(result?.suggested_tools).toContain("recent_sessions");
+    expect(result?.suggested_tools).toContain("agent_memory_index");
     expect(result?.suggested_tools).toContain("activity_feed");
     expect(result?.suggested_tools).toContain("list_recall_items");
     expect(result?.suggested_tools).toContain("load_recall_item");

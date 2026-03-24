@@ -14,7 +14,7 @@ import { getRecentSessions } from "./recent-sessions.js";
 import { getProjectMemoryIndex } from "./project-memory-index.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
-import { classifyContinuityState, describeContinuityState } from "./project-memory-index.js";
+import { classifyContinuityState, collectActiveAgents, describeContinuityState } from "./project-memory-index.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 
 export interface MemoryConsoleInput {
@@ -25,6 +25,8 @@ export interface MemoryConsoleInput {
 
 export interface MemoryConsoleResult {
   project?: string;
+  active_agents: string[];
+  cross_agent_active: boolean;
   capture_mode: "rich" | "observations-only";
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
@@ -127,9 +129,12 @@ export function getMemoryConsole(
     sessions,
     (projectIndex?.recent_outcomes ?? []).length
   );
+  const activeAgents = projectIndex?.active_agents ?? collectActiveAgents(sessions);
 
   return {
     project: project?.name,
+    active_agents: activeAgents,
+    cross_agent_active: projectIndex?.cross_agent_active ?? activeAgents.length > 1,
     capture_mode: requests.length > 0 || tools.length > 0 ? "rich" : "observations-only",
     continuity_state: continuityState,
     continuity_summary: projectIndex?.continuity_summary ?? describeContinuityState(continuityState),
@@ -174,7 +179,8 @@ export function getMemoryConsole(
       observations.length,
       recentHandoffs.length,
       recentChat.messages.length,
-      recentChat.coverage_state
+      recentChat.coverage_state,
+      activeAgents.length
     ),
   };
 }
@@ -186,10 +192,12 @@ function buildFallbackSuggestedTools(
   observationCount: number,
   handoffCount: number,
   chatCount: number,
-  chatCoverageState: ChatCoverageState
+  chatCoverageState: ChatCoverageState,
+  activeAgentCount: number
 ): string[] {
   const suggested: string[] = [];
   if (sessionCount > 0) suggested.push("recent_sessions");
+  if (activeAgentCount > 1) suggested.push("agent_memory_index");
   if (requestCount > 0 || toolCount > 0) suggested.push("activity_feed");
   if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.push("load_recall_item", "resume_thread", "search_recall");
   if (requestCount > 0 || chatCount > 0 || observationCount > 0) suggested.unshift("list_recall_items");
@@ -199,5 +207,5 @@ function buildFallbackSuggestedTools(
   if (handoffCount > 0) suggested.push("load_handoff");
   if (chatCount > 0 && chatCoverageState !== "transcript-backed") suggested.push("refresh_chat_recall");
   if (chatCount > 0) suggested.push("recent_chat", "search_chat");
-  return Array.from(new Set(suggested)).slice(0, 5);
+  return Array.from(new Set(suggested)).slice(0, 6);
 }

@@ -30,6 +30,8 @@ export interface ProjectMemoryIndexInput {
 export interface ProjectMemoryIndexResult {
   project: string;
   canonical_id: string;
+  active_agents: string[];
+  cross_agent_active: boolean;
   continuity_state: "fresh" | "thin" | "cold";
   continuity_summary: string;
   recall_mode: "direct" | "indexed";
@@ -186,6 +188,7 @@ export function getProjectMemoryIndex(
     .filter((title) => title.length > 0 && !looksLikeFileOperationTitle(title))
     .slice(0, 8);
   const captureSummary = summarizeCaptureState(recentSessions);
+  const activeAgents = collectActiveAgents(recentSessions);
   const topTypes = Object.entries(counts)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
@@ -196,7 +199,8 @@ export function getProjectMemoryIndex(
     recentToolsCount,
     observations.length,
     recentChatCount,
-    recentChat.coverage_state
+    recentChat.coverage_state,
+    activeAgents
   );
   const estimatedReadTokens = estimateTokens(
     [
@@ -219,6 +223,8 @@ export function getProjectMemoryIndex(
   return {
     project: project.name,
     canonical_id: project.canonical_id,
+    active_agents: activeAgents,
+    cross_agent_active: activeAgents.length > 1,
     continuity_state: continuityState,
     continuity_summary: describeContinuityState(continuityState),
     recall_mode: recallIndex.continuity_mode,
@@ -373,17 +379,33 @@ function summarizeCaptureState(sessions: Array<RecentSessionRow & { capture_stat
   return summary;
 }
 
+export function collectActiveAgents(
+  sessions: Array<Pick<RecentSessionRow, "agent">>
+): string[] {
+  return Array.from(
+    new Set(
+      sessions
+        .map((session) => session.agent?.trim())
+        .filter((agent): agent is string => Boolean(agent) && !agent.startsWith("engrm-"))
+    )
+  ).sort();
+}
+
 function buildSuggestedTools(
   sessions: RecentSessionRow[],
   requestCount: number,
   toolCount: number,
   observationCount: number,
   recentChatCount: number,
-  chatCoverageState: ChatCoverageState
+  chatCoverageState: ChatCoverageState,
+  activeAgents: string[]
 ): string[] {
   const suggested: string[] = [];
   if (sessions.length > 0) {
     suggested.push("recent_sessions");
+  }
+  if (activeAgents.length > 1) {
+    suggested.push("agent_memory_index");
   }
   if (requestCount > 0 || toolCount > 0) {
     suggested.push("activity_feed");
@@ -409,5 +431,5 @@ function buildSuggestedTools(
   if (recentChatCount > 0) {
     suggested.push("recent_chat", "search_chat");
   }
-  return Array.from(new Set(suggested)).slice(0, 5);
+  return Array.from(new Set(suggested)).slice(0, 6);
 }
