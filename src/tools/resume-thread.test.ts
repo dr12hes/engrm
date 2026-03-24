@@ -91,6 +91,9 @@ describe("resumeThread", () => {
     expect(result.resume_basis).toContain("current thread recovered");
     expect(result.resume_basis).toContain("recent tool trail available");
     expect(result.resume_basis).toContain("next actions available");
+    expect(result.best_recall_key).toBe("handoff:1");
+    expect(result.best_recall_kind).toBe("handoff");
+    expect(result.best_recall_title).toContain("Resume EventService notification routing");
     expect(result.current_thread).toContain("EventService");
     expect(result.latest_request).toContain("EventService");
     expect(result.handoff?.title).toContain("Handoff:");
@@ -149,7 +152,10 @@ describe("resumeThread", () => {
     expect(result.resume_confidence).toBe("usable");
     expect(result.chat_coverage_state).toBe("history-backed");
     expect(result.resume_basis).toContain("history-backed chat continuity");
+    expect(result.best_recall_key).toBe("session:sess-2");
+    expect(result.best_recall_kind).toBe("thread");
     expect(result.suggested_tools).toContain("repair_recall");
+    expect(result.suggested_tools).toContain("load_recall_item");
     expect(result.suggested_tools).toContain("refresh_chat_recall");
   });
 });

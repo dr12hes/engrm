@@ -7,6 +7,7 @@ All notable changes to this repository should be documented here.
 ### Changed
 
 - startup handoff now shows a compact recall preview with exact keys like `handoff:*`, `session:*`, and `chat:*`, so the deterministic recall protocol is visible before an agent even reaches for MCP
+- `resume_thread` now returns the best exact recall key to open next and server output shows the matching `load_recall_item("...")` call, so the main continuity tool can hand off directly into deterministic item loading
 
 ## 0.4.32
 

@@ -50,6 +50,7 @@ Use it like this:
 - switch to `list_recall_items` when you want an index-first, deterministic path
 - use `load_recall_item` to open one exact candidate instead of guessing with search
 - run `repair_recall` when recall is still thin, hook-only, or clearly under-captured
+- when `resume_thread` already shows a strong `load_recall_item("...")` hint, you can jump straight to that exact item without listing first
 
 ## Explicit Handoff Flow
 

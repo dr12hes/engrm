@@ -915,6 +915,9 @@ server.tool(
     const handoffLine = result.handoff
       ? `Handoff: #${result.handoff.id} ${result.handoff.title}${result.handoff.source ? ` (${result.handoff.source})` : ""}\n`
       : "Handoff: (none)\n";
+    const openExactLine = result.best_recall_key
+      ? `Open exact: load_recall_item("${result.best_recall_key}")${result.best_recall_title ? `  # ${result.best_recall_title}` : ""}\n`
+      : "";
     const basisLines = result.resume_basis.length > 0
       ? result.resume_basis.map((item) => `- ${item}`).join("\n")
       : "- (none)";
@@ -957,6 +960,7 @@ server.tool(
             `Source: ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Resume confidence: ${result.resume_confidence}\n` +
             repairLine +
+            openExactLine +
             `Current thread: ${result.current_thread ?? "(unknown)"}\n` +
             `Latest request: ${result.latest_request ?? "(none)"}\n` +
             `${handoffLine}` +

@@ -403,7 +403,7 @@ What each tool is good for:
 - `capture_status` tells you whether prompt/tool hooks are live on this machine
 - `capture_quality` shows whether chat recall is transcript-backed, history-backed, or still hook-only across the workspace
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
-- `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, and chat in one place
+- `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, chat, and one exact `load_recall_item(...)` suggestion in one place
 - `list_recall_items` is the deterministic directory-first path when you want to inspect the best candidate handoffs/threads before opening one exact item
 - `load_recall_item` completes that protocol by letting agents open one exact recall key directly after listing
 - `memory_console`, `project_memory_index`, and `session_context` now also show whether project chat recall is transcript-backed, history-backed, or only hook-captured

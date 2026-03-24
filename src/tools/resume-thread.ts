@@ -7,6 +7,7 @@ import { searchRecall, type SearchRecallEntry } from "./search-recall.js";
 import { getSessionContext } from "./session-context.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { repairRecall, type RepairRecallResult } from "./repair-recall.js";
+import { listRecallItems } from "./list-recall-items.js";
 
 export interface ResumeThreadInput {
   cwd?: string;
@@ -25,6 +26,9 @@ export interface ResumeThreadResult {
   resume_source_device_id: string | null;
   resume_confidence: "strong" | "usable" | "thin";
   resume_basis: string[];
+  best_recall_key: string | null;
+  best_recall_title: string | null;
+  best_recall_kind: "handoff" | "thread" | "chat" | "memory" | null;
   repair_attempted: boolean;
   repair_result: {
     imported_chat_messages: number;
@@ -82,6 +86,7 @@ export async function resumeThread(
   }
 
   const { context, handoff, recentChat, recentSessions, recall } = snapshot;
+  const bestRecallItem = pickBestRecallItem(snapshot.recallIndex.items);
 
   const latestSession = recentSessions[0] ?? null;
   const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
@@ -122,6 +127,7 @@ export async function resumeThread(
   });
 
   const suggestedTools = Array.from(new Set([
+    ...(bestRecallItem ? ["load_recall_item"] : []),
     "search_recall",
     ...(recentChat.coverage_state !== "transcript-backed" && recentChat.messages.length > 0
       ? ["repair_recall", "refresh_chat_recall"]
@@ -139,6 +145,9 @@ export async function resumeThread(
     resume_source_device_id: handoff?.device_id ?? latestSession?.device_id ?? null,
     resume_confidence: resumeConfidence,
     resume_basis: resumeBasis,
+    best_recall_key: bestRecallItem?.key ?? null,
+    best_recall_title: bestRecallItem?.title ?? null,
+    best_recall_kind: bestRecallItem?.kind ?? null,
     repair_attempted: shouldRepair,
     repair_result: repairResult
       ? {
@@ -189,6 +198,7 @@ async function buildResumeSnapshot(
   recentChat: ReturnType<typeof getRecentChat>;
   recentSessions: ReturnType<typeof getRecentSessions>["sessions"];
   recall: Awaited<ReturnType<typeof searchRecall>>;
+  recallIndex: ReturnType<typeof listRecallItems>;
 }> {
   const context = getSessionContext(db, {
     cwd,
@@ -220,6 +230,13 @@ async function buildResumeSnapshot(
     user_id: userId,
     limit,
   });
+  const recallIndex = listRecallItems(db, {
+    cwd,
+    project_scoped: true,
+    user_id: userId,
+    current_device_id: currentDeviceId,
+    limit,
+  });
 
   return {
     context,
@@ -227,7 +244,12 @@ async function buildResumeSnapshot(
     recentChat,
     recentSessions,
     recall,
+    recallIndex,
   };
+}
+
+function pickBestRecallItem(items: ReturnType<typeof listRecallItems>["items"]) {
+  return items.find((item) => item.kind !== "memory") ?? items[0] ?? null;
 }
 
 function extractCurrentThread(handoff: HandoffRow | null): string | null {
