@@ -4,6 +4,16 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.35
+
+### Changed
+
+- `agent_memory_index` now includes an exact `load_recall_item("...")` jump per agent, `resume_thread` now accepts an optional `agent`, and startup/workbench hints now surface `resume_thread(agent="...")`, so Claude Code, Codex, and OpenClaw can recover their own thread more directly on shared repos
+- unread cross-device message counts now exclude handoffs and rolling handoff drafts, and `memory_stats` now reports inbox notes separately from handoffs, so Engrm no longer treats continuity artifacts like personal/team inbox traffic
+- `recent_activity` and activity-style views now classify `message` observations as inbox notes, saved handoffs, or rolling drafts, so recent views stop flattening all continuity artifacts into one vague type
+- startup, `memory_console`, `project_memory_index`, and `session_context` now surface recent inbox notes separately from handoffs, so visible continuity views can show real cross-device notes without muddying handoff state
+- recall previews and exact recall loading now carry source-agent provenance, so handoffs, threads, and chat snippets stay clearly attributable when multiple agents touch the same repo
+
 ## 0.4.34
 
 ### Changed
