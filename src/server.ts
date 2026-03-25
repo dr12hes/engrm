@@ -1288,7 +1288,8 @@ server.tool(
             `Active observations: ${stats.active_observations}\n` +
             `User prompts: ${stats.user_prompts}\n` +
             `Tool events: ${stats.tool_events}\n` +
-            `Messages: ${stats.messages}\n` +
+            `Inbox notes: ${stats.inbox_messages}\n` +
+            `Handoffs: ${stats.handoffs}\n` +
             `Session summaries: ${stats.session_summaries}\n` +
             `Summary coverage: learned ${stats.summaries_with_learned}, completed ${stats.summaries_with_completed}, next steps ${stats.summaries_with_next_steps}\n` +
             `Installed packs: ${packs}\n` +

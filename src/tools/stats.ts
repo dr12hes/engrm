@@ -9,12 +9,15 @@ import type { MemDatabase } from "../storage/sqlite.js";
 import { getOutboxStats } from "../storage/outbox.js";
 import { computeSessionValueSignals } from "../intelligence/value-signals.js";
 import { computeSessionInsights } from "../intelligence/session-insights.js";
+import { getInboxMessageCount } from "./inbox-messages.js";
 
 export interface MemoryStatsResult {
   active_observations: number;
   user_prompts: number;
   tool_events: number;
   messages: number;
+  inbox_messages: number;
+  handoffs: number;
   session_summaries: number;
   decisions: number;
   lessons: number;
@@ -40,12 +43,19 @@ export interface MemoryStatsResult {
 
 export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
   const activeObservations = db.getActiveObservationCount();
-  const messages = db.db
+  const handoffs = db.db
     .query<{ count: number }, []>(
       `SELECT COUNT(*) as count FROM observations
-       WHERE type = 'message' AND lifecycle IN ('active', 'aging', 'pinned')`
+       WHERE type = 'message'
+         AND lifecycle IN ('active', 'aging', 'pinned')
+         AND (
+           source_tool IN ('create_handoff', 'rolling_handoff')
+           OR concepts LIKE '%"session-handoff"%'
+           OR concepts LIKE '%"draft-handoff"%'
+         )`
     )
     .get()?.count ?? 0;
+  const inboxMessages = getInboxMessageCount(db);
   const userPrompts = db.db
     .query<{ count: number }, []>("SELECT COUNT(*) as count FROM user_prompts")
     .get()?.count ?? 0;
@@ -76,7 +86,9 @@ export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
     active_observations: activeObservations,
     user_prompts: userPrompts,
     tool_events: toolEvents,
-    messages,
+    messages: inboxMessages,
+    inbox_messages: inboxMessages,
+    handoffs,
     session_summaries: sessionSummaries,
     decisions: signals.decisions_count,
     lessons: signals.lessons_count,

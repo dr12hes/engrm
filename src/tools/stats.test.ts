@@ -36,6 +36,16 @@ describe("getMemoryStats", () => {
     });
     db.insertObservation({
       project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume auth cleanup · 2026-03-25 08:00Z",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.2,
+      user_id: "david",
+      device_id: "laptop-abc",
+      source_tool: "create_handoff",
+    });
+    db.insertObservation({
+      project_id: project.id,
       type: "bugfix",
       title: "Fix auth flow",
       quality: 0.5,
@@ -75,10 +85,12 @@ describe("getMemoryStats", () => {
 
     const stats = getMemoryStats(db);
 
-    expect(stats.active_observations).toBe(2);
+    expect(stats.active_observations).toBe(3);
     expect(stats.user_prompts).toBe(1);
     expect(stats.tool_events).toBe(1);
     expect(stats.messages).toBe(1);
+    expect(stats.inbox_messages).toBe(1);
+    expect(stats.handoffs).toBe(1);
     expect(stats.session_summaries).toBe(1);
     expect(stats.summaries_with_learned).toBe(1);
     expect(stats.summaries_with_completed).toBe(1);

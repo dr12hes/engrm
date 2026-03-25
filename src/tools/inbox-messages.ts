@@ -21,6 +21,19 @@ const INBOX_MESSAGE_FILTER_SQL = `
   )
 `;
 
+export function getInboxMessageFilterSql(): string {
+  return INBOX_MESSAGE_FILTER_SQL;
+}
+
+export function getInboxMessageCount(db: MemDatabase): number {
+  return db.db
+    .query<{ c: number }, []>(
+      `SELECT COUNT(*) as c FROM observations
+       WHERE ${INBOX_MESSAGE_FILTER_SQL}`
+    )
+    .get()?.c ?? 0;
+}
+
 export function getUnreadInboxMessageCount(
   db: MemDatabase,
   currentDeviceId: string,
