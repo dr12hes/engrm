@@ -136,6 +136,44 @@ describe("session-start startup brief", () => {
     expect(lines.join("\n")).toContain("event feed plumbed in");
   });
 
+  test("surfaces inbox notes separately from handoffs", () => {
+    const lines = __testables.formatVisibleStartupBrief(
+      makeContext({
+        observations: [
+          {
+            id: 41,
+            session_id: "sess-note",
+            project_id: 1,
+            type: "message",
+            title: "Please re-check the laptop handoff before release",
+            narrative: null,
+            facts: null,
+            concepts: null,
+            files_read: null,
+            files_modified: null,
+            quality: 0.5,
+            lifecycle: "active",
+            sensitivity: "shared",
+            user_id: "david",
+            device_id: "Desktop",
+            agent: "claude-code",
+            created_at: "2026-03-25T09:00:00Z",
+            created_at_epoch: 1711357200,
+            archived_at_epoch: null,
+            compacted_into: null,
+            superseded_by: null,
+            remote_source_id: null,
+            source_tool: null,
+            source_prompt_number: null,
+          },
+        ],
+      })
+    );
+
+    expect(lines.some((line) => line.includes("Inbox notes:"))).toBe(true);
+    expect(lines.join("\n")).toContain("Please re-check the laptop handoff before release");
+  });
+
   test("does not surface stale observations as the current thread for thin projects", () => {
     const lines = __testables.formatVisibleStartupBrief(
       makeContext({

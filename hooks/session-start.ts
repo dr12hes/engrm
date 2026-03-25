@@ -19,7 +19,7 @@ import {
 } from "../src/context/inject.js";
 import type { InjectedContext } from "../src/context/inject.js";
 import { formatHandoffSource } from "../src/tools/handoffs.js";
-import { getUnreadInboxMessageCount } from "../src/tools/inbox-messages.js";
+import { classifyMessageObservation, getUnreadInboxMessageCount } from "../src/tools/inbox-messages.js";
 import {
   classifyContinuityState,
   classifyResumeFreshness,
@@ -304,11 +304,20 @@ function formatVisibleStartupBrief(context: InjectedContext): string[] {
   const projectSignals = buildProjectSignalLine(context);
   const shownItems = new Set<string>();
   const latestHandoffLines = buildLatestHandoffLines(context);
+  const inboxNoteLines = buildRecentInboxNoteLines(context);
   const freshContinuity = hasFreshContinuitySignal(context);
 
   if (latestHandoffLines.length > 0) {
     lines.push(`${c.cyan}Latest handoff:${c.reset}`);
     for (const item of latestHandoffLines) {
+      lines.push(`  - ${truncateInline(item, 160)}`);
+      rememberShownItem(shownItems, item);
+    }
+  }
+
+  if (inboxNoteLines.length > 0) {
+    lines.push(`${c.cyan}Inbox notes:${c.reset}`);
+    for (const item of inboxNoteLines) {
       lines.push(`  - ${truncateInline(item, 160)}`);
       rememberShownItem(shownItems, item);
     }
@@ -483,6 +492,19 @@ function buildLatestHandoffLines(context: InjectedContext): string[] {
   }
 
   return Array.from(new Set(lines.filter(Boolean))).slice(0, 2);
+}
+
+function buildRecentInboxNoteLines(context: InjectedContext): string[] {
+  const notes = context.observations
+    .filter((obs) => classifyMessageObservation(obs) === "inbox-note")
+    .slice(0, 2);
+  return Array.from(
+    new Set(
+      notes
+        .map((obs) => obs.title.trim())
+        .filter((title) => title.length > 0)
+    )
+  );
 }
 
 function buildResumeReadinessLine(context: InjectedContext): string | null {
