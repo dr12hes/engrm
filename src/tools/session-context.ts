@@ -16,6 +16,7 @@ import {
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { classifyContinuityState, classifyResumeFreshness, collectActiveAgents, describeContinuityState } from "./project-memory-index.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
+import { getRecentActivity } from "./recent.js";
 
 export interface SessionContextInput {
   cwd?: string;
@@ -52,6 +53,8 @@ export interface SessionContextResult {
   rolling_handoff_drafts: number;
   saved_handoffs: number;
   latest_handoff_title: string | null;
+  recent_inbox_notes: number;
+  latest_inbox_note_title: string | null;
   recent_chat_messages: number;
   recent_chat_sessions: number;
   chat_source_summary: ChatSourceSummary;
@@ -93,6 +96,15 @@ export function getSessionContext(
     user_id: input.user_id,
     limit: 8,
   });
+  const recentActivity = getRecentActivity(db, {
+    cwd,
+    project_scoped: true,
+    user_id: input.user_id,
+    limit: 12,
+  });
+  const recentInboxNotes = recentActivity.observations
+    .filter((obs) => obs.message_kind === "inbox-note")
+    .slice(0, 5);
   const recentChatMessages = recentChat.messages.length;
   const recallIndex = listRecallItems(db, {
     cwd,
@@ -161,6 +173,8 @@ export function getSessionContext(
     rolling_handoff_drafts: rollingHandoffDrafts,
     saved_handoffs: savedHandoffs,
     latest_handoff_title: latestHandoffTitle,
+    recent_inbox_notes: recentInboxNotes.length,
+    latest_inbox_note_title: recentInboxNotes[0]?.title ?? null,
     recent_chat_messages: recentChatMessages,
     recent_chat_sessions: recentChat.session_count,
     chat_source_summary: recentChat.source_summary,

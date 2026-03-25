@@ -16,6 +16,7 @@ import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from ".
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { classifyContinuityState, collectActiveAgents, describeContinuityState } from "./project-memory-index.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
+import type { RecentObservationRow } from "./recent.js";
 
 export interface MemoryConsoleInput {
   cwd?: string;
@@ -48,6 +49,8 @@ export interface MemoryConsoleResult {
   recent_handoffs: ReturnType<typeof getRecentHandoffs>["handoffs"];
   rolling_handoff_drafts: number;
   saved_handoffs: number;
+  recent_inbox_notes: Array<Pick<RecentObservationRow, "id" | "title" | "created_at_epoch">>;
+  latest_inbox_note_title: string | null;
   recent_chat: ReturnType<typeof getRecentChat>["messages"];
   recent_chat_sessions: number;
   chat_source_summary: ChatSourceSummary;
@@ -104,6 +107,10 @@ export function getMemoryConsole(
     }).handoffs;
   const rollingHandoffDrafts = recentHandoffs.filter((handoff) => isDraftHandoff(handoff)).length;
   const savedHandoffs = recentHandoffs.length - rollingHandoffDrafts;
+  const recentInboxNotes = observations
+    .filter((obs) => obs.message_kind === "inbox-note")
+    .slice(0, 3)
+    .map((obs) => ({ id: obs.id, title: obs.title, created_at_epoch: obs.created_at_epoch }));
   const recentChat = getRecentChat(db, {
       cwd,
       project_scoped: projectScoped,
@@ -162,6 +169,8 @@ export function getMemoryConsole(
     recent_handoffs: recentHandoffs,
     rolling_handoff_drafts: rollingHandoffDrafts,
     saved_handoffs: savedHandoffs,
+    recent_inbox_notes: recentInboxNotes,
+    latest_inbox_note_title: recentInboxNotes[0]?.title ?? null,
     recent_chat: recentChat.messages,
     recent_chat_sessions: projectIndex?.recent_chat_sessions ?? recentChat.session_count,
     chat_source_summary: projectIndex?.chat_source_summary ?? recentChat.source_summary,

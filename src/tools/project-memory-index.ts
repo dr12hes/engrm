@@ -14,6 +14,7 @@ import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from ".
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
 import { estimateTokens } from "../context/inject.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
+import { classifyMessageObservation } from "./inbox-messages.js";
 
 export interface CaptureSummary {
   rich_sessions: number;
@@ -53,6 +54,8 @@ export interface ProjectMemoryIndexResult {
   recent_handoffs_count: number;
   rolling_handoff_drafts_count: number;
   saved_handoffs_count: number;
+  recent_inbox_notes_count: number;
+  latest_inbox_note_title: string | null;
   recent_chat_count: number;
   recent_chat_sessions: number;
   chat_source_summary: ChatSourceSummary;
@@ -168,6 +171,9 @@ export function getProjectMemoryIndex(
   }).handoffs;
   const rollingHandoffDraftsCount = recentHandoffsCount.filter((handoff) => isDraftHandoff(handoff)).length;
   const savedHandoffsCount = recentHandoffsCount.length - rollingHandoffDraftsCount;
+  const recentInboxNotes = observations
+    .filter((obs) => classifyMessageObservation(obs) === "inbox-note")
+    .slice(0, 5);
   const recentChat = getRecentChat(db, {
     cwd,
     project_scoped: true,
@@ -253,6 +259,8 @@ export function getProjectMemoryIndex(
     recent_handoffs_count: recentHandoffsCount.length,
     rolling_handoff_drafts_count: rollingHandoffDraftsCount,
     saved_handoffs_count: savedHandoffsCount,
+    recent_inbox_notes_count: recentInboxNotes.length,
+    latest_inbox_note_title: recentInboxNotes[0]?.title ?? null,
     recent_chat_count: recentChatCount,
     recent_chat_sessions: recentChat.session_count,
     chat_source_summary: recentChat.source_summary,

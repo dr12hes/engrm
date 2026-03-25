@@ -1346,6 +1346,9 @@ server.tool(
     const handoffLines = result.recent_handoffs.length > 0
       ? result.recent_handoffs.map((obs) => `- #${obs.id} ${obs.title}`).join("\n")
       : "- (none)";
+    const inboxNoteLines = result.recent_inbox_notes.length > 0
+      ? result.recent_inbox_notes.map((obs) => `- #${obs.id} ${obs.title}`).join("\n")
+      : "- (none)";
     const recentChatLines = result.recent_chat.length > 0
       ? result.recent_chat.map((msg) => `- [${msg.role}] ${msg.content.replace(/\s+/g, " ").trim().slice(0, 180)}`).join("\n")
       : "- (none)";
@@ -1398,6 +1401,7 @@ server.tool(
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat.length} messages across ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `${typeof result.assistant_checkpoint_count === "number" ? `Assistant checkpoints: ${result.assistant_checkpoint_count}\n` : ""}` +
             `Handoffs: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
+            `Inbox notes: ${result.recent_inbox_notes.length}${result.latest_inbox_note_title ? ` · latest "${result.latest_inbox_note_title}"` : ""}\n` +
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             openExactLine +
@@ -1409,6 +1413,7 @@ server.tool(
             `Observation provenance:\n${provenanceLines}\n\n` +
             `Recent sessions:\n${sessionLines}\n\n` +
             `Recent handoffs:\n${handoffLines}\n\n` +
+            `Recent inbox notes:\n${inboxNoteLines}\n\n` +
             `Recent requests:\n${requestLines}\n\n` +
             `Recent tools:\n${toolLines}\n\n` +
             `Recent chat:\n${recentChatLines}\n\n` +
@@ -1685,6 +1690,7 @@ server.tool(
             `Recent sessions: ${result.recent_sessions}\n` +
             `Recent handoffs: ${result.recent_handoffs}\n` +
             `Handoff split: ${result.saved_handoffs} saved, ${result.rolling_handoff_drafts} rolling drafts\n` +
+            `Recent inbox notes: ${result.recent_inbox_notes}${result.latest_inbox_note_title ? ` · latest "${result.latest_inbox_note_title}"` : ""}\n` +
             `Recent chat messages: ${result.recent_chat_messages}\n` +
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n` +
             `Latest handoff: ${result.latest_handoff_title ?? "(none)" }\n` +
@@ -1807,6 +1813,7 @@ server.tool(
             `Recent tools captured: ${result.recent_tools_count}\n\n` +
             `Recent handoffs captured: ${result.recent_handoffs_count}\n` +
             `Handoff split: ${result.saved_handoffs_count} saved, ${result.rolling_handoff_drafts_count} rolling drafts\n` +
+            `Recent inbox notes: ${result.recent_inbox_notes_count}${result.latest_inbox_note_title ? ` · latest "${result.latest_inbox_note_title}"` : ""}\n` +
             `Recent chat messages captured: ${result.recent_chat_count}\n` +
             `Chat recall: ${result.chat_coverage_state} · ${result.recent_chat_sessions} sessions (transcript ${result.chat_source_summary.transcript}, history ${result.chat_source_summary.history}, hook ${result.chat_source_summary.hook})\n\n` +
             `Raw chronology: ${result.raw_capture_active ? "active" : "observations-only so far"}\n\n` +
