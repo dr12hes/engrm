@@ -103,4 +103,55 @@ describe("getRecentActivity", () => {
     expect(result.observations).toHaveLength(1);
     expect(result.observations[0]?.title).toBe("Workspace fix");
   });
+
+  test("classifies handoffs, drafts, and inbox notes distinctly", () => {
+    const projectDir = join(tmpDir, "workspace");
+    mkdirSync(projectDir);
+
+    const project = db.upsertProject({
+      canonical_id: "local/workspace",
+      name: "workspace",
+      local_path: projectDir,
+    });
+
+    db.insertObservation({
+      project_id: project.id,
+      type: "message",
+      title: "Heads up for tonight",
+      narrative: "Remember to restart the worker.",
+      quality: 0.5,
+      user_id: "david",
+      device_id: "desktop-abc",
+    });
+    db.insertObservation({
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Finish auth cleanup",
+      quality: 0.5,
+      user_id: "david",
+      device_id: "desktop-abc",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      source_tool: "create_handoff",
+    });
+    db.insertObservation({
+      project_id: project.id,
+      type: "message",
+      title: "Handoff Draft: Keep session warm",
+      quality: 0.5,
+      user_id: "david",
+      device_id: "desktop-abc",
+      concepts: JSON.stringify(["handoff", "draft-handoff"]),
+      source_tool: "rolling_handoff",
+    });
+
+    const result = getRecentActivity(db, {
+      cwd: projectDir,
+      limit: 10,
+    });
+
+    expect(result.observations).toHaveLength(3);
+    expect(result.observations.find((obs) => obs.title === "Heads up for tonight")?.message_kind).toBe("inbox-note");
+    expect(result.observations.find((obs) => obs.title === "Handoff: Finish auth cleanup")?.message_kind).toBe("handoff");
+    expect(result.observations.find((obs) => obs.title === "Handoff Draft: Keep session warm")?.message_kind).toBe("draft-handoff");
+  });
 });

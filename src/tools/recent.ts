@@ -7,9 +7,11 @@
 
 import { detectProject } from "../storage/projects.js";
 import type { MemDatabase, ObservationRow } from "../storage/sqlite.js";
+import { classifyMessageObservation, type MessageObservationKind } from "./inbox-messages.js";
 
 export interface RecentObservationRow extends ObservationRow {
   project_name?: string | null;
+  message_kind?: MessageObservationKind | null;
 }
 
 export interface RecentActivityInput {
@@ -77,7 +79,11 @@ export function getRecentActivity(
        ORDER BY observations.created_at_epoch DESC
        LIMIT ?`
     )
-    .all(...params);
+    .all(...params)
+    .map((observation) => ({
+      ...observation,
+      message_kind: classifyMessageObservation(observation),
+    }));
 
   return {
     observations,

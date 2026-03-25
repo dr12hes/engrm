@@ -15,6 +15,7 @@ All notable changes to this repository should be documented here.
 - startup, `memory_console`, `project_memory_index`, `session_context`, and `agent_memory_index` now surface a direct `resume_thread(agent="...")` hint when multi-agent continuity is active
 - unread cross-device message counts now exclude handoffs and rolling handoff drafts, so the startup badge and `check_messages` reflect real inbox notes instead of normal continuity artifacts
 - `memory_stats` now separates inbox notes from handoffs, so the operational view no longer implies that all `message` observations are cross-device inbox items
+- `recent_activity` and activity-style views now classify `message` observations as notes, saved handoffs, or rolling drafts, so recent surfaces stop flattening all continuity artifacts into the same vague type
 - recall previews and exact recall loading now carry source-agent provenance, so handoffs, threads, and chat snippets stay clearly attributable when multiple agents touch the same repo
 - startup handoff now shows a compact recall preview with exact keys like `handoff:*`, `session:*`, and `chat:*`, so the deterministic recall protocol is visible before an agent even reaches for MCP
 - `resume_thread` now returns the best exact recall key to open next and server output shows the matching `load_recall_item("...")` call, so the main continuity tool can hand off directly into deterministic item loading

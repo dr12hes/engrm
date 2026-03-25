@@ -1,4 +1,4 @@
-import type { MemDatabase } from "../storage/sqlite.js";
+import type { MemDatabase, ObservationRow } from "../storage/sqlite.js";
 
 export interface InboxMessageRow {
   id: number;
@@ -9,20 +9,78 @@ export interface InboxMessageRow {
   created_at: string;
 }
 
-const INBOX_MESSAGE_FILTER_SQL = `
+function buildHandoffMessageFilterSql(lifecycle: string): string {
+  return `
   type = 'message'
-  AND lifecycle IN ('active', 'pinned')
-  AND (source_tool IS NULL OR source_tool NOT IN ('create_handoff', 'rolling_handoff'))
+  AND lifecycle IN (${lifecycle})
   AND (
-    concepts IS NULL OR (
-      concepts NOT LIKE '%"session-handoff"%'
-      AND concepts NOT LIKE '%"draft-handoff"%'
+    COALESCE(source_tool, '') IN ('create_handoff', 'rolling_handoff')
+    OR title LIKE 'Handoff:%'
+    OR title LIKE 'Handoff Draft:%'
+    OR (
+      concepts IS NOT NULL AND (
+        concepts LIKE '%"handoff"%'
+        OR concepts LIKE '%"session-handoff"%'
+        OR concepts LIKE '%"draft-handoff"%'
+      )
     )
   )
 `;
+}
+
+const HANDOFF_MESSAGE_FILTER_SQL = buildHandoffMessageFilterSql("'active', 'pinned'");
+
+const INBOX_MESSAGE_FILTER_SQL = `
+  type = 'message'
+  AND lifecycle IN ('active', 'pinned')
+  AND NOT (${HANDOFF_MESSAGE_FILTER_SQL})
+`;
+
+export type MessageObservationKind = "handoff" | "draft-handoff" | "inbox-note";
+
+export function getHandoffMessageFilterSql(options?: { include_aging?: boolean }): string {
+  return buildHandoffMessageFilterSql(
+    options?.include_aging ? "'active', 'aging', 'pinned'" : "'active', 'pinned'"
+  );
+}
 
 export function getInboxMessageFilterSql(): string {
   return INBOX_MESSAGE_FILTER_SQL;
+}
+
+export function classifyMessageObservation(
+  observation: Pick<ObservationRow, "type" | "title" | "concepts" | "source_tool">
+): MessageObservationKind | null {
+  if (observation.type !== "message") return null;
+
+  const concepts = parseConcepts(observation.concepts);
+  const isDraft =
+    observation.title.startsWith("Handoff Draft:")
+    || observation.source_tool === "rolling_handoff"
+    || concepts.includes("draft-handoff")
+    || concepts.includes("auto-handoff");
+  if (isDraft) return "draft-handoff";
+
+  const isHandoff =
+    observation.title.startsWith("Handoff:")
+    || observation.source_tool === "create_handoff"
+    || concepts.includes("handoff")
+    || concepts.includes("session-handoff");
+  if (isHandoff) return "handoff";
+
+  return "inbox-note";
+}
+
+function parseConcepts(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export function getInboxMessageCount(db: MemDatabase): number {

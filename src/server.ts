@@ -1203,7 +1203,7 @@ server.tool(
 // Tool: recent_activity
 server.tool(
   "recent_activity",
-  "Inspect the most recent observations captured by Engrm",
+  "Inspect the most recent observations, notes, and handoffs captured by Engrm",
   {
     limit: z.number().optional().describe("Max observations to return (default: 10)"),
     project_scoped: z.boolean().optional().describe("Scope to current project (default: true)"),
@@ -1236,12 +1236,18 @@ server.tool(
     const separator = showProject
       ? "|---|---|---|---|---|"
       : "|---|---|---|---|";
+    const displayType = (obs: (typeof result.observations)[number]) => {
+      if (obs.message_kind === "draft-handoff") return "handoff:draft";
+      if (obs.message_kind === "handoff") return "handoff";
+      if (obs.message_kind === "inbox-note") return "note";
+      return obs.type;
+    };
     const rows = result.observations.map((obs) => {
       const date = obs.created_at.split("T")[0];
       if (showProject) {
-        return `| ${obs.id} | ${obs.project_name ?? "(unknown)"} | ${obs.type} | ${obs.title} | ${date} |`;
+        return `| ${obs.id} | ${obs.project_name ?? "(unknown)"} | ${displayType(obs)} | ${obs.title} | ${date} |`;
       }
-      return `| ${obs.id} | ${obs.type} | ${obs.title} | ${date} |`;
+      return `| ${obs.id} | ${displayType(obs)} | ${obs.title} | ${date} |`;
     });
 
     const projectLine = result.project ? `Project: ${result.project}\n` : "";

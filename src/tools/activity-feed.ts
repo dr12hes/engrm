@@ -22,6 +22,7 @@ import { getRecentSessions } from "./recent-sessions.js";
 import { getRecentTools } from "./recent-tools.js";
 import { getSessionStory } from "./session-story.js";
 import { isDraftHandoff, looksLikeHandoff } from "./handoffs.js";
+import { classifyMessageObservation } from "./inbox-messages.js";
 
 export interface ActivityFeedInput {
   limit?: number;
@@ -83,6 +84,7 @@ function toChatEvent(message: ChatMessageRow): ActivityFeedEvent {
 }
 
 function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
+  const messageKind = classifyMessageObservation(obs);
   if (looksLikeHandoff(obs)) {
     const handoffKind = isDraftHandoff(obs) ? "draft" : "saved";
     return {
@@ -97,6 +99,7 @@ function toObservationEvent(obs: ObservationRow): ActivityFeedEvent {
     };
   }
   const detailBits: string[] = [];
+  if (messageKind === "inbox-note") detailBits.push("inbox note");
   if (obs.source_tool) detailBits.push(`via ${obs.source_tool}`);
   if (typeof obs.source_prompt_number === "number") {
     detailBits.push(`#${obs.source_prompt_number}`);
