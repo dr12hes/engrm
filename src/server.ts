@@ -178,7 +178,7 @@ process.on("SIGTERM", () => {
 
 const server = new McpServer({
   name: "engrm",
-  version: "0.4.35",
+  version: "0.4.36",
 });
 
 // Tool: save_observation
