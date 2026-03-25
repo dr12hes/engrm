@@ -410,6 +410,7 @@ What each tool is good for:
 - `memory_console` gives the quickest project snapshot, including whether continuity is `fresh`, `thin`, or `cold`
 - `resume_thread` is the fastest “get me back into the live thread” path when you want freshness, source, next actions, tool trail, chat, and one exact `load_recall_item(...)` suggestion in one place
 - `resume_thread(agent="claude-code")` lets you deliberately recover one agent's thread on a shared repo instead of only taking the blended repo-level default
+- startup and the MCP workbench now surface a direct `resume_thread(agent="...")` hint when multiple agents are active on one repo
 - `list_recall_items` is the deterministic directory-first path when you want to inspect the best candidate handoffs/threads before opening one exact item
 - `load_recall_item` completes that protocol by letting agents open one exact recall key directly after listing
 - `memory_console`, `project_memory_index`, and `session_context` now also surface one best exact `load_recall_item(...)` jump, so the workbench can hand you the right deterministic next step instead of only showing recall counts

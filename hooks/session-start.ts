@@ -624,10 +624,12 @@ function formatInspectHints(
   if (unique.length === 0) return [];
   const ids = visibleObservationIds.slice(0, 5);
   const openNowItem = recallItems.find((item) => item.kind !== "memory") ?? null;
+  const resumeAgent = activeAgents.length > 1 ? context.recentSessions?.[0]?.agent ?? null : null;
   const fetchHint = ids.length > 0 ? `get_observations([${ids.join(", ")}])` : null;
   return [
     `${c.dim}Next look:${c.reset} ${unique.join(" · ")}`,
     ...(openNowItem ? [`${c.dim}Open now:${c.reset} load_recall_item("${openNowItem.key}")`] : []),
+    ...(resumeAgent ? [`${c.dim}Resume agent:${c.reset} resume_thread(agent="${resumeAgent}")`] : []),
     ...(fetchHint ? [`${c.dim}Pull detail:${c.reset} ${fetchHint}`] : []),
   ];
 }

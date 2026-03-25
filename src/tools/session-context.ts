@@ -38,6 +38,7 @@ export interface SessionContextResult {
   best_recall_key: string | null;
   best_recall_title: string | null;
   best_recall_kind: "handoff" | "thread" | "chat" | "memory" | null;
+  best_agent_resume_agent: string | null;
   resume_freshness: "live" | "recent" | "stale";
   resume_source_session_id: string | null;
   resume_source_device_id: string | null;
@@ -146,6 +147,7 @@ export function getSessionContext(
     best_recall_key: bestRecallItem?.key ?? null,
     best_recall_title: bestRecallItem?.title ?? null,
     best_recall_kind: bestRecallItem?.kind ?? null,
+    best_agent_resume_agent: activeAgents.length > 1 ? latestSession?.agent ?? null : null,
     resume_freshness: classifyResumeFreshness(resumeTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,

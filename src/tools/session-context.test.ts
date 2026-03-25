@@ -121,6 +121,7 @@ describe("getSessionContext", () => {
     expect(result?.best_recall_key).toBe("handoff:3");
     expect(result?.best_recall_kind).toBe("handoff");
     expect(result?.best_recall_title).toContain("Finish improving startup handoff quality");
+    expect(result?.best_agent_resume_agent).toBe("codex-cli");
     expect(result?.resume_freshness).toBe("live");
     expect(result?.resume_source_session_id).toBe("sess-1");
     expect(result?.resume_source_device_id).toBe("laptop");

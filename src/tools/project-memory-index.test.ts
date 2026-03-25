@@ -139,6 +139,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.best_recall_key).toBe("handoff:5");
     expect(result?.best_recall_kind).toBe("handoff");
     expect(result?.best_recall_title).toContain("Resume auth cleanup from home machine");
+    expect(result?.best_agent_resume_agent).toBe("codex-cli");
     expect(result?.resume_freshness).toBe("live");
     expect(result?.resume_source_session_id).toBe("sess-1");
     expect(result?.resume_source_device_id).toBe("laptop");

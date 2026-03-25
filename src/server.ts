@@ -1406,6 +1406,7 @@ server.tool(
             `${typeof result.estimated_read_tokens === "number" ? `Estimated read cost: ~${result.estimated_read_tokens}t\n` : ""}` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             openExactLine +
+            resumeAgentLine +
             `Recall preview:\n${recallPreviewLines}\n\n` +
             `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Top types:\n${topTypes}\n\n` +
@@ -1543,7 +1544,7 @@ server.tool(
           const exact = agent.best_recall_key
             ? ` open=load_recall_item("${agent.best_recall_key}")`
             : "";
-          return `- ${agent.agent}: continuity=${agent.continuity_state} capture=${agent.capture_state} resume=${agent.resume_freshness} chat=${agent.chat_coverage_state} sessions=${agent.session_count} prompts=${agent.prompt_count} tools=${agent.tool_event_count} obs=${agent.observation_count} handoffs=${agent.handoff_count} chat_msgs=${agent.chat_message_count} last_seen=${lastSeen}${devices}${latest}${exact}`;
+          return `- ${agent.agent}: continuity=${agent.continuity_state} capture=${agent.capture_state} resume=${agent.resume_freshness} chat=${agent.chat_coverage_state} sessions=${agent.session_count} prompts=${agent.prompt_count} tools=${agent.tool_event_count} obs=${agent.observation_count} handoffs=${agent.handoff_count} chat_msgs=${agent.chat_message_count} last_seen=${lastSeen}${devices}${latest}${exact} resume_call=resume_thread(agent="${agent.agent}")`;
         }).join("\n")
       : "- (none)";
 
@@ -1680,6 +1681,7 @@ server.tool(
             `Continuity: ${result.continuity_state} — ${result.continuity_summary}\n` +
             `Recall index: ${result.recall_mode} · ${result.recall_items_ready} items ready\n` +
             `Open exact: ${result.best_recall_key ? `load_recall_item("${result.best_recall_key}")` : "(none)"}\n` +
+            `${result.best_agent_resume_agent ? `Resume agent: resume_thread(agent="${result.best_agent_resume_agent}")\n` : ""}` +
             `Resume readiness: ${result.resume_freshness} · ${result.resume_source_session_id ?? "(unknown session)"}${result.resume_source_device_id ? ` (${result.resume_source_device_id})` : ""}\n` +
             `Loaded observations: ${result.session_count}\n` +
             `Searchable total: ${result.total_active}\n` +
@@ -1817,6 +1819,7 @@ server.tool(
             `Estimated read cost: ~${result.estimated_read_tokens}t\n` +
             `Suggested tools: ${result.suggested_tools.join(", ") || "(none)"}\n\n` +
             openExactLine +
+            resumeAgentLine +
             `Recall preview:\n${recallPreviewLines}\n\n` +
             `Next actions:\n${result.resume_next_actions.length > 0 ? result.resume_next_actions.map((item) => `- ${item}`).join("\n") : "- (none)"}\n\n` +
             `Observation counts:\n${counts}\n\n` +
