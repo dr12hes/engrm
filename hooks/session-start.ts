@@ -19,6 +19,7 @@ import {
 } from "../src/context/inject.js";
 import type { InjectedContext } from "../src/context/inject.js";
 import { formatHandoffSource } from "../src/tools/handoffs.js";
+import { getUnreadInboxMessageCount } from "../src/tools/inbox-messages.js";
 import {
   classifyContinuityState,
   classifyResumeFreshness,
@@ -101,16 +102,7 @@ async function main(): Promise<void> {
       try {
         const readKey = `messages_read_${config.device_id}`;
         const lastReadId = parseInt(db.getSyncState(readKey) ?? "0", 10);
-        msgCount = db.db
-          .query<{ c: number }, [number, string, string]>(
-            `SELECT COUNT(*) as c FROM observations
-             WHERE type = 'message'
-               AND id > ?
-               AND lifecycle IN ('active', 'pinned')
-               AND device_id != ?
-               AND (sensitivity != 'personal' OR user_id = ?)`
-          )
-          .get(lastReadId, config.device_id, config.user_id)?.c ?? 0;
+        msgCount = getUnreadInboxMessageCount(db, config.device_id, config.user_id, lastReadId);
       } catch {
         // message count is optional
       }

@@ -35,6 +35,7 @@ import { getActivityFeed } from "./tools/activity-feed.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
 import { getCaptureQuality } from "./tools/capture-quality.js";
 import { getAgentMemoryIndex } from "./tools/agent-memory-index.js";
+import { getUnreadInboxMessages } from "./tools/inbox-messages.js";
 import { getToolMemoryIndex } from "./tools/tool-memory-index.js";
 import { getSessionToolMemory } from "./tools/session-tool-memory.js";
 import { getSessionContext } from "./tools/session-context.js";
@@ -1141,20 +1142,7 @@ server.tool(
     const readKey = `messages_read_${config.device_id}`;
     const lastReadId = parseInt(db.getSyncState(readKey) ?? "0", 10);
 
-    const messages = db.db
-      .query<{
-        id: number; title: string; narrative: string | null;
-        user_id: string; device_id: string; created_at: string;
-      }, [number, string, string]>(
-        `SELECT id, title, narrative, user_id, device_id, created_at FROM observations
-         WHERE type = 'message'
-           AND id > ?
-           AND lifecycle IN ('active', 'pinned')
-           AND device_id != ?
-           AND (sensitivity != 'personal' OR user_id = ?)
-         ORDER BY created_at_epoch DESC LIMIT 20`
-      )
-      .all(lastReadId, config.device_id, config.user_id);
+    const messages = getUnreadInboxMessages(db, config.device_id, config.user_id, lastReadId, 20);
 
     if (messages.length === 0) {
       return {
