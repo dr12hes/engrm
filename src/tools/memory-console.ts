@@ -59,6 +59,11 @@ export interface MemoryConsoleResult {
   recent_outcomes: string[];
   hot_files: Array<{ path: string; count: number }>;
   provenance_summary: Array<{ tool: string; count: number }>;
+  provenance_type_mix: Array<{
+    tool: string;
+    count: number;
+    top_types: Array<{ type: string; count: number }>;
+  }>;
   assistant_checkpoint_count?: number;
   assistant_checkpoint_types: Array<{ type: string; count: number }>;
   top_types: Array<{ type: string; count: number }>;
@@ -180,6 +185,7 @@ export function getMemoryConsole(
     recent_outcomes: projectIndex?.recent_outcomes ?? [],
     hot_files: projectIndex?.hot_files ?? [],
     provenance_summary: projectIndex?.provenance_summary ?? [],
+    provenance_type_mix: collectProvenanceTypeMix(observations),
     assistant_checkpoint_count: projectIndex?.assistant_checkpoint_count,
     assistant_checkpoint_types: projectIndex?.assistant_checkpoint_types ?? [],
     top_types: projectIndex?.top_types ?? [],
@@ -195,6 +201,38 @@ export function getMemoryConsole(
       activeAgents.length
     ),
   };
+}
+
+function collectProvenanceTypeMix(
+  observations: ReturnType<typeof getRecentActivity>["observations"]
+): Array<{
+  tool: string;
+  count: number;
+  top_types: Array<{ type: string; count: number }>;
+}> {
+  const grouped = new Map<string, Map<string, number>>();
+
+  for (const observation of observations) {
+    if (!observation.source_tool) continue;
+    const typeCounts = grouped.get(observation.source_tool) ?? new Map<string, number>();
+    typeCounts.set(observation.type, (typeCounts.get(observation.type) ?? 0) + 1);
+    grouped.set(observation.source_tool, typeCounts);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([tool, typeCounts]) => {
+      const topTypes = Array.from(typeCounts.entries())
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
+        .slice(0, 4);
+      return {
+        tool,
+        count: topTypes.reduce((sum, item) => sum + item.count, 0),
+        top_types: topTypes,
+      };
+    })
+    .sort((a, b) => b.count - a.count || a.tool.localeCompare(b.tool))
+    .slice(0, 6);
 }
 
 function buildFallbackSuggestedTools(

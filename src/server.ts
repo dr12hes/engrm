@@ -1493,6 +1493,11 @@ server.tool(
     const checkpointTypeLines = result.assistant_checkpoint_types.length > 0
       ? result.assistant_checkpoint_types.map((item) => `- ${item.type}: ${item.count}`).join("\n")
       : "- (none)";
+    const provenanceMixLines = result.provenance_type_mix.length > 0
+      ? result.provenance_type_mix
+          .map((item) => `- ${item.tool}: ${item.top_types.map((entry) => `${entry.type} ${entry.count}`).join(", ")}`)
+          .join("\n")
+      : "- (none)";
     const projectLines = result.top_projects.length > 0
       ? result.top_projects.map((project) =>
           `- ${project.name} [${project.raw_capture_state}] obs=${project.observation_count} sessions=${project.session_count} prompts=${project.prompt_count} tools=${project.tool_event_count} checkpoints=${project.assistant_checkpoint_count} chat=${project.chat_message_count} (${project.chat_coverage_state})`

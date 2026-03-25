@@ -1313,11 +1313,17 @@ export class MemDatabase {
 
   vecChatInsert(chatMessageId: number, embedding: Float32Array): void {
     if (!this.vecAvailable) return;
-    this.db
-      .query(
-        "INSERT OR REPLACE INTO vec_chat_messages (chat_message_id, embedding) VALUES (?, ?)"
-      )
-      .run(chatMessageId, new Uint8Array(embedding.buffer));
+    const normalizedId = Number(chatMessageId);
+    if (!Number.isInteger(normalizedId) || normalizedId <= 0) return;
+    try {
+      this.db
+        .query(
+          "INSERT OR REPLACE INTO vec_chat_messages (chat_message_id, embedding) VALUES (?, ?)"
+        )
+        .run(normalizedId, new Uint8Array(embedding.buffer));
+    } catch {
+      // Keep chat recall usable even if sqlite-vec rejects one row on a given machine.
+    }
   }
 
   searchChatVec(

@@ -79,13 +79,18 @@ export async function repairRecall(
     const sessionCwd = session.project_id !== null
       ? db.getProjectById(session.project_id)?.local_path ?? cwd
       : cwd;
-    const syncResult = await syncTranscriptChat(
-      db,
-      config,
-      session.session_id,
-      sessionCwd,
-      input.transcript_path
-    );
+    let syncResult = { imported: 0, total: 0 };
+    try {
+      syncResult = await syncTranscriptChat(
+        db,
+        config,
+        session.session_id,
+        sessionCwd,
+        input.transcript_path
+      );
+    } catch {
+      syncResult = { imported: 0, total: 0 };
+    }
     const chatMessages = db.getSessionChatMessages(session.session_id, 200);
     const prompts = db.getSessionUserPrompts(session.session_id, 200);
     const sourceSummary = summarizeChatSources(chatMessages);

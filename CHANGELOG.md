@@ -4,6 +4,14 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.36
+
+### Fixed
+
+- `resume_thread` and `repair_recall` now tolerate sqlite-vec chat-index edge cases during transcript/history rehydration, so weak recall repair no longer takes down the main thread-resume path
+- `memory_console` now returns the `provenance_type_mix` data its MCP output expects, so the console view no longer crashes while formatting provenance summaries
+- `capture_quality` MCP output now defines and prints provenance type-mix lines correctly, so the workspace capture-quality report no longer fails at render time
+
 ## 0.4.35
 
 ### Changed
