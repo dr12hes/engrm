@@ -28,6 +28,13 @@ OpenClaw currently uses skills rather than direct native hooks:
 
 That means OpenClaw can use Engrm's MCP and workflow guidance today, but it does not yet have native hook parity with Claude Code.
 
+Important distinction:
+- OpenClaw is still expected to use direct Engrm MCP write tools like
+  `save_observation`, `create_handoff`, `refresh_handoff`, and
+  `capture_openclaw_content` when something should be preserved deliberately.
+- End-of-session digest capture is a helpful background path, not the only save
+  mechanism.
+
 ## Feature Matrix
 
 | Capability | Claude Code | Codex | OpenClaw | Notes |

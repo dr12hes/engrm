@@ -16,11 +16,28 @@ Engrm gives OpenClaw shared memory across devices, sessions, and agents. The sam
 
 ## Included OpenClaw Tools
 
+The plugin adds a few OpenClaw-native helper tools, but it is meant to sit
+alongside the full Engrm MCP server rather than replace it.
+
 - `engrm_status`
 - `engrm_connect`
 - `engrm_recent`
 - `engrm_search`
 - `engrm_delivery_review`
+
+For deliberate memory writes during a run, prefer the Engrm MCP tools:
+
+- `save_observation`
+  - direct durable memory write for a bugfix, decision, discovery, pattern,
+    feature, or change
+- `create_handoff` / `refresh_handoff`
+  - save or refresh a resume point for another machine or later session
+- `capture_openclaw_content`
+  - save OpenClaw research, posting, outcomes, and next actions as reusable
+    memory
+
+Automatic session digest capture is still useful, but it is a fallback path, not
+the only way to persist something important.
 
 ## Install
 

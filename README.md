@@ -288,6 +288,25 @@ How to use it:
 - `load_recall_item` opens an exact handoff, thread, chat, or memory key returned by the index
 - `repair_recall` is the repair step when continuity is still thin, hook-only, or under-captured
 
+### Explicit Save Protocol
+
+When something should be remembered on purpose, do not wait for an end-of-session
+digest if an explicit write is more appropriate.
+
+Use:
+
+- `save_observation`
+  - direct durable memory write for a bugfix, decision, discovery, pattern,
+    feature, or change
+- `create_handoff` / `refresh_handoff`
+  - preserve the active thread for another device or a later session
+- `capture_openclaw_content`
+  - save OpenClaw-style research, posting, outcomes, and next actions as
+    reusable memory
+
+Automatic session digests are a safety net.
+They are not the only path for preserving important work.
+
 ### Thin Tools, Thick Memory
 
 Engrm now has a real thin-tool layer, not just a plugin spec.

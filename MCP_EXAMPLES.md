@@ -56,6 +56,27 @@ Use it like this:
 - when `resume_thread` already shows a strong `load_recall_item("...")` hint, you can jump straight to that exact item without listing first
 - the workbench tools now do the same thing, so `memory_console` or `session_context` can also hand you the best exact recall key directly
 
+## Explicit Save Protocol
+
+When the user says some result should be remembered, prominent, reusable, or
+easy to resume later, use an explicit write tool instead of waiting for a later
+digest.
+
+Use it like this:
+
+- `save_observation`
+  - for a durable engineering memory item right now
+- `create_handoff` / `refresh_handoff`
+  - for active-thread continuity
+- `capture_openclaw_content`
+  - for OpenClaw-style research, posting, outcomes, and next actions
+
+Example prompts:
+
+- "Save this bugfix as reusable memory."
+- "Create a handoff before I switch machines."
+- "Save this OpenClaw research and posting run as reusable memory."
+
 ## Explicit Handoff Flow
 
 Use this when you are moving between machines and want a reliable resume point:

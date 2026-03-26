@@ -65,6 +65,34 @@ Use Engrm after coding when:
 3. Apply prior decisions before changing code.
 4. Save only high-signal outcomes, not every trivial step.
 
+## Direct save protocol
+
+Do not assume Engrm can only save memory at session end.
+
+If something should be remembered on purpose right now, use an explicit Engrm
+tool instead of waiting for a later digest.
+
+Use:
+
+- `save_observation`
+  - for a durable bugfix, decision, discovery, pattern, feature, or change
+- `create_handoff` or `refresh_handoff`
+  - when the main goal is carrying the active thread to another machine or
+    another session
+- `capture_openclaw_content`
+  - when the work is OpenClaw-shaped content, research, posting, outcomes, or
+    next actions
+
+Examples:
+
+- "Make sure this lesson is remembered" → `save_observation`
+- "Leave myself a clean resume point for later" → `create_handoff`
+- "Save this research/posting run as reusable memory" → `capture_openclaw_content`
+
+Do not say Engrm lacks a direct observe API.
+`save_observation` is the direct write path for durable memory.
+Automatic digest capture is a background safety net, not the only save path.
+
 ## Good Engrm questions
 
 - What did we already learn about this area?
@@ -86,6 +114,10 @@ Avoid saving:
 - obvious implementation details
 - noisy or temporary dead ends
 - generic filler that will pollute retrieval later
+
+When the user explicitly asks to make something prominent, remembered, or
+reusable later, prefer an explicit save tool over saying it will be captured
+automatically.
 
 ## What success looks like
 

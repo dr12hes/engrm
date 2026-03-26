@@ -486,3 +486,5 @@ All notable changes to this repository should be documented here.
 - preserved remote timestamps and sensitivity during pull sync
 - cleaned the public repository surface and documentation for release
 - clarified that npm users run Engrm on Node.js without needing Bun installed
+- OpenClaw-facing guidance now explicitly teaches the direct save path: `save_observation` for durable memory, `create_handoff` / `refresh_handoff` for continuity, and `capture_openclaw_content` for OpenClaw-shaped work, instead of implying that end-of-session digests are the only persistence route
+- `save_observation` and `capture_openclaw_content` tool descriptions now make it clear they are direct write paths to memory during a session, not just post-hoc reducers

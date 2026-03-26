@@ -184,7 +184,7 @@ const server = new McpServer({
 // Tool: save_observation
 server.tool(
   "save_observation",
-  "Save an observation to memory",
+  "Directly save a durable memory item now. Use this when something should be remembered on purpose instead of waiting for an end-of-session digest.",
   {
     type: z.enum([
       "bugfix",
@@ -565,7 +565,7 @@ server.tool(
 // Tool: capture_openclaw_content
 server.tool(
   "capture_openclaw_content",
-  "Capture OpenClaw content, research, and follow-up work as durable memory. Best for preserving posted outcomes, discoveries, and next actions.",
+  "Directly save OpenClaw content, research, and follow-up work as durable memory. Best for preserving posted outcomes, discoveries, and next actions during or right after the run.",
   {
     title: z.string().optional().describe("Short content, campaign, or research title."),
     posted: z.array(z.string()).optional().describe("Concrete posted items or shipped content outcomes."),

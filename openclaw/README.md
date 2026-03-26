@@ -9,6 +9,13 @@ Why skills first:
 - We do not need new OpenClaw runtime code yet, only strong guidance for when to
   query memory, review delivery, and surface Sentinel lessons.
 
+Important behavior:
+
+- OpenClaw should not rely only on end-of-session digest capture.
+- When something should be remembered on purpose, the skill guidance should push
+  explicit Engrm MCP tools like `save_observation`, `create_handoff`, and
+  `capture_openclaw_content`.
+
 Included skills:
 
 - `engrm-memory`
