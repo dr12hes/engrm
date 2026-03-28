@@ -194,10 +194,26 @@ export function mergeResults(
 
 /**
  * Sanitize a query for FTS5.
+ *
+ * We use an allow-list shape instead of trying to strip individual operators.
+ * This keeps prompts with markdown, paths, dates, or quotes from breaking
+ * `MATCH ?` while still leaving enough lexical signal for FTS to work.
  */
-function sanitizeFtsQuery(query: string): string {
-  let safe = query.replace(/[{}()[\]^~*:]/g, " ");
-  safe = safe.replace(/\s+/g, " ").trim();
-  if (!safe) return "";
-  return safe;
+export function sanitizeFtsQuery(query: string): string {
+  const normalized = String(query ?? "")
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}_\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return "";
+
+  const terms = normalized
+    .split(" ")
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .slice(0, 16);
+
+  if (terms.length === 0) return "";
+  return terms.map((term) => `"${term}"`).join(" ");
 }

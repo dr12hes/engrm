@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mergeResults } from "./search.js";
+import { mergeResults, sanitizeFtsQuery } from "./search.js";
 import type { FtsMatchRow, VecMatchRow } from "../storage/sqlite.js";
 import { computeSearchRank } from "../intelligence/observation-priority.js";
 
@@ -144,5 +144,18 @@ describe("computeSearchRank", () => {
     expect(computeSearchRank(decision, 0.02, "auth token", NOW)).toBeGreaterThan(
       computeSearchRank(change, 0.02, "auth token", NOW)
     );
+  });
+});
+
+describe("sanitizeFtsQuery", () => {
+  test("strips markdown, path punctuation, quotes, and dates into safe FTS terms", () => {
+    const query = 'review `eventservice` in /Volumes/Data/devs/candengo-mem on 2026-03-27 "please"';
+    expect(sanitizeFtsQuery(query)).toBe(
+      '"review" "eventservice" "in" "Volumes" "Data" "devs" "candengo" "mem" "on" "2026" "03" "27" "please"'
+    );
+  });
+
+  test("returns empty string when only punctuation is present", () => {
+    expect(sanitizeFtsQuery('`/:-"\'')).toBe("");
   });
 });

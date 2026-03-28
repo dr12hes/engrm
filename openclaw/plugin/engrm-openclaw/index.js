@@ -314,11 +314,19 @@ function bootstrapSchema(conn) {
 }
 
 function sanitiseFtsQuery(query) {
-  const safe = String(query ?? "")
-    .replace(/[{}()[\]^~*:]/g, " ")
+  const normalised = String(query ?? "")
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}_\s]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return safe;
+  if (!normalised) return "";
+  const terms = normalised
+    .split(" ")
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .slice(0, 16);
+  if (terms.length === 0) return "";
+  return terms.map((term) => `"${term}"`).join(" ");
 }
 
 function normaliseGitRemoteUrl(remoteUrl) {
