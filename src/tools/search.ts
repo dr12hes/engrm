@@ -75,9 +75,15 @@ export async function searchObservations(
 
   // FTS5 keyword search
   const safeQuery = sanitizeFtsQuery(query);
-  const ftsResults = safeQuery
-    ? db.searchFts(safeQuery, projectId, undefined, limit * 2, input.user_id)
-    : [];
+  let ftsResults: FtsMatchRow[] = [];
+  if (safeQuery) {
+    try {
+      ftsResults = db.searchFts(safeQuery, projectId, undefined, limit * 2, input.user_id);
+    } catch {
+      // Fall back to vec-only or empty results if FTS parsing/runtime blows up.
+      ftsResults = [];
+    }
+  }
 
   // Vec semantic search (if available)
   let vecResults: VecMatchRow[] = [];

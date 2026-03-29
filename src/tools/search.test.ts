@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mergeResults, sanitizeFtsQuery } from "./search.js";
+import { mergeResults, sanitizeFtsQuery, searchObservations } from "./search.js";
 import type { FtsMatchRow, VecMatchRow } from "../storage/sqlite.js";
 import { computeSearchRank } from "../intelligence/observation-priority.js";
 
@@ -157,5 +157,31 @@ describe("sanitizeFtsQuery", () => {
 
   test("returns empty string when only punctuation is present", () => {
     expect(sanitizeFtsQuery('`/:-"\'')).toBe("");
+  });
+});
+
+describe("searchObservations", () => {
+  test("falls back cleanly when FTS search throws", async () => {
+    const db = {
+      searchFts() {
+        throw new Error("fts blew up");
+      },
+      vecAvailable: false,
+      getObservationsByIds() {
+        return [];
+      },
+      getProjectById() {
+        return null;
+      },
+    } as any;
+
+    const result = await searchObservations(db, {
+      query: 'review `eventservice` in /Volumes/Data/devs/candengo-mem on 2026-03-27',
+      project_scoped: false,
+      limit: 5,
+    });
+
+    expect(result.observations).toEqual([]);
+    expect(result.total).toBe(0);
   });
 });

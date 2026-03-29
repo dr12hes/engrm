@@ -759,20 +759,50 @@ async function sendSessionTelemetry(conn, settings, sessionId, metrics = {}) {
 function searchObservations(conn, { query, projectId, userId, limit = 5 }) {
   const safeQuery = sanitiseFtsQuery(query);
   if (!safeQuery) return [];
-  return conn
-    .prepare(
-      `SELECT observations.*, bm25(observations_fts) AS score
-       FROM observations_fts
-       JOIN observations ON observations.id = observations_fts.rowid
-       WHERE observations_fts MATCH ?
-         AND lifecycle IN ('active', 'aging', 'pinned')
-         AND superseded_by IS NULL
-         AND (? IS NULL OR project_id = ?)
-         AND (? IS NULL OR sensitivity != 'personal' OR user_id = ?)
-       ORDER BY score
-       LIMIT ?`
-    )
-    .all(safeQuery, projectId, projectId, userId, userId, limit);
+  try {
+    return conn
+      .prepare(
+        `SELECT observations.*, bm25(observations_fts) AS score
+         FROM observations_fts
+         JOIN observations ON observations.id = observations_fts.rowid
+         WHERE observations_fts MATCH ?
+           AND lifecycle IN ('active', 'aging', 'pinned')
+           AND superseded_by IS NULL
+           AND (? IS NULL OR project_id = ?)
+           AND (? IS NULL OR sensitivity != 'personal' OR user_id = ?)
+         ORDER BY score
+         LIMIT ?`
+      )
+      .all(safeQuery, projectId, projectId, userId, userId, limit);
+  } catch (error) {
+    logger?.debug?.(`engrm: local FTS search failed, returning no local matches: ${error?.message || error}`);
+    return [];
+  }
+}
+
+function getStartupRelevantObservations(conn, { prompt, projectId, userId, limit = 5 }) {
+  if (!prompt) {
+    return getRecentObservations(conn, {
+      projectId,
+      userId,
+      limit,
+    });
+  }
+
+  const searched = searchObservations(conn, {
+    query: prompt,
+    projectId,
+    userId,
+    limit,
+  });
+
+  if (searched.length > 0) return searched;
+
+  return getRecentObservations(conn, {
+    projectId,
+    userId,
+    limit,
+  });
 }
 
 function getSessionObservations(conn, sessionId, userId) {
@@ -1544,18 +1574,12 @@ const plugin = {
 
         const project = findProjectForWorkspace(conn, ctx.workspaceDir);
         const summaries = getRecentSummaries(conn, project?.id ?? null, settings.user_id || null, 2);
-        const localRelevant = event?.prompt
-          ? searchObservations(conn, {
-              query: event.prompt,
-              projectId: project?.id ?? null,
-              userId: settings.user_id || null,
-              limit: Number(pluginConfig.maxRelevantObservations || 4),
-            })
-          : getRecentObservations(conn, {
-              projectId: project?.id ?? null,
-              userId: settings.user_id || null,
-              limit: Number(pluginConfig.maxRelevantObservations || 4),
-            });
+        const localRelevant = getStartupRelevantObservations(conn, {
+          prompt: event?.prompt || "",
+          projectId: project?.id ?? null,
+          userId: settings.user_id || null,
+          limit: Number(pluginConfig.maxRelevantObservations || 4),
+        });
         const cloudQuery = event?.prompt || project?.canonical_id || project?.name || "";
         let cloudRelevant = [];
         if (cloudQuery) {
