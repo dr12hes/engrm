@@ -7,6 +7,14 @@ Engrm gives OpenClaw shared memory across devices, sessions, and agents. The sam
 The npm package name is `engrm-openclaw-plugin`, while the stable OpenClaw
 plugin ID and user-facing chat command both remain `engrm`.
 
+Because the package name and stable runtime ID differ, OpenClaw may still show a
+non-fatal plugin identity hint in some versions. The supported operational
+shape is still:
+
+- install package: `engrm-openclaw-plugin`
+- update plugin: `engrm`
+- chat command: `/engrm`
+
 ## What It Does
 
 - keeps one shared memory layer across OpenClaw, Claude Code, Codex, and multiple machines
@@ -65,6 +73,13 @@ openclaw plugins update --all
 ```
 
 OpenClaw tracks npm-installed plugins and updates them cleanly once the first install has happened.
+
+The helper script in this repo also repairs the local OpenClaw config back to
+the stable `engrm` plugin ID after install/update:
+
+```bash
+./openclaw/plugin/install-or-update-openclaw-plugin.sh
+```
 
 ## Connect
 

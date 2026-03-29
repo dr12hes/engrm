@@ -49,3 +49,9 @@ Suggested update note:
 ```text
 Once installed, users can update in place with `openclaw plugins update engrm` instead of reinstalling.
 ```
+
+Operational note:
+
+```text
+The npm package name is `engrm-openclaw-plugin`, but the stable OpenClaw plugin id and chat command remain `engrm`. This keeps user config stable across updates even though OpenClaw may still surface a non-fatal identity hint in some versions.
+```
