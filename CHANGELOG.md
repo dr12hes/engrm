@@ -4,6 +4,13 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.38
+
+### Fixed
+
+- startup/search recovery is now resilient when local FTS still throws: the OpenClaw startup brief falls back to recent observations instead of crashing, and the shared MCP search path falls back to vec-only or empty results instead of taking recall down entirely
+- added regression coverage proving `searchObservations()` survives FTS failures cleanly, so prompt-search issues are much less likely to turn into repeated startup-brief crashes
+
 ## 0.4.37
 
 ### Fixed

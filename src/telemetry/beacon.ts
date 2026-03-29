@@ -191,7 +191,7 @@ export function buildBeacon(
     sentinel_used: valueSignals.security_findings_count > 0,
     risk_score: riskScore,
     stacks_detected: stacks,
-    client_version: "0.4.37",
+    client_version: "0.4.38",
     // Memory performance metrics
     context_observations_injected: metrics?.contextObsInjected ?? 0,
     context_total_available: metrics?.contextTotalAvailable ?? 0,
