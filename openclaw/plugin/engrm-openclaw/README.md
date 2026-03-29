@@ -4,6 +4,9 @@ Native OpenClaw integration for [Engrm](https://engrm.dev).
 
 Engrm gives OpenClaw shared memory across devices, sessions, and agents. The same memory layer follows you across OpenClaw, Claude Code, and Codex, so work can continue on another machine or in another coding system without starting cold.
 
+The plugin package ID is `engrm-openclaw-plugin`, while the user-facing chat
+command remains `/engrm`.
+
 ## What It Does
 
 - keeps one shared memory layer across OpenClaw, Claude Code, Codex, and multiple machines

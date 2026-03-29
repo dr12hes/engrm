@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+- aligned the OpenClaw plugin manifest ID and version with the published package name (`engrm-openclaw-plugin`), while keeping the user-facing `/engrm` command unchanged, so OpenClaw stops warning about plugin ID mismatches after install/update
+
 ## 0.4.38
 
 ### Fixed

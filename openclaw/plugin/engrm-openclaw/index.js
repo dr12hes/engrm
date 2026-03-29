@@ -1535,10 +1535,10 @@ function buildDeliveryReview(conn, sessionId, userId) {
 }
 
 const plugin = {
-  id: "engrm",
+  id: "engrm-openclaw-plugin",
   name: "Engrm",
   description: "Persistent project memory, startup briefs, and delivery review for OpenClaw.",
-  version: "0.1.0",
+  version: "0.1.3",
 
   register(api) {
     logger = api.logger;
