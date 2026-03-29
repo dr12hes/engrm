@@ -55,7 +55,7 @@ Then restart OpenClaw or the OpenClaw gateway.
 If the plugin is already installed, update it in place instead of reinstalling:
 
 ```bash
-openclaw plugins update engrm
+openclaw plugins update engrm-openclaw-plugin
 ```
 
 To update all npm-installed plugins at once:

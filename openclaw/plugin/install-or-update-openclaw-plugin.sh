@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_ID="engrm"
+PLUGIN_ID="engrm-openclaw-plugin"
 PACKAGE_NAME="engrm-openclaw-plugin"
 
 if ! command -v openclaw >/dev/null 2>&1; then
