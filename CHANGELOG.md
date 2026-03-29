@@ -4,6 +4,13 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.37
+
+### Fixed
+
+- hardened FTS query sanitization in both the main MCP search path and the OpenClaw plugin path, so prompts containing markdown backticks, quotes, slashes, paths, and dates no longer break SQLite `MATCH ?` queries
+- added a regression test covering markdown-heavy, path-heavy, and date-heavy prompt text so startup brief search stops regressing into repeated OpenClaw startup failures
+
 ## 0.4.36
 
 ### Fixed
