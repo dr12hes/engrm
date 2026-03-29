@@ -1535,7 +1535,7 @@ function buildDeliveryReview(conn, sessionId, userId) {
 }
 
 const plugin = {
-  id: "engrm-openclaw-plugin",
+  id: "engrm",
   name: "Engrm",
   description: "Persistent project memory, startup briefs, and delivery review for OpenClaw.",
   version: "0.1.3",

@@ -4,8 +4,8 @@ Native OpenClaw integration for [Engrm](https://engrm.dev).
 
 Engrm gives OpenClaw shared memory across devices, sessions, and agents. The same memory layer follows you across OpenClaw, Claude Code, and Codex, so work can continue on another machine or in another coding system without starting cold.
 
-The plugin package ID is `engrm-openclaw-plugin`, while the user-facing chat
-command remains `/engrm`.
+The npm package name is `engrm-openclaw-plugin`, while the stable OpenClaw
+plugin ID and user-facing chat command both remain `engrm`.
 
 ## What It Does
 
@@ -55,7 +55,7 @@ Then restart OpenClaw or the OpenClaw gateway.
 If the plugin is already installed, update it in place instead of reinstalling:
 
 ```bash
-openclaw plugins update engrm-openclaw-plugin
+openclaw plugins update engrm
 ```
 
 To update all npm-installed plugins at once:

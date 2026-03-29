@@ -47,5 +47,5 @@ Install with `openclaw plugins install engrm-openclaw-plugin`, restart OpenClaw,
 Suggested update note:
 
 ```text
-Once installed, users can update in place with `openclaw plugins update engrm-openclaw-plugin` instead of reinstalling.
+Once installed, users can update in place with `openclaw plugins update engrm` instead of reinstalling.
 ```

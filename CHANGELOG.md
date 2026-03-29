@@ -4,8 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
-- aligned the OpenClaw plugin manifest ID and version with the published package name (`engrm-openclaw-plugin`), while keeping the user-facing `/engrm` command unchanged, so OpenClaw stops warning about plugin ID mismatches after install/update
-- aligned the OpenClaw plugin install/update instructions and helper script with the same plugin ID, so package metadata and operational docs no longer disagree
+- kept the stable OpenClaw plugin ID as `engrm` while leaving `engrm-openclaw-plugin` as the npm package name, so OpenClaw config and allowlists do not break during updates
+- clarified that `openclaw plugins install engrm-openclaw-plugin` is the package install path, while `openclaw plugins update engrm` remains the stable operational update command
 
 ## 0.4.38
 
