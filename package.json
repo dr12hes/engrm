@@ -18,6 +18,7 @@
     "init": "bun run src/cli.ts init",
     "test": "bun test",
     "build": "bun run bin/build.mjs",
+    "check:openclaw-plugin": "node scripts/check-openclaw-plugin-contract.mjs",
     "prepublishOnly": "bun run build"
   },
   "engines": {
