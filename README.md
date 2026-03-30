@@ -623,7 +623,7 @@ See [LICENSE](LICENSE) for full terms.
 - Security: [SECURITY.md](SECURITY.md)
 - Roadmap: [ROADMAP.md](ROADMAP.md)
 
-**Maintainers:** run `node scripts/check-public-docs.mjs` to verify the repo only contains the approved public docs set at the root.
+**Maintainers:** run `npm run check:release` before publish to verify the build, public-doc guard, and OpenClaw plugin contract together.
 
 ---
 

@@ -8,6 +8,7 @@ All notable changes to this repository should be documented here.
 - clarified that `openclaw plugins install engrm-openclaw-plugin` is the package install path, while `openclaw plugins update engrm` remains the stable operational update command
 - the helper install/update script now repairs `plugins.allow` and `plugins.entries` back to the stable `engrm` plugin ID after package install/update, so future OpenClaw updates do not invalidate local config again
 - added a repo guard for the OpenClaw plugin contract, so package name, manifest/runtime plugin id, and install/update docs cannot silently drift back into the same breakage pattern
+- wired the OpenClaw plugin contract check into the normal release/publish path via `npm run check:release`, so a future publish cannot skip the build/public-doc/plugin-contract safety checks
 
 ## 0.4.38
 

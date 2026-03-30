@@ -19,7 +19,8 @@
     "test": "bun test",
     "build": "bun run bin/build.mjs",
     "check:openclaw-plugin": "node scripts/check-openclaw-plugin-contract.mjs",
-    "prepublishOnly": "bun run build"
+    "check:release": "bun run build && node scripts/check-public-docs.mjs && node scripts/check-openclaw-plugin-contract.mjs",
+    "prepublishOnly": "npm run check:release"
   },
   "engines": {
     "node": ">=18.0.0"
