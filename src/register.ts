@@ -7,7 +7,7 @@
  * Merges into existing config — never overwrites other servers or hooks.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,8 @@ const CLAUDE_JSON = join(homedir(), ".claude.json");
 const CLAUDE_SETTINGS = join(homedir(), ".claude", "settings.json");
 const CODEX_CONFIG = join(homedir(), ".codex", "config.toml");
 const CODEX_HOOKS = join(homedir(), ".codex", "hooks.json");
+const OPENCODE_CONFIG = join(homedir(), ".config", "opencode", "opencode.json");
+const OPENCODE_PLUGIN = join(homedir(), ".config", "opencode", "plugins", "engrm.js");
 const LEGACY_CODEX_SERVER_NAME = `candengo-${"mem"}`;
 
 /**
@@ -272,6 +274,31 @@ export function registerCodexHooks(): { path: string; added: boolean } {
   return { path: CODEX_HOOKS, added: true };
 }
 
+export function registerOpenCode(): { path: string; added: boolean; pluginPath: string } {
+  const root = findPackageRoot();
+  const pluginSource = join(root, "opencode", "plugin", "engrm-opencode.js");
+  const config = readJsonFile(OPENCODE_CONFIG);
+  const mcp = (config["mcp"] ?? {}) as Record<string, unknown>;
+
+  mcp["engrm"] = {
+    type: "local",
+    command: ["engrm", "serve"],
+    enabled: true,
+    timeout: 5000,
+  };
+
+  config["$schema"] = "https://opencode.ai/config.json";
+  config["mcp"] = mcp;
+  writeJsonFile(OPENCODE_CONFIG, config);
+
+  ensureParentDir(OPENCODE_PLUGIN);
+  if (existsSync(pluginSource)) {
+    copyFileSync(pluginSource, OPENCODE_PLUGIN);
+  }
+
+  return { path: OPENCODE_CONFIG, added: true, pluginPath: OPENCODE_PLUGIN };
+}
+
 // --- Hooks registration ---
 
 interface HookEntry {
@@ -391,11 +418,13 @@ export function registerAll(): {
   hooks: { path: string; added: boolean };
   codex: { path: string; added: boolean };
   codexHooks: { path: string; added: boolean };
+  opencode: { path: string; added: boolean; pluginPath: string };
 } {
   let mcp = { path: CLAUDE_JSON, added: false };
   let hooks = { path: CLAUDE_SETTINGS, added: false };
   let codex = { path: CODEX_CONFIG, added: false };
   let codexHooks = { path: CODEX_HOOKS, added: false };
+  let opencode = { path: OPENCODE_CONFIG, added: false, pluginPath: OPENCODE_PLUGIN };
 
   try {
     mcp = registerMcpServer();
@@ -421,10 +450,17 @@ export function registerAll(): {
     // Best-effort per integration
   }
 
+  try {
+    opencode = registerOpenCode();
+  } catch {
+    // Best-effort per integration
+  }
+
   return {
     mcp,
     hooks,
     codex,
     codexHooks,
+    opencode,
   };
 }

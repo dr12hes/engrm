@@ -34,6 +34,8 @@ export interface CaptureStatusResult {
   codex_session_start_hook: boolean;
   codex_stop_hook: boolean;
   codex_raw_chronology_supported: boolean;
+  opencode_mcp_registered: boolean;
+  opencode_plugin_registered: boolean;
   recent_user_prompts: number;
   recent_tool_events: number;
   recent_sessions_with_raw_capture: number;
@@ -58,11 +60,14 @@ export function getCaptureStatus(
   const claudeSettings = join(home, ".claude", "settings.json");
   const codexConfig = join(home, ".codex", "config.toml");
   const codexHooks = join(home, ".codex", "hooks.json");
+  const opencodeConfig = join(home, ".config", "opencode", "opencode.json");
+  const opencodePlugin = join(home, ".config", "opencode", "plugins", "engrm.js");
 
   const claudeJsonContent = existsSync(claudeJson) ? readFileSync(claudeJson, "utf-8") : "";
   const claudeSettingsContent = existsSync(claudeSettings) ? readFileSync(claudeSettings, "utf-8") : "";
   const codexConfigContent = existsSync(codexConfig) ? readFileSync(codexConfig, "utf-8") : "";
   const codexHooksContent = existsSync(codexHooks) ? readFileSync(codexHooks, "utf-8") : "";
+  const opencodeConfigContent = existsSync(opencodeConfig) ? readFileSync(opencodeConfig, "utf-8") : "";
 
   const claudeMcpRegistered = claudeJsonContent.includes('"engrm"');
   const claudeHooksRegistered =
@@ -75,6 +80,11 @@ export function getCaptureStatus(
   const codexHooksRegistered =
     codexHooksContent.includes("\"SessionStart\"") &&
     codexHooksContent.includes("\"Stop\"");
+  const opencodeMcpRegistered =
+    opencodeConfigContent.includes('"engrm"') &&
+    opencodeConfigContent.includes('"type"') &&
+    opencodeConfigContent.includes('"local"');
+  const opencodePluginRegistered = existsSync(opencodePlugin);
 
   let claudeHookCount = 0;
   let claudeSessionStartHook = false;
@@ -213,6 +223,8 @@ export function getCaptureStatus(
     codex_session_start_hook: codexSessionStartHook,
     codex_stop_hook: codexStopHook,
     codex_raw_chronology_supported: false,
+    opencode_mcp_registered: opencodeMcpRegistered,
+    opencode_plugin_registered: opencodePluginRegistered,
     recent_user_prompts: recentUserPrompts,
     recent_tool_events: recentToolEvents,
     recent_sessions_with_raw_capture: recentSessionsWithRawCapture,

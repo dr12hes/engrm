@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "engrm": {
+      "type": "local",
+      "command": [
+        "engrm",
+        "serve"
+      ],
+      "enabled": true,
+      "timeout": 5000
+    }
+  }
+}

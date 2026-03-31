@@ -1457,6 +1457,8 @@ server.tool(
             `Codex MCP: ${result.codex_mcp_registered ? "registered" : "missing"}\n` +
             `Codex hooks: ${result.codex_hooks_registered ? "registered" : "missing"}\n` +
             `Codex raw chronology: ${result.codex_raw_chronology_supported ? "supported" : "not yet supported (start/stop only)"}\n\n` +
+            `OpenCode MCP: ${result.opencode_mcp_registered ? "registered" : "missing"}\n` +
+            `OpenCode plugin: ${result.opencode_plugin_registered ? "installed" : "missing"}\n\n` +
             `Recent user prompts: ${result.recent_user_prompts}\n` +
             `Recent tool events: ${result.recent_tool_events}\n` +
             `Recent sessions with raw chronology: ${result.recent_sessions_with_raw_capture}\n` +

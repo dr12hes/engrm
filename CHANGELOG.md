@@ -11,6 +11,7 @@ All notable changes to this repository should be documented here.
 - added a repo guard for the OpenClaw plugin contract, so package name, manifest/runtime plugin id, and install/update docs cannot silently drift back into the same breakage pattern
 - wired the OpenClaw plugin contract check into the normal release/publish path via `npm run check:release`, so a future publish cannot skip the build/public-doc/plugin-contract safety checks
 - when `claude-code` is active on a shared repo, recall previews, exact-open hints, and default `resume_thread` behavior now bias toward the Claude thread instead of whichever agent wrote most recently, so Claude startup and memory recovery feel less cross-agent muddled
+- added first-cut OpenCode support with local MCP registration, a lightweight continuity plugin, installer docs, and CLI/doctor/capture-status visibility, so Engrm can now be wired into OpenCode without guessing the config by hand
 
 ## 0.4.38
 

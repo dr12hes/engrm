@@ -75,7 +75,7 @@ openclaw plugins install engrm-openclaw-plugin
 npx engrm init
 ```
 
-This auto-configures MCP servers and hooks in `~/.claude.json` and `~/.codex/config.toml`.
+This auto-configures MCP servers and hooks in Claude Code and Codex, and also sets up OpenCode with a local Engrm plugin plus MCP registration.
 
 **Alternative methods:**
 ```bash
@@ -590,6 +590,8 @@ Engrm auto-registers in:
 - `~/.claude/settings.json` — 6 lifecycle hooks
 - `~/.codex/config.toml` — MCP server (`engrm`) + `codex_hooks` feature flag
 - `~/.codex/hooks.json` — SessionStart and Stop hooks
+- `~/.config/opencode/opencode.json` — MCP server (`engrm`)
+- `~/.config/opencode/plugins/engrm.js` — local OpenCode continuity plugin
 
 ---
 

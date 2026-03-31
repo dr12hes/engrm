@@ -545,10 +545,13 @@ function handleStatus(): void {
   const claudeSettings = join(homedir(), ".claude", "settings.json");
   const codexConfig = join(homedir(), ".codex", "config.toml");
   const codexHooks = join(homedir(), ".codex", "hooks.json");
+  const opencodeConfig = join(homedir(), ".config", "opencode", "opencode.json");
+  const opencodePlugin = join(homedir(), ".config", "opencode", "plugins", "engrm.js");
   const mcpRegistered = existsSync(claudeJson) && readFileSync(claudeJson, "utf-8").includes('"engrm"');
   const settingsContent = existsSync(claudeSettings) ? readFileSync(claudeSettings, "utf-8") : "";
   const codexContent = existsSync(codexConfig) ? readFileSync(codexConfig, "utf-8") : "";
   const codexHooksContent = existsSync(codexHooks) ? readFileSync(codexHooks, "utf-8") : "";
+  const opencodeConfigContent = existsSync(opencodeConfig) ? readFileSync(opencodeConfig, "utf-8") : "";
   const hooksRegistered =
     settingsContent.includes("engrm") ||
     settingsContent.includes("session-start") ||
@@ -559,6 +562,8 @@ function handleStatus(): void {
   const codexHooksRegistered =
     codexHooksContent.includes("\"SessionStart\"") &&
     codexHooksContent.includes("\"Stop\"");
+  const opencodeRegistered = opencodeConfigContent.includes('"engrm"') && opencodeConfigContent.includes('"local"');
+  const opencodePluginRegistered = existsSync(opencodePlugin);
 
   // Count registered hooks by parsing the settings JSON
   let hookCount = 0;
@@ -583,8 +588,10 @@ function handleStatus(): void {
 
   console.log(`    MCP server:    ${mcpRegistered ? "registered" : "not registered"}`);
   console.log(`    Codex MCP:     ${codexRegistered ? "registered" : "not registered"}`);
+  console.log(`    OpenCode MCP:  ${opencodeRegistered ? "registered" : "not registered"}`);
   console.log(`    Hooks:         ${hooksRegistered ? `registered (${hookCount || "?"} hooks)` : "not registered"}`);
   console.log(`    Codex hooks:   ${codexHooksRegistered ? "registered (2 hooks)" : "not registered"}`);
+  console.log(`    OpenCode plug: ${opencodePluginRegistered ? "registered" : "not registered"}`);
 
   // --- Sentinel section ---
   if (config.sentinel?.enabled) {
@@ -800,6 +807,8 @@ function handleStatus(): void {
   console.log(`    Database:      ${getDbPath()}`);
   console.log(`    Codex config:  ${join(homedir(), ".codex", "config.toml")}`);
   console.log(`    Codex hooks:   ${join(homedir(), ".codex", "hooks.json")}`);
+  console.log(`    OpenCode cfg:  ${join(homedir(), ".config", "opencode", "opencode.json")}`);
+  console.log(`    OpenCode plug: ${join(homedir(), ".config", "opencode", "plugins", "engrm.js")}`);
 }
 
 function formatTimeAgo(epoch: number): string {
@@ -1110,6 +1119,31 @@ async function handleDoctor(): Promise<void> {
     warn("Could not check Codex hooks registration");
   }
 
+  // 6d. OpenCode MCP registered
+  const opencodeConfig = join(homedir(), ".config", "opencode", "opencode.json");
+  try {
+    if (existsSync(opencodeConfig)) {
+      const content = readFileSync(opencodeConfig, "utf-8");
+      if (content.includes('"engrm"') && content.includes('"local"')) {
+        pass("MCP server registered in OpenCode");
+      } else {
+        warn("MCP server not registered in OpenCode");
+      }
+    } else {
+      warn("OpenCode config not found (~/.config/opencode/opencode.json)");
+    }
+  } catch {
+    warn("Could not check OpenCode MCP registration");
+  }
+
+  // 6e. OpenCode plugin registered
+  const opencodePlugin = join(homedir(), ".config", "opencode", "plugins", "engrm.js");
+  if (existsSync(opencodePlugin)) {
+    pass("Plugin installed in OpenCode");
+  } else {
+    warn("OpenCode plugin not installed (~/.config/opencode/plugins/engrm.js)");
+  }
+
   // 7. Server connectivity
   if (config.candengo_url) {
     try {
@@ -1344,7 +1378,9 @@ function printPostInit(): void {
     console.log(`  Claude hooks registered → ${result.hooks.path}`);
     console.log(`  Codex MCP registered → ${result.codex.path}`);
     console.log(`  Codex hooks registered → ${result.codexHooks.path}`);
-    console.log("\nEngrm is ready! Start a new Claude Code or Codex session to use memory.");
+    console.log(`  OpenCode MCP registered → ${result.opencode.path}`);
+    console.log(`  OpenCode plugin installed → ${result.opencode.pluginPath}`);
+    console.log("\nEngrm is ready! Start a new Claude Code, Codex, or OpenCode session to use memory.");
   } catch (error) {
     const packageRoot = join(THIS_DIR, "..");
     const runtime = IS_BUILT_DIST ? process.execPath : "bun";
@@ -1359,7 +1395,7 @@ function printPostInit(): void {
       : `bun run ${join(packageRoot, "hooks", "codex-stop.ts")}`;
 
     // Registration failed — fall back to manual instructions
-    console.log("\nCould not auto-register with Claude Code and Codex.");
+    console.log("\nCould not auto-register with Claude Code, Codex, and OpenCode.");
     console.log(`Error: ${error instanceof Error ? error.message : String(error)}`);
     console.log("\nManual setup — add to ~/.claude.json:");
     console.log(`
@@ -1410,6 +1446,22 @@ codex_hooks = true
   }
 }
 `);
+    console.log("\nAnd add to ~/.config/opencode/opencode.json:");
+    console.log(`
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "engrm": {
+      "type": "local",
+      "command": ["engrm", "serve"],
+      "enabled": true,
+      "timeout": 5000
+    }
+  }
+}
+`);
+    console.log("\nAnd copy the OpenCode plugin file to ~/.config/opencode/plugins/engrm.js:");
+    console.log(`  ${join(packageRoot, "opencode", "plugin", "engrm-opencode.js")}`);
   }
 }
 

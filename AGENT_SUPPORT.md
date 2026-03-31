@@ -73,9 +73,10 @@ Improved:
 ## Honest Website Copy
 
 Safe claims now:
-- "Works with Claude Code, Codex, and OpenClaw workflows"
+- "Works with Claude Code, Codex, OpenCode, and OpenClaw workflows"
 - "Automatic session-start memory injection in Claude Code and Codex"
 - "Automatic end-of-session summaries in Claude Code and Codex"
+- "OpenCode support is available through Engrm MCP plus a local continuity plugin"
 - "OpenClaw support is available through Engrm skills"
 - "Deep automatic tool-level capture and Sentinel auditing in Claude Code"
 - "Codex support currently includes MCP, session-start memory, and stop/session summaries"
@@ -97,3 +98,4 @@ Still to add:
 - memory correction / moderation UX
 - richer team dashboards and knowledge-health metrics
 - measurable evals proving Engrm improved coding outcomes
+- deeper OpenCode-native capture beyond compaction/session continuity

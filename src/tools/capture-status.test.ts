@@ -14,6 +14,7 @@ beforeEach(() => {
   fakeHome = join(tmpDir, "home");
   mkdirSync(join(fakeHome, ".claude"), { recursive: true });
   mkdirSync(join(fakeHome, ".codex"), { recursive: true });
+  mkdirSync(join(fakeHome, ".config", "opencode", "plugins"), { recursive: true });
   db = new MemDatabase(join(tmpDir, "test.db"));
 });
 
@@ -38,6 +39,18 @@ describe("getCaptureStatus", () => {
     writeFileSync(join(fakeHome, ".codex", "hooks.json"), JSON.stringify({
       hooks: { SessionStart: [], Stop: [] },
     }));
+    writeFileSync(join(fakeHome, ".config", "opencode", "opencode.json"), JSON.stringify({
+      $schema: "https://opencode.ai/config.json",
+      mcp: {
+        engrm: {
+          type: "local",
+          command: ["engrm", "serve"],
+          enabled: true,
+          timeout: 5000,
+        },
+      },
+    }));
+    writeFileSync(join(fakeHome, ".config", "opencode", "plugins", "engrm.js"), "export default async () => ({})\n");
 
     const project = db.upsertProject({
       canonical_id: "local/repo",
@@ -80,6 +93,8 @@ describe("getCaptureStatus", () => {
     expect(result.codex_session_start_hook).toBe(true);
     expect(result.codex_stop_hook).toBe(true);
     expect(result.codex_raw_chronology_supported).toBe(false);
+    expect(result.opencode_mcp_registered).toBe(true);
+    expect(result.opencode_plugin_registered).toBe(true);
     expect(result.recent_user_prompts).toBe(1);
     expect(result.recent_tool_events).toBe(1);
     expect(result.recent_sessions_with_raw_capture).toBe(1);
