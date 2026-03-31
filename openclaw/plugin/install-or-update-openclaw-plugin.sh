@@ -28,8 +28,16 @@ if "engrm-openclaw-plugin" in entries and "engrm" not in entries:
 elif "engrm-openclaw-plugin" in entries and "engrm" in entries:
     entries.pop("engrm-openclaw-plugin")
 
+# Seed the minimal install provenance record OpenClaw accepts.
+# Leaving path fields empty marks the plugin as tracked without relying on
+# package-name/path matching quirks inside the loader.
+installs = plugins.setdefault("installs", {})
+installs["engrm"] = {
+    "source": "path"
+}
+
 config_path.write_text(json.dumps(obj, indent=2) + "\n")
-print("Repaired OpenClaw plugin config to stable id 'engrm'.")
+print("Repaired OpenClaw plugin config and provenance for stable id 'engrm'.")
 PY
 }
 

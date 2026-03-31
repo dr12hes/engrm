@@ -74,8 +74,12 @@ openclaw plugins update --all
 
 OpenClaw tracks npm-installed plugins and updates them cleanly once the first install has happened.
 
-The helper script in this repo also repairs the local OpenClaw config back to
-the stable `engrm` plugin ID after install/update:
+The helper script in this repo also repairs the local OpenClaw config after
+install/update by:
+
+- restoring the stable `engrm` plugin ID in `plugins.allow` and `plugins.entries`
+- seeding the minimal `plugins.installs.engrm` provenance record so newer
+  OpenClaw builds stop treating the plugin as untracked local code
 
 ```bash
 ./openclaw/plugin/install-or-update-openclaw-plugin.sh

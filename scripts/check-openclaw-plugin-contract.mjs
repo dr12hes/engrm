@@ -54,6 +54,18 @@ expect(
 );
 
 expect(
+  installScript.includes('installs["engrm"] = {'),
+  'Expected install/update script to seed plugins.installs.engrm provenance',
+  problems
+);
+
+expect(
+  installScript.includes('"source": "path"'),
+  'Expected install/update script to seed minimal path-source provenance',
+  problems
+);
+
+expect(
   pluginReadme.includes("openclaw plugins install engrm-openclaw-plugin"),
   "Expected plugin README to document install with engrm-openclaw-plugin",
   problems
