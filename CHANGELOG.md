@@ -4,6 +4,11 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+- added Streamable HTTP MCP serving for Hermes-style deployments via `engrm serve --http` or `ENGRM_HTTP_PORT`, while keeping the existing stdio transport unchanged for Claude Code, Codex, and local agent use
+- HTTP mode now validates bearer tokens before routing requests into the MCP transport, so multiple remote Hermes clients can be gated safely with static connection tokens
+- added fleet routing config in `settings.json` with reserved project-name handling, so a project like `huginn-fleet` can sync to a dedicated Candengo namespace/key while normal projects stay org-scoped
+- fleet writes now get an extra outbound scrub pass that redacts hostnames, IPs, and MAC addresses before they leave the machine
+- sync push/pull now understand multiple namespaces, so fleet projects can travel on a separate shared lane without breaking the main org-scoped sync loop
 - kept the stable OpenClaw plugin ID as `engrm` while leaving `engrm-openclaw-plugin` as the npm package name, so OpenClaw config and allowlists do not break during updates
 - clarified that `openclaw plugins install engrm-openclaw-plugin` is the package install path, while `openclaw plugins update engrm` remains the stable operational update command
 - the helper install/update script now repairs `plugins.allow` and `plugins.entries` back to the stable `engrm` plugin ID after package install/update, so future OpenClaw updates do not invalidate local config again

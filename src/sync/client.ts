@@ -37,6 +37,12 @@ export interface VectorChangeFeedResponse {
   has_more: boolean;
 }
 
+export interface VectorClientOverrides {
+  apiKey?: string;
+  siteId?: string;
+  namespace?: string;
+}
+
 // --- Client ---
 
 export class VectorClient {
@@ -45,9 +51,9 @@ export class VectorClient {
   readonly siteId: string;
   readonly namespace: string;
 
-  constructor(config: Config) {
+  constructor(config: Config, overrides: VectorClientOverrides = {}) {
     const baseUrl = getBaseUrl(config);
-    const apiKey = getApiKey(config);
+    const apiKey = overrides.apiKey ?? getApiKey(config);
 
     if (!baseUrl || !apiKey) {
       throw new Error(
@@ -57,8 +63,8 @@ export class VectorClient {
 
     this.baseUrl = baseUrl.replace(/\/$/, ""); // strip trailing slash
     this.apiKey = apiKey;
-    this.siteId = config.site_id;
-    this.namespace = config.namespace;
+    this.siteId = overrides.siteId ?? config.site_id;
+    this.namespace = overrides.namespace ?? config.namespace;
   }
 
   /**

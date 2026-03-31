@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { scrubSecrets, containsSecrets } from "./scrubber.js";
+import { scrubSecrets, containsSecrets, scrubFleetIdentifiers } from "./scrubber.js";
 
 describe("scrubSecrets", () => {
   test("scrubs OpenAI API keys", () => {
@@ -140,5 +140,18 @@ describe("containsSecrets", () => {
     expect(
       containsSecrets("has INTERNAL_SECRET_123", ["INTERNAL_SECRET_\\d+"])
     ).toBe(true);
+  });
+});
+
+describe("fleet identifier scrubbing", () => {
+  test("redacts IPs, MACs, and hostnames", () => {
+    const input = "host edge-01.example.net ip 10.20.30.40 mac aa:bb:cc:dd:ee:ff";
+    const scrubbed = scrubFleetIdentifiers(input);
+    expect(scrubbed).not.toContain("edge-01.example.net");
+    expect(scrubbed).not.toContain("10.20.30.40");
+    expect(scrubbed).not.toContain("aa:bb:cc:dd:ee:ff");
+    expect(scrubbed).toContain("[REDACTED_HOSTNAME]");
+    expect(scrubbed).toContain("[REDACTED_IP]");
+    expect(scrubbed).toContain("[REDACTED_MAC]");
   });
 });

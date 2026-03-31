@@ -56,6 +56,18 @@ export interface TranscriptAnalysisConfig {
   enabled: boolean;
 }
 
+export interface HttpServerConfig {
+  enabled: boolean;
+  port: number;
+  bearer_tokens: string[];
+}
+
+export interface FleetConfig {
+  project_name: string;
+  namespace: string;
+  api_key: string;
+}
+
 export interface Config {
   candengo_url: string;
   candengo_api_key: string;
@@ -71,6 +83,8 @@ export interface Config {
   sentinel: SentinelConfig;
   observer: ObserverConfig;
   transcript_analysis: TranscriptAnalysisConfig;
+  http: HttpServerConfig;
+  fleet: FleetConfig;
 }
 
 // --- Paths ---
@@ -166,6 +180,16 @@ function createDefaultConfig(): Config {
     },
     transcript_analysis: {
       enabled: false,
+    },
+    http: {
+      enabled: false,
+      port: 3767,
+      bearer_tokens: [],
+    },
+    fleet: {
+      project_name: "huginn-fleet",
+      namespace: "",
+      api_key: "",
     },
   };
 }
@@ -302,6 +326,34 @@ export function loadConfig(): Config {
       enabled: asBool(
         (config["transcript_analysis"] as Record<string, unknown> | undefined)?.["enabled"],
         defaults.transcript_analysis.enabled
+      ),
+    },
+    http: {
+      enabled: asBool(
+        (config["http"] as Record<string, unknown> | undefined)?.["enabled"],
+        defaults.http.enabled
+      ),
+      port: asNumber(
+        (config["http"] as Record<string, unknown> | undefined)?.["port"],
+        defaults.http.port
+      ),
+      bearer_tokens: asStringArray(
+        (config["http"] as Record<string, unknown> | undefined)?.["bearer_tokens"],
+        defaults.http.bearer_tokens
+      ),
+    },
+    fleet: {
+      project_name: asString(
+        (config["fleet"] as Record<string, unknown> | undefined)?.["project_name"],
+        defaults.fleet.project_name
+      ),
+      namespace: asString(
+        (config["fleet"] as Record<string, unknown> | undefined)?.["namespace"],
+        defaults.fleet.namespace
+      ),
+      api_key: asString(
+        (config["fleet"] as Record<string, unknown> | undefined)?.["api_key"],
+        defaults.fleet.api_key
       ),
     },
   };

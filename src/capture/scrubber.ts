@@ -179,3 +179,14 @@ export function containsSecrets(
 
   return false;
 }
+
+const FLEET_HOSTNAME_PATTERN = /\b(?=.{1,253}\b)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\b/gi;
+const FLEET_IP_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const FLEET_MAC_PATTERN = /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/gi;
+
+export function scrubFleetIdentifiers(text: string): string {
+  return text
+    .replace(FLEET_MAC_PATTERN, "[REDACTED_MAC]")
+    .replace(FLEET_IP_PATTERN, "[REDACTED_IP]")
+    .replace(FLEET_HOSTNAME_PATTERN, "[REDACTED_HOSTNAME]");
+}

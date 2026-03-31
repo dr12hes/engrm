@@ -91,6 +91,54 @@ npx engrm init --manual
 
 For npm users, Engrm runs on Node.js 18+ and does not require Bun to be installed.
 
+### For Hermes / Remote MCP
+
+Engrm can now run over Streamable HTTP for Hermes-style container deployments.
+
+Add this to `~/.engrm/settings.json`:
+
+```json
+{
+  "http": {
+    "enabled": true,
+    "port": 3767,
+    "bearer_tokens": ["replace-with-a-long-random-token"]
+  },
+  "fleet": {
+    "project_name": "huginn-fleet",
+    "namespace": "ns_fleet_shared",
+    "api_key": "cvk_fleet_shared"
+  }
+}
+```
+
+Then start the remote MCP endpoint:
+
+```bash
+ENGRM_HTTP_PORT=3767 engrm serve --http
+```
+
+Hermes should connect with a bearer token header:
+
+```json
+{
+  "mcpServers": {
+    "engrm": {
+      "url": "http://engrm:3767/mcp",
+      "headers": {
+        "Authorization": "Bearer replace-with-a-long-random-token"
+      }
+    }
+  }
+}
+```
+
+Fleet writes:
+- use the reserved project name `huginn-fleet` by default
+- stay `shared` unless explicitly overridden
+- sync to the dedicated fleet namespace/key instead of the normal org namespace
+- get an extra outbound scrub pass that redacts hostnames, IPs, and MACs before upload
+
 ---
 
 ## How It Works

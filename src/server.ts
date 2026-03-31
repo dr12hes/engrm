@@ -8,7 +8,9 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
 import { loadConfig, getDbPath, configExists } from "./config.js";
 import { MemDatabase } from "./storage/sqlite.js";
@@ -2608,8 +2610,95 @@ async function main(): Promise<void> {
   syncEngine = new SyncEngine(db, config);
   syncEngine.start();
 
+  if (shouldStartHttpMode()) {
+    await startHttpServer();
+    return;
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+function shouldStartHttpMode(): boolean {
+  return process.argv.includes("--http") || Boolean(process.env.ENGRM_HTTP_PORT) || config.http.enabled;
+}
+
+function resolveHttpPort(): number {
+  const raw = process.env.ENGRM_HTTP_PORT;
+  if (raw) {
+    const parsed = Number(raw);
+    if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return config.http.port > 0 ? config.http.port : 3767;
+}
+
+function getHttpBearerTokens(): string[] {
+  const env = process.env.ENGRM_HTTP_BEARER_TOKENS;
+  if (env && env.trim()) {
+    return env.split(",").map((value) => value.trim()).filter(Boolean);
+  }
+  return config.http.bearer_tokens.filter(Boolean);
+}
+
+async function startHttpServer(): Promise<void> {
+  const port = resolveHttpPort();
+  const tokens = getHttpBearerTokens();
+  if (tokens.length === 0) {
+    throw new Error("HTTP mode requires at least one bearer token via settings.json http.bearer_tokens or ENGRM_HTTP_BEARER_TOKENS");
+  }
+
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+  });
+  await server.connect(transport);
+
+  const httpServer = createServer(async (req, res) => {
+    try {
+      if (!req.url || !req.url.startsWith("/mcp")) {
+        res.writeHead(404).end("Not found");
+        return;
+      }
+
+      const authHeader = req.headers.authorization ?? "";
+      const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+      if (!token || !tokens.includes(token)) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized" }));
+        return;
+      }
+
+      const authorizedReq = req as AuthorizedRequest;
+      authorizedReq.auth = { token };
+      const parsedBody = req.method === "POST" ? await readJsonBody(req) : undefined;
+      await transport.handleRequest(authorizedReq, res, parsedBody);
+    } catch (error) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    httpServer.once("error", reject);
+    httpServer.listen(port, () => resolve());
+  });
+  console.error(`Engrm HTTP MCP listening on :${port}/mcp`);
+}
+
+interface AuthorizedRequest extends IncomingMessage {
+  auth?: {
+    token: string;
+  };
+}
+
+async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  if (chunks.length === 0) return undefined;
+  const raw = Buffer.concat(chunks).toString("utf-8").trim();
+  if (!raw) return undefined;
+  return JSON.parse(raw);
 }
 
 main().catch((error) => {

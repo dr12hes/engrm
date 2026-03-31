@@ -14,11 +14,13 @@ import type { Config } from "../config.js";
 import { VectorClient } from "./client.js";
 import { pushOutbox } from "./push.js";
 import { pullFromVector, pullSettings } from "./pull.js";
+import { hasFleetTarget } from "./targets.js";
 
 const DEFAULT_PULL_INTERVAL = 60_000; // 60 seconds
 
 export class SyncEngine {
   private client: VectorClient | null = null;
+  private fleetClient: VectorClient | null = null;
   private pushTimer: ReturnType<typeof setInterval> | null = null;
   private pullTimer: ReturnType<typeof setInterval> | null = null;
   private _pushing = false;
@@ -32,6 +34,13 @@ export class SyncEngine {
     if (VectorClient.isConfigured(config)) {
       try {
         this.client = new VectorClient(config);
+        if (hasFleetTarget(config)) {
+          this.fleetClient = new VectorClient(config, {
+            apiKey: config.fleet.api_key,
+            namespace: config.fleet.namespace,
+            siteId: config.site_id,
+          });
+        }
       } catch {
         // Configuration invalid — stay in offline mode
       }
@@ -89,7 +98,6 @@ export class SyncEngine {
     try {
       await pushOutbox(
         this.db,
-        this.client,
         this.config,
         this.config.sync.batch_size
       );
@@ -106,6 +114,9 @@ export class SyncEngine {
     this._pulling = true;
     try {
       await pullFromVector(this.db, this.client, this.config);
+      if (this.fleetClient) {
+        await pullFromVector(this.db, this.fleetClient, this.config);
+      }
       await pullSettings(this.client, this.config);
     } finally {
       this._pulling = false;

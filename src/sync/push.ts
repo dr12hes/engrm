@@ -25,6 +25,8 @@ import { buildSourceId } from "./auth.js";
 import { computeSessionValueSignals } from "../intelligence/value-signals.js";
 import { extractSummaryItems } from "../intelligence/summary-sections.js";
 import { buildSessionHandoffMetadata, type SessionHandoffMetadata } from "../capture/session-handoff.js";
+import { scrubFleetIdentifiers } from "../capture/scrubber.js";
+import { resolveSyncTarget, type SyncTarget } from "./targets.js";
 
 export interface PushResult {
   pushed: number;
@@ -35,11 +37,12 @@ export interface PushResult {
 export function buildChatVectorDocument(
   chat: ChatMessageRow,
   config: Config,
-  project: { canonical_id: string; name: string }
+  project: { canonical_id: string; name: string },
+  target: SyncTarget = resolveSyncTarget(config, project.name)
 ): VectorDocument {
   return {
-    site_id: config.site_id,
-    namespace: config.namespace,
+    site_id: target.siteId,
+    namespace: target.namespace,
     source_type: "chat",
     source_id: buildSourceId(config, chat.id, "chat"),
     content: chat.content,
@@ -69,7 +72,8 @@ type SummaryCaptureContext = SessionHandoffMetadata;
 export function buildVectorDocument(
   obs: ObservationRow,
   config: Config,
-  project: { canonical_id: string; name: string }
+  project: { canonical_id: string; name: string },
+  target: SyncTarget = resolveSyncTarget(config, project.name)
 ): VectorDocument {
   // Compose content: title + narrative + facts
   const parts = [obs.title];
@@ -87,8 +91,8 @@ export function buildVectorDocument(
   }
 
   return {
-    site_id: config.site_id,
-    namespace: config.namespace,
+    site_id: target.siteId,
+    namespace: target.namespace,
     source_type: obs.type,
     source_id: buildSourceId(config, obs.id),
     content: parts.join("\n\n"),
@@ -127,9 +131,21 @@ export function buildSummaryVectorDocument(
   summary: SessionSummaryRow,
   config: Config,
   project: { canonical_id: string; name: string },
-  observations: ObservationRow[] = [],
+  targetOrObservations: SyncTarget | ObservationRow[] = resolveSyncTarget(config, project.name),
+  observationsOrCaptureContext: ObservationRow[] | SummaryCaptureContext = [],
   captureContext?: SummaryCaptureContext
 ): VectorDocument {
+  const target = Array.isArray(targetOrObservations)
+    ? resolveSyncTarget(config, project.name)
+    : targetOrObservations;
+  const observations = Array.isArray(targetOrObservations)
+    ? targetOrObservations
+    : Array.isArray(observationsOrCaptureContext)
+      ? observationsOrCaptureContext
+      : [];
+  const resolvedCaptureContext = Array.isArray(observationsOrCaptureContext)
+    ? captureContext
+    : observationsOrCaptureContext;
   const parts: string[] = [];
   if (summary.request) parts.push(`Request: ${summary.request}`);
   if (summary.investigated) parts.push(`Investigated: ${summary.investigated}`);
@@ -138,10 +154,18 @@ export function buildSummaryVectorDocument(
   if (summary.next_steps) parts.push(`Next Steps: ${summary.next_steps}`);
 
   const valueSignals = computeSessionValueSignals(observations, []);
+  const observationSourceTools = resolvedCaptureContext?.observation_source_tools
+    ?? summarizeObservationSourceTools(observations);
+  const latestObservationPromptNumber = resolvedCaptureContext?.latest_observation_prompt_number
+    ?? observations.reduce<number | null>((latest, obs) => {
+      if (typeof obs.source_prompt_number !== "number") return latest;
+      if (latest === null || obs.source_prompt_number > latest) return obs.source_prompt_number;
+      return latest;
+    }, null);
 
   return {
-    site_id: config.site_id,
-    namespace: config.namespace,
+    site_id: target.siteId,
+    namespace: target.namespace,
     source_type: "summary",
     source_id: buildSourceId(config, summary.id, "summary"),
     content: parts.join("\n\n"),
@@ -161,18 +185,18 @@ export function buildSummaryVectorDocument(
       learned_items: extractSectionItems(summary.learned),
       completed_items: extractSectionItems(summary.completed),
       next_step_items: extractSectionItems(summary.next_steps),
-      prompt_count: captureContext?.prompt_count ?? 0,
-      tool_event_count: captureContext?.tool_event_count ?? 0,
-      capture_state: captureContext?.capture_state ?? "summary-only",
-      recent_request_prompts: captureContext?.recent_request_prompts ?? [],
-      latest_request: captureContext?.latest_request ?? null,
-      current_thread: captureContext?.current_thread ?? null,
-      recent_tool_names: captureContext?.recent_tool_names ?? [],
-      recent_tool_commands: captureContext?.recent_tool_commands ?? [],
-      hot_files: captureContext?.hot_files ?? [],
-      recent_outcomes: captureContext?.recent_outcomes ?? [],
-      observation_source_tools: captureContext?.observation_source_tools ?? [],
-      latest_observation_prompt_number: captureContext?.latest_observation_prompt_number ?? null,
+      prompt_count: resolvedCaptureContext?.prompt_count ?? 0,
+      tool_event_count: resolvedCaptureContext?.tool_event_count ?? 0,
+      capture_state: resolvedCaptureContext?.capture_state ?? "summary-only",
+      recent_request_prompts: resolvedCaptureContext?.recent_request_prompts ?? [],
+      latest_request: resolvedCaptureContext?.latest_request ?? null,
+      current_thread: resolvedCaptureContext?.current_thread ?? null,
+      recent_tool_names: resolvedCaptureContext?.recent_tool_names ?? [],
+      recent_tool_commands: resolvedCaptureContext?.recent_tool_commands ?? [],
+      hot_files: resolvedCaptureContext?.hot_files ?? [],
+      recent_outcomes: resolvedCaptureContext?.recent_outcomes ?? [],
+      observation_source_tools: observationSourceTools,
+      latest_observation_prompt_number: latestObservationPromptNumber,
       decisions_count: valueSignals.decisions_count,
       lessons_count: valueSignals.lessons_count,
       discoveries_count: valueSignals.discoveries_count,
@@ -192,7 +216,6 @@ export function buildSummaryVectorDocument(
  */
 export async function pushOutbox(
   db: MemDatabase,
-  client: VectorClient,
   config: Config,
   batchSize: number = 50
 ): Promise<PushResult> {
@@ -203,7 +226,7 @@ export async function pushOutbox(
   let skipped = 0;
 
   // Collect documents for batch ingest
-  const batch: { entryId: number; doc: VectorDocument }[] = [];
+  const batch: { entryId: number; doc: VectorDocument; target: SyncTarget }[] = [];
 
   for (const entry of entries) {
     if (entry.record_type === "summary") {
@@ -236,11 +259,12 @@ export async function pushOutbox(
       const summaryObservations = db.getObservationsBySession(summary.session_id);
       const sessionPrompts = db.getSessionUserPrompts(summary.session_id, 20);
       const sessionToolEvents = db.getSessionToolEvents(summary.session_id, 20);
+      const target = resolveSyncTarget(config, project.name);
       const doc = buildSummaryVectorDocument(summary, config, {
         canonical_id: project.canonical_id,
         name: project.name,
-      }, summaryObservations, buildSessionHandoffMetadata(sessionPrompts, sessionToolEvents, summaryObservations));
-      batch.push({ entryId: entry.id, doc });
+      }, target, summaryObservations, buildSessionHandoffMetadata(sessionPrompts, sessionToolEvents, summaryObservations));
+      batch.push({ entryId: entry.id, doc: maybeScrubFleetDocument(doc, target), target });
       continue;
     }
 
@@ -266,11 +290,12 @@ export async function pushOutbox(
       }
 
       markSyncing(db, entry.id);
+      const target = resolveSyncTarget(config, project.name);
       const doc = buildChatVectorDocument(chat, config, {
         canonical_id: project.canonical_id,
         name: project.name,
-      });
-      batch.push({ entryId: entry.id, doc });
+      }, target);
+      batch.push({ entryId: entry.id, doc: maybeScrubFleetDocument(doc, target), target });
       continue;
     }
 
@@ -310,34 +335,49 @@ export async function pushOutbox(
 
     markSyncing(db, entry.id);
 
+    const target = resolveSyncTarget(config, project.name);
     const doc = buildVectorDocument(obs, config, {
       canonical_id: project.canonical_id,
       name: project.name,
-    });
+    }, target);
 
-    batch.push({ entryId: entry.id, doc });
+    batch.push({ entryId: entry.id, doc: maybeScrubFleetDocument(doc, target), target });
   }
 
   if (batch.length === 0) return { pushed, failed, skipped };
 
-  // Try batch ingest first
-  try {
-    await client.batchIngest(batch.map((b) => b.doc));
-    for (const { entryId, doc } of batch) {
-      if (doc.source_type === "chat") {
-        const localId = typeof doc.metadata?.local_id === "number" ? doc.metadata.local_id : null;
-        if (localId !== null) {
-          db.db
-            .query("UPDATE chat_messages SET remote_source_id = ? WHERE id = ?")
-            .run(doc.source_id, localId);
-        }
-      }
-      markSynced(db, entryId);
-      pushed++;
+  const grouped = new Map<string, { target: SyncTarget; items: typeof batch }>();
+  for (const item of batch) {
+    const existing = grouped.get(item.target.key);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      grouped.set(item.target.key, { target: item.target, items: [item] });
     }
-  } catch {
-    // Batch failed — fall back to individual ingest
-    for (const { entryId, doc } of batch) {
+  }
+
+  for (const { target, items } of grouped.values()) {
+    const client = new VectorClient(config, {
+      apiKey: target.apiKey,
+      namespace: target.namespace,
+      siteId: target.siteId,
+    });
+    try {
+      await client.batchIngest(items.map((b) => b.doc));
+      for (const { entryId, doc } of items) {
+        if (doc.source_type === "chat") {
+          const localId = typeof doc.metadata?.local_id === "number" ? doc.metadata.local_id : null;
+          if (localId !== null) {
+            db.db
+              .query("UPDATE chat_messages SET remote_source_id = ? WHERE id = ?")
+              .run(doc.source_id, localId);
+          }
+        }
+        markSynced(db, entryId);
+        pushed++;
+      }
+    } catch {
+      for (const { entryId, doc } of items) {
       try {
         await client.ingest(doc);
         if (doc.source_type === "chat") {
@@ -360,8 +400,29 @@ export async function pushOutbox(
       }
     }
   }
+  }
 
   return { pushed, failed, skipped };
+}
+
+function maybeScrubFleetDocument(doc: VectorDocument, target: SyncTarget): VectorDocument {
+  if (!target.isFleet) return doc;
+  return {
+    ...doc,
+    content: scrubFleetIdentifiers(doc.content),
+    metadata: scrubFleetMetadata(doc.metadata),
+  };
+}
+
+function scrubFleetMetadata(value: unknown): unknown {
+  if (typeof value === "string") return scrubFleetIdentifiers(value);
+  if (Array.isArray(value)) return value.map((item) => scrubFleetMetadata(item));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, scrubFleetMetadata(item)])
+    );
+  }
+  return value;
 }
 
 function countPresentSections(summary: SessionSummaryRow): number {
@@ -376,4 +437,22 @@ function countPresentSections(summary: SessionSummaryRow): number {
 
 function extractSectionItems(section: string | null): string[] {
   return extractSummaryItems(section, 4);
+}
+
+function summarizeObservationSourceTools(
+  observations: ObservationRow[]
+): Array<{ tool: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const obs of observations) {
+    const tool = obs.source_tool;
+    if (!tool) continue;
+    counts.set(tool, (counts.get(tool) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .map(([tool, count]) => ({ tool, count }))
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.tool.localeCompare(b.tool);
+    });
 }

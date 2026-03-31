@@ -13,7 +13,9 @@ import { VectorClient, type VectorSearchResult } from "./client.js";
 import { parseSourceId } from "./auth.js";
 import { composeEmbeddingText, embedText } from "../embeddings/embedder.js";
 
-const PULL_CURSOR_KEY = "pull_cursor";
+function pullCursorKey(namespace: string): string {
+  return namespace === "default" ? "pull_cursor" : `pull_cursor:${namespace}`;
+}
 
 export interface PullResult {
   received: number;
@@ -34,7 +36,8 @@ export async function pullFromVector(
   config: Config,
   limit: number = 50
 ): Promise<PullResult> {
-  let cursor = db.getSyncState(PULL_CURSOR_KEY) ?? undefined;
+  const cursorKey = pullCursorKey(client.namespace || "default");
+  let cursor = db.getSyncState(cursorKey) ?? undefined;
   let totalReceived = 0;
   let totalMerged = 0;
   let totalSkipped = 0;
@@ -49,7 +52,7 @@ export async function pullFromVector(
 
     // Update cursor after each page so progress is saved even if we crash
     if (response.cursor) {
-      db.setSyncState(PULL_CURSOR_KEY, response.cursor);
+      db.setSyncState(cursorKey, response.cursor);
       cursor = response.cursor;
     }
 

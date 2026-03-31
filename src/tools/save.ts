@@ -16,6 +16,7 @@ import type { MemDatabase, ObservationRow } from "../storage/sqlite.js";
 import { composeEmbeddingText, embedText } from "../embeddings/embedder.js";
 import { detectRecurrence } from "../capture/recurrence.js";
 import { detectDecisionConflict } from "../capture/conflict.js";
+import { isFleetProjectName } from "../sync/targets.js";
 
 const VALID_TYPES = [
   "bugfix",
@@ -140,7 +141,10 @@ export async function saveObservation(
   const filesModifiedJson = filesModified ? JSON.stringify(filesModified) : null;
 
   // Determine sensitivity
-  let sensitivity = input.sensitivity ?? config.scrubbing.default_sensitivity;
+  const fleetProject = isFleetProjectName(project.name, config);
+  let sensitivity = input.sensitivity ?? (
+    fleetProject ? "shared" : config.scrubbing.default_sensitivity
+  );
   if (
     config.scrubbing.enabled &&
     containsSecrets(

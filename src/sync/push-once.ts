@@ -30,7 +30,7 @@ export async function pushOnce(
 
   try {
     const client = new VectorClient(config);
-    const result = await pushOutbox(db, client, config, config.sync.batch_size);
+    const result = await pushOutbox(db, config, config.sync.batch_size);
     await pullSettings(client, config);
     return result.pushed;
   } catch {
