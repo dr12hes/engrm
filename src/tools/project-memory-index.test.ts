@@ -148,7 +148,7 @@ describe("getProjectMemoryIndex", () => {
     expect(result?.best_recall_key).toMatch(/^handoff:\d+$/);
     expect(result?.best_recall_kind).toBe("handoff");
     expect(result?.best_recall_title).toContain("Resume auth cleanup from home machine");
-    expect(result?.best_agent_resume_agent).toBe("codex-cli");
+    expect(result?.best_agent_resume_agent).toBe("claude-code");
     expect(result?.resume_freshness).toBe("live");
     expect(typeof result?.resume_source_session_id === "string" || result?.resume_source_session_id === null).toBe(true);
     expect(typeof result?.resume_source_device_id === "string" || result?.resume_source_device_id === null).toBe(true);

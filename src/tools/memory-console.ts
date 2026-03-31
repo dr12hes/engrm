@@ -14,7 +14,7 @@ import { getRecentSessions } from "./recent-sessions.js";
 import { getProjectMemoryIndex } from "./project-memory-index.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
 import { getRecentHandoffs, isDraftHandoff } from "./handoffs.js";
-import { classifyContinuityState, collectActiveAgents, describeContinuityState } from "./project-memory-index.js";
+import { classifyContinuityState, collectActiveAgents, describeContinuityState, pickPreferredAgent } from "./project-memory-index.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 import type { RecentObservationRow } from "./recent.js";
 
@@ -126,6 +126,7 @@ export function getMemoryConsole(
     cwd,
     project_scoped: projectScoped,
     user_id: input.user_id,
+    preferred_agent: pickPreferredAgent(projectIndex?.active_agents ?? collectActiveAgents(sessions), sessions[0]?.agent ?? null) ?? undefined,
     limit: 10,
   });
   const projectIndex = projectScoped
@@ -160,10 +161,10 @@ export function getMemoryConsole(
       title: item.title,
       source_agent: item.source_agent,
     })),
-    best_recall_key: projectIndex?.best_recall_key ?? (recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null)?.key ?? null,
-    best_recall_title: projectIndex?.best_recall_title ?? (recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null)?.title ?? null,
-    best_recall_kind: projectIndex?.best_recall_kind ?? (recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null)?.kind ?? null,
-    best_agent_resume_agent: projectIndex?.best_agent_resume_agent ?? (activeAgents.length > 1 ? sessions[0]?.agent ?? null : null),
+    best_recall_key: projectIndex?.best_recall_key ?? pickBestRecallItem(recallIndex.items, activeAgents, sessions[0]?.agent ?? null)?.key ?? null,
+    best_recall_title: projectIndex?.best_recall_title ?? pickBestRecallItem(recallIndex.items, activeAgents, sessions[0]?.agent ?? null)?.title ?? null,
+    best_recall_kind: projectIndex?.best_recall_kind ?? pickBestRecallItem(recallIndex.items, activeAgents, sessions[0]?.agent ?? null)?.kind ?? null,
+    best_agent_resume_agent: projectIndex?.best_agent_resume_agent ?? (activeAgents.length > 1 ? pickPreferredAgent(activeAgents, sessions[0]?.agent ?? null) : null),
     resume_freshness: projectIndex?.resume_freshness ?? "stale",
     resume_source_session_id: projectIndex?.resume_source_session_id ?? sessions[0]?.session_id ?? null,
     resume_source_device_id: projectIndex?.resume_source_device_id ?? sessions[0]?.device_id ?? null,
@@ -201,6 +202,20 @@ export function getMemoryConsole(
       activeAgents.length
     ),
   };
+}
+
+function pickBestRecallItem(
+  items: RecallIndexItem[],
+  activeAgents: string[],
+  latestAgent?: string | null
+): RecallIndexItem | null {
+  const preferredAgent = pickPreferredAgent(activeAgents, latestAgent);
+  if (preferredAgent) {
+    const preferred = items.find((item) => item.source_agent === preferredAgent && item.kind !== "memory")
+      ?? items.find((item) => item.source_agent === preferredAgent);
+    if (preferred) return preferred;
+  }
+  return items.find((item) => item.kind !== "memory") ?? items[0] ?? null;
 }
 
 function collectProvenanceTypeMix(

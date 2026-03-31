@@ -180,11 +180,14 @@ export function getProjectMemoryIndex(
     user_id: input.user_id,
     limit: 20,
   });
+  const activeAgents = collectActiveAgents(recentSessions);
+  const preferredAgent = pickPreferredAgent(activeAgents, recentSessions[0]?.agent ?? null);
   const recentChatCount = recentChat.messages.length;
   const recallIndex = listRecallItems(db, {
     cwd,
     project_scoped: true,
     user_id: input.user_id,
+    preferred_agent: preferredAgent,
     limit: 10,
   });
   const latestSession = recentSessions[0] ?? null;
@@ -195,7 +198,6 @@ export function getProjectMemoryIndex(
     .filter((title) => title.length > 0 && !looksLikeFileOperationTitle(title))
     .slice(0, 8);
   const captureSummary = summarizeCaptureState(recentSessions);
-  const activeAgents = collectActiveAgents(recentSessions);
   const topTypes = Object.entries(counts)
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
@@ -225,7 +227,7 @@ export function getProjectMemoryIndex(
     recentOutcomes.length
   );
   const sourceTimestamp = pickResumeSourceTimestamp(latestSession, recentChat.messages);
-  const bestRecallItem = pickBestRecallItem(recallIndex.items);
+  const bestRecallItem = pickBestRecallItem(recallIndex.items, preferredAgent);
 
   return {
     project: project.name,
@@ -246,7 +248,7 @@ export function getProjectMemoryIndex(
     best_recall_key: bestRecallItem?.key ?? null,
     best_recall_title: bestRecallItem?.title ?? null,
     best_recall_kind: bestRecallItem?.kind ?? null,
-    best_agent_resume_agent: activeAgents.length > 1 ? latestSession?.agent ?? null : null,
+    best_agent_resume_agent: activeAgents.length > 1 ? preferredAgent : null,
     resume_freshness: classifyResumeFreshness(sourceTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,
@@ -278,7 +280,12 @@ export function getProjectMemoryIndex(
   };
 }
 
-function pickBestRecallItem(items: RecallIndexItem[]): RecallIndexItem | null {
+function pickBestRecallItem(items: RecallIndexItem[], preferredAgent?: string | null): RecallIndexItem | null {
+  if (preferredAgent) {
+    const preferred = items.find((item) => item.source_agent === preferredAgent && item.kind !== "memory")
+      ?? items.find((item) => item.source_agent === preferredAgent);
+    if (preferred) return preferred;
+  }
   return items.find((item) => item.kind !== "memory") ?? items[0] ?? null;
 }
 
@@ -400,6 +407,14 @@ export function collectActiveAgents(
         .filter((agent): agent is string => Boolean(agent) && !agent.startsWith("engrm-"))
     )
   ).sort();
+}
+
+export function pickPreferredAgent(
+  activeAgents: string[],
+  latestAgent?: string | null
+): string | null {
+  if (activeAgents.includes("claude-code")) return "claude-code";
+  return latestAgent && activeAgents.includes(latestAgent) ? latestAgent : activeAgents[0] ?? null;
 }
 
 function buildSuggestedTools(

@@ -8,6 +8,7 @@ import { getSessionContext } from "./session-context.js";
 import { getRecentSessions } from "./recent-sessions.js";
 import { repairRecall, type RepairRecallResult } from "./repair-recall.js";
 import { listRecallItems } from "./list-recall-items.js";
+import { pickPreferredAgent } from "./project-memory-index.js";
 
 export interface ResumeThreadInput {
   cwd?: string;
@@ -70,8 +71,10 @@ export async function resumeThread(
   const project = db.getProjectByCanonicalId(detected.canonical_id);
 
   let snapshot = await buildResumeSnapshot(db, cwd, input.user_id, input.current_device_id, limit);
-  if (input.agent) {
-    snapshot = filterResumeSnapshotByAgent(snapshot, input.agent, input.current_device_id);
+  const activeAgents = Array.from(new Set(snapshot.recentSessions.map((session) => session.agent).filter((agent): agent is string => Boolean(agent))));
+  const effectiveAgent = input.agent ?? pickPreferredAgent(activeAgents, snapshot.recentSessions[0]?.agent ?? null) ?? undefined;
+  if (effectiveAgent) {
+    snapshot = filterResumeSnapshotByAgent(snapshot, effectiveAgent, input.current_device_id);
   }
   let repairResult: RepairRecallResult | null = null;
   const shouldRepair =
@@ -87,14 +90,14 @@ export async function resumeThread(
     });
     if (repairResult.imported_chat_messages > 0) {
       snapshot = await buildResumeSnapshot(db, cwd, input.user_id, input.current_device_id, limit);
-      if (input.agent) {
-        snapshot = filterResumeSnapshotByAgent(snapshot, input.agent, input.current_device_id);
+      if (effectiveAgent) {
+        snapshot = filterResumeSnapshotByAgent(snapshot, effectiveAgent, input.current_device_id);
       }
     }
   }
 
   const { context, handoff, recentChat, recentSessions, recall } = snapshot;
-  const bestRecallItem = pickBestRecallItem(snapshot.recallIndex.items);
+  const bestRecallItem = pickBestRecallItem(snapshot.recallIndex.items, effectiveAgent);
 
   const latestSession = recentSessions[0] ?? null;
   const latestSummary = latestSession ? db.getSessionSummary(latestSession.session_id) : null;
@@ -146,7 +149,7 @@ export async function resumeThread(
 
   return {
     project_name: project?.name ?? context?.project_name ?? null,
-    target_agent: input.agent ?? null,
+    target_agent: effectiveAgent ?? null,
     continuity_state: context?.continuity_state ?? "cold",
     continuity_summary: context?.continuity_summary ?? "No fresh repo-local continuity yet; older memory should be treated cautiously.",
     resume_freshness: classifyResumeFreshness(sourceTimestamp),
@@ -309,7 +312,15 @@ function filterResumeSnapshotByAgent(
   };
 }
 
-function pickBestRecallItem(items: ReturnType<typeof listRecallItems>["items"]) {
+function pickBestRecallItem(
+  items: ReturnType<typeof listRecallItems>["items"],
+  preferredAgent?: string
+) {
+  if (preferredAgent) {
+    const preferred = items.find((item) => item.source_agent === preferredAgent && item.kind !== "memory")
+      ?? items.find((item) => item.source_agent === preferredAgent);
+    if (preferred) return preferred;
+  }
   return items.find((item) => item.kind !== "memory") ?? items[0] ?? null;
 }
 

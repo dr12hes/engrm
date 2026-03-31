@@ -529,7 +529,7 @@ describe("session-start startup brief", () => {
 
     expect(splash).toContain("Next look:");
     expect(splash).toContain("agent_memory_index");
-    expect(splash).toContain('resume_thread(agent="codex-cli")');
+    expect(splash).toContain('resume_thread(agent="claude-code")');
   });
 
   test("filters generic summary wrapper lines from recent work", () => {

@@ -244,4 +244,63 @@ describe("resumeThread", () => {
     expect(result.current_thread).toContain("Claude-side event routing");
     expect(result.recent_chat.every((item) => item.content.includes("Claude") || item.content.includes("handoff"))).toBe(true);
   });
+
+  test("defaults to the Claude thread when claude-code is active", async () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+
+    db.upsertSession("claude-sess", project.id, "david", "laptop", "claude-code");
+    db.insertSessionSummary({
+      session_id: "claude-sess",
+      project_id: project.id,
+      user_id: "david",
+      request: "Review Claude startup continuity",
+      investigated: null,
+      learned: null,
+      completed: "Claude continuity looks good",
+      next_steps: "Verify Claude wins by default.",
+      current_thread: "Review Claude startup continuity",
+    });
+    db.insertObservation({
+      session_id: "claude-sess",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume Claude startup continuity · 2026-03-24 18:20Z",
+      narrative: "Current thread: Review Claude startup continuity",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.8,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "create_handoff",
+    });
+
+    db.upsertSession("codex-sess", project.id, "david", "desktop", "codex-cli");
+    db.insertSessionSummary({
+      session_id: "codex-sess",
+      project_id: project.id,
+      user_id: "david",
+      request: "Review Codex startup continuity",
+      investigated: null,
+      learned: null,
+      completed: "Codex continuity also exists",
+      next_steps: "Verify Claude still wins by default.",
+      current_thread: "Review Codex startup continuity",
+    });
+
+    const result = await resumeThread(db, {
+      user_id: "david",
+      device_id: "desktop",
+    } as any, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+      current_device_id: "desktop",
+    });
+
+    expect(result.target_agent).toBe("claude-code");
+    expect(result.best_recall_key).toBe("handoff:1");
+    expect(result.current_thread).toContain("Claude startup continuity");
+  });
 });

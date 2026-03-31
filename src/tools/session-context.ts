@@ -14,7 +14,7 @@ import {
   type ContextOptions,
 } from "../context/inject.js";
 import { getRecentChat, type ChatCoverageState, type ChatSourceSummary } from "./recent-chat.js";
-import { classifyContinuityState, classifyResumeFreshness, collectActiveAgents, describeContinuityState } from "./project-memory-index.js";
+import { classifyContinuityState, classifyResumeFreshness, collectActiveAgents, describeContinuityState, pickPreferredAgent } from "./project-memory-index.js";
 import { listRecallItems, type RecallIndexItem } from "./list-recall-items.js";
 import { getRecentActivity } from "./recent.js";
 
@@ -111,6 +111,7 @@ export function getSessionContext(
     project_scoped: true,
     user_id: input.user_id,
     current_device_id: input.current_device_id,
+    preferred_agent: pickPreferredAgent(collectActiveAgents(context.recentSessions ?? []), context.recentSessions?.[0]?.agent ?? null) ?? undefined,
     limit: 10,
   });
   const latestSession = context.recentSessions?.[0] ?? null;
@@ -137,8 +138,15 @@ export function getSessionContext(
     ?? latestSession?.completed_at_epoch
     ?? latestSession?.started_at_epoch
     ?? null;
-  const bestRecallItem = recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null;
   const activeAgents = collectActiveAgents(context.recentSessions ?? []);
+  const preferredAgent = pickPreferredAgent(activeAgents, latestSession?.agent ?? null);
+  const bestRecallItem = preferredAgent
+    ? recallIndex.items.find((item) => item.source_agent === preferredAgent && item.kind !== "memory")
+      ?? recallIndex.items.find((item) => item.source_agent === preferredAgent)
+      ?? recallIndex.items.find((item) => item.kind !== "memory")
+      ?? recallIndex.items[0]
+      ?? null
+    : recallIndex.items.find((item) => item.kind !== "memory") ?? recallIndex.items[0] ?? null;
 
   return {
     project_name: context.project_name,
@@ -159,7 +167,7 @@ export function getSessionContext(
     best_recall_key: bestRecallItem?.key ?? null,
     best_recall_title: bestRecallItem?.title ?? null,
     best_recall_kind: bestRecallItem?.kind ?? null,
-    best_agent_resume_agent: activeAgents.length > 1 ? latestSession?.agent ?? null : null,
+    best_agent_resume_agent: activeAgents.length > 1 ? preferredAgent : null,
     resume_freshness: classifyResumeFreshness(resumeTimestamp),
     resume_source_session_id: latestSession?.session_id ?? null,
     resume_source_device_id: latestSession?.device_id ?? null,

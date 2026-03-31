@@ -10,6 +10,7 @@ export interface ListRecallItemsInput {
   project_scoped?: boolean;
   user_id?: string;
   current_device_id?: string;
+  preferred_agent?: string;
   limit?: number;
 }
 
@@ -133,7 +134,7 @@ export function listRecallItems(
   ];
 
   const deduped = dedupeRecallItems(items)
-    .sort((a, b) => compareRecallItems(a, b, input.current_device_id))
+    .sort((a, b) => compareRecallItems(a, b, input.current_device_id, input.preferred_agent))
     .slice(0, limit);
 
   return {
@@ -145,7 +146,12 @@ export function listRecallItems(
   };
 }
 
-function compareRecallItems(a: RecallIndexItem, b: RecallIndexItem, currentDeviceId?: string): number {
+function compareRecallItems(
+  a: RecallIndexItem,
+  b: RecallIndexItem,
+  currentDeviceId?: string,
+  preferredAgent?: string
+): number {
   const priority = (item: RecallIndexItem): number => {
     const freshness =
       item.freshness === "live" ? 0 :
@@ -155,8 +161,9 @@ function compareRecallItems(a: RecallIndexItem, b: RecallIndexItem, currentDevic
       item.kind === "thread" ? 1 :
       item.kind === "chat" ? 2 : 3;
     const remoteBoost = currentDeviceId && item.source_device_id && item.source_device_id !== currentDeviceId ? -0.5 : 0;
+    const preferredAgentBoost = preferredAgent && item.source_agent === preferredAgent ? -0.75 : 0;
     const draftPenalty = item.kind === "handoff" && /draft/i.test(item.title) ? 0.25 : 0;
-    return freshness * 10 + kind + remoteBoost + draftPenalty;
+    return freshness * 10 + kind + remoteBoost + preferredAgentBoost + draftPenalty;
   };
 
   const priorityDiff = priority(a) - priority(b);

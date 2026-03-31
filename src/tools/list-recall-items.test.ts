@@ -89,4 +89,72 @@ describe("listRecallItems", () => {
     expect(result.items.some((item) => item.kind === "chat" && item.detail.includes("explicit notification filter"))).toBe(true);
     expect(result.items.some((item) => item.kind === "memory" && item.title.includes("Wired the explicit event list"))).toBe(true);
   });
+
+  test("prefers Claude recall items when claude-code is the preferred agent", () => {
+    const project = db.upsertProject({
+      canonical_id: "local/repo",
+      name: "repo",
+      local_path: "/tmp/repo",
+    });
+
+    db.upsertSession("claude-sess", project.id, "david", "laptop", "claude-code");
+    db.insertSessionSummary({
+      session_id: "claude-sess",
+      project_id: project.id,
+      user_id: "david",
+      request: "Review Claude memory startup",
+      investigated: null,
+      learned: null,
+      completed: "Claude-side resume is ready",
+      next_steps: "Verify startup prefers Claude thread first.",
+      current_thread: "Review Claude memory startup",
+    });
+    db.insertObservation({
+      session_id: "claude-sess",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume Claude memory startup · 2026-03-22 18:20Z",
+      narrative: "Current thread: Review Claude memory startup",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.8,
+      user_id: "david",
+      device_id: "laptop",
+      source_tool: "create_handoff",
+    });
+
+    db.upsertSession("codex-sess", project.id, "david", "desktop", "codex-cli");
+    db.insertSessionSummary({
+      session_id: "codex-sess",
+      project_id: project.id,
+      user_id: "david",
+      request: "Review Codex thread",
+      investigated: null,
+      learned: null,
+      completed: "Codex-side work is also active",
+      next_steps: "Verify Claude still wins when preferred.",
+      current_thread: "Review Codex thread",
+    });
+    db.insertObservation({
+      session_id: "codex-sess",
+      project_id: project.id,
+      type: "message",
+      title: "Handoff: Resume Codex thread · 2026-03-22 18:25Z",
+      narrative: "Current thread: Review Codex thread",
+      concepts: JSON.stringify(["handoff", "session-handoff"]),
+      quality: 0.8,
+      user_id: "david",
+      device_id: "desktop",
+      source_tool: "create_handoff",
+    });
+
+    const result = listRecallItems(db, {
+      cwd: "/tmp/repo",
+      user_id: "david",
+      current_device_id: "desktop",
+      preferred_agent: "claude-code",
+    });
+
+    expect(result.items[0]?.source_agent).toBe("claude-code");
+    expect(result.items[0]?.key).toBe("handoff:1");
+  });
 });

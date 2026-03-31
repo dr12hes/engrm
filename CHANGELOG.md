@@ -10,6 +10,7 @@ All notable changes to this repository should be documented here.
 - the helper install/update script now also seeds a minimal `plugins.installs.engrm` record, so newer OpenClaw builds stop warning that the local Engrm plugin is untracked
 - added a repo guard for the OpenClaw plugin contract, so package name, manifest/runtime plugin id, and install/update docs cannot silently drift back into the same breakage pattern
 - wired the OpenClaw plugin contract check into the normal release/publish path via `npm run check:release`, so a future publish cannot skip the build/public-doc/plugin-contract safety checks
+- when `claude-code` is active on a shared repo, recall previews, exact-open hints, and default `resume_thread` behavior now bias toward the Claude thread instead of whichever agent wrote most recently, so Claude startup and memory recovery feel less cross-agent muddled
 
 ## 0.4.38
 

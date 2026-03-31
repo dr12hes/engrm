@@ -24,6 +24,7 @@ import {
   classifyContinuityState,
   classifyResumeFreshness,
   describeContinuityState,
+  pickPreferredAgent,
 } from "../src/tools/project-memory-index.js";
 import { detectStacksFromProject } from "../src/telemetry/stack-detect.js";
 import { computeAndSaveFingerprint } from "../src/telemetry/config-fingerprint.js";
@@ -637,8 +638,12 @@ function formatInspectHints(
   const unique = Array.from(new Set(hints)).slice(0, 4);
   if (unique.length === 0) return [];
   const ids = visibleObservationIds.slice(0, 5);
-  const openNowItem = recallItems.find((item) => item.kind !== "memory") ?? null;
-  const resumeAgent = activeAgents.length > 1 ? context.recentSessions?.[0]?.agent ?? null : null;
+  const preferredAgent = pickPreferredAgent(activeAgents, context.recentSessions?.[0]?.agent ?? null);
+  const openNowItem = (preferredAgent
+    ? recallItems.find((item) => item.source_agent === preferredAgent && item.kind !== "memory")
+      ?? recallItems.find((item) => item.source_agent === preferredAgent)
+    : null) ?? recallItems.find((item) => item.kind !== "memory") ?? null;
+  const resumeAgent = activeAgents.length > 1 ? preferredAgent : null;
   const fetchHint = ids.length > 0 ? `get_observations([${ids.join(", ")}])` : null;
   return [
     `${c.dim}Next look:${c.reset} ${unique.join(" · ")}`,
@@ -749,8 +754,13 @@ function buildStartupRecallItems(context: InjectedContext): Array<{
   }
 
   const seen = new Set<string>();
+  const preferredAgent = pickPreferredAgent(collectStartupAgents(context), context.recentSessions?.[0]?.agent ?? null);
   return items
-    .sort((a, b) => b.score - a.score || a.key.localeCompare(b.key))
+    .sort((a, b) => {
+      const aBoost = preferredAgent && a.source_agent === preferredAgent ? 1 : 0;
+      const bBoost = preferredAgent && b.source_agent === preferredAgent ? 1 : 0;
+      return b.score + bBoost - (a.score + aBoost) || a.key.localeCompare(b.key);
+    })
     .filter((item) => {
       if (seen.has(item.key)) return false;
       seen.add(item.key);
