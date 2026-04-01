@@ -4,6 +4,12 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.39
+
+- added Hermes-ready remote MCP support with Streamable HTTP serving, bearer-token auth, reserved `shared-experience` fleet routing, and extra outbound fleet scrubbing for hostnames, IPs, and MACs
+- surfaced Hermes diagnostics in `engrm status`, `engrm doctor`, and `capture_status`, so remote MCP and fleet configuration are visible without inspecting raw settings files
+- added Hermes deployment examples to the public docs and MCP examples, so remote container deployment no longer depends on tribal knowledge
+
 - added Streamable HTTP MCP serving for Hermes-style deployments via `engrm serve --http` or `ENGRM_HTTP_PORT`, while keeping the existing stdio transport unchanged for Claude Code, Codex, and local agent use
 - HTTP mode now validates bearer tokens before routing requests into the MCP transport, so multiple remote Hermes clients can be gated safely with static connection tokens
 - added fleet routing config in `settings.json` with reserved project-name handling, so a project like `shared-experience` can sync to a dedicated Candengo namespace/key while normal projects stay org-scoped

@@ -1,7 +1,7 @@
 {
   "name": "engrm",
-  "version": "0.4.38",
-  "description": "Shared memory across devices, sessions, and agents, with thin MCP tools for durable capture and live continuity",
+  "version": "0.4.39",
+  "description": "Shared memory across devices, sessions, and agents, with thin MCP tools for durable capture, live continuity, and Hermes-ready remote MCP support",
   "mcpName": "io.github.dr12hes/engrm",
   "type": "module",
   "main": "dist/server.js",
@@ -37,7 +37,10 @@
     "code-audit",
     "cross-device",
     "team-memory",
-    "developer-tools"
+    "developer-tools",
+    "hermes",
+    "streamable-http",
+    "remote-mcp"
   ],
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.74",
