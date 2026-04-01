@@ -11,6 +11,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 
 import { loadConfig, getDbPath, configExists } from "./config.js";
 import { MemDatabase } from "./storage/sqlite.js";
@@ -2652,7 +2653,7 @@ async function startHttpServer(): Promise<void> {
   }
 
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    sessionIdGenerator: () => randomUUID(),
   });
   await server.connect(transport);
 
