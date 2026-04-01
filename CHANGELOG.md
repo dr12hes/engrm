@@ -4,6 +4,9 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+- surfaced OpenClaw MCP registration in `engrm status`, `engrm doctor`, and `capture_status`, so the native plugin and the newer OpenClaw MCP registry are both visible in diagnostics
+- added `openclaw/install-or-update-openclaw-mcp.sh`, so a Hermes-style Engrm HTTP endpoint can be registered into OpenClaw with one command instead of manual JSON edits
+
 ## 0.4.40
 
 - fixed Hermes HTTP transport reuse by switching the remote MCP path onto a stateful Streamable HTTP session model, so authenticated SSE negotiation no longer crashes with `500` before initialization

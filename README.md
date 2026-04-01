@@ -60,6 +60,12 @@ openclaw plugins install engrm-openclaw-plugin
 /engrm status
 ```
 
+To register a remote Engrm HTTP MCP endpoint in OpenClaw after enabling `engrm serve --http`:
+
+```bash
+./openclaw/install-or-update-openclaw-mcp.sh http://HOST:3767/mcp YOUR_BEARER_TOKEN
+```
+
 **What works:**
 - ✅ Session startup memory injection
 - ✅ Automatic session capture

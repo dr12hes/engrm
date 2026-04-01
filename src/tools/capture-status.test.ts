@@ -16,6 +16,7 @@ beforeEach(() => {
   fakeHome = join(tmpDir, "home");
   mkdirSync(join(fakeHome, ".claude"), { recursive: true });
   mkdirSync(join(fakeHome, ".codex"), { recursive: true });
+  mkdirSync(join(fakeHome, ".openclaw", "extensions", "engrm"), { recursive: true });
   mkdirSync(join(fakeHome, ".config", "opencode", "plugins"), { recursive: true });
   process.env.HOME = fakeHome;
   db = new MemDatabase(join(tmpDir, "test.db"));
@@ -61,6 +62,23 @@ describe("getCaptureStatus", () => {
     writeFileSync(join(fakeHome, ".codex", "config.toml"), `[mcp_servers.engrm]\nenabled = true\n`);
     writeFileSync(join(fakeHome, ".codex", "hooks.json"), JSON.stringify({
       hooks: { SessionStart: [], Stop: [] },
+    }));
+    writeFileSync(join(fakeHome, ".openclaw", "openclaw.json"), JSON.stringify({
+      mcp: {
+        servers: {
+          engrm: {
+            url: "http://127.0.0.1:3767/mcp",
+            headers: { Authorization: "Bearer token-1" },
+          },
+        },
+      },
+      plugins: {
+        allow: ["engrm"],
+      },
+    }));
+    writeFileSync(join(fakeHome, ".openclaw", "extensions", "engrm", "openclaw.plugin.json"), JSON.stringify({
+      id: "engrm",
+      name: "Engrm",
     }));
     writeFileSync(join(fakeHome, ".config", "opencode", "opencode.json"), JSON.stringify({
       $schema: "https://opencode.ai/config.json",
@@ -121,6 +139,8 @@ describe("getCaptureStatus", () => {
     expect(result.codex_session_start_hook).toBe(true);
     expect(result.codex_stop_hook).toBe(true);
     expect(result.codex_raw_chronology_supported).toBe(false);
+    expect(result.openclaw_mcp_registered).toBe(true);
+    expect(result.openclaw_plugin_registered).toBe(true);
     expect(result.opencode_mcp_registered).toBe(true);
     expect(result.opencode_plugin_registered).toBe(true);
     expect(result.recent_user_prompts).toBe(1);

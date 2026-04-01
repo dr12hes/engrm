@@ -40,6 +40,8 @@ export interface CaptureStatusResult {
   codex_session_start_hook: boolean;
   codex_stop_hook: boolean;
   codex_raw_chronology_supported: boolean;
+  openclaw_mcp_registered: boolean;
+  openclaw_plugin_registered: boolean;
   opencode_mcp_registered: boolean;
   opencode_plugin_registered: boolean;
   recent_user_prompts: number;
@@ -68,6 +70,8 @@ export function getCaptureStatus(
   const codexHooks = join(home, ".codex", "hooks.json");
   const opencodeConfig = join(home, ".config", "opencode", "opencode.json");
   const opencodePlugin = join(home, ".config", "opencode", "plugins", "engrm.js");
+  const openclawConfig = join(home, ".openclaw", "openclaw.json");
+  const openclawPlugin = join(home, ".openclaw", "extensions", "engrm", "openclaw.plugin.json");
   const config = configExists() ? loadConfig() : null;
 
   const claudeJsonContent = existsSync(claudeJson) ? readFileSync(claudeJson, "utf-8") : "";
@@ -75,6 +79,7 @@ export function getCaptureStatus(
   const codexConfigContent = existsSync(codexConfig) ? readFileSync(codexConfig, "utf-8") : "";
   const codexHooksContent = existsSync(codexHooks) ? readFileSync(codexHooks, "utf-8") : "";
   const opencodeConfigContent = existsSync(opencodeConfig) ? readFileSync(opencodeConfig, "utf-8") : "";
+  const openclawConfigContent = existsSync(openclawConfig) ? readFileSync(openclawConfig, "utf-8") : "";
 
   const claudeMcpRegistered = claudeJsonContent.includes('"engrm"');
   const claudeHooksRegistered =
@@ -92,6 +97,8 @@ export function getCaptureStatus(
     opencodeConfigContent.includes('"type"') &&
     opencodeConfigContent.includes('"local"');
   const opencodePluginRegistered = existsSync(opencodePlugin);
+  const openclawMcpRegistered = hasOpenClawMcpRegistration(openclawConfigContent);
+  const openclawPluginRegistered = existsSync(openclawPlugin);
 
   let claudeHookCount = 0;
   let claudeSessionStartHook = false;
@@ -235,6 +242,8 @@ export function getCaptureStatus(
     codex_session_start_hook: codexSessionStartHook,
     codex_stop_hook: codexStopHook,
     codex_raw_chronology_supported: false,
+    openclaw_mcp_registered: openclawMcpRegistered,
+    openclaw_plugin_registered: openclawPluginRegistered,
     opencode_mcp_registered: opencodeMcpRegistered,
     opencode_plugin_registered: opencodePluginRegistered,
     recent_user_prompts: recentUserPrompts,
@@ -257,4 +266,16 @@ function parseNullableInt(value: string | null): number | null {
   if (!value) return null;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasOpenClawMcpRegistration(content: string): boolean {
+  if (!content) return false;
+  try {
+    const parsed = JSON.parse(content) as {
+      mcp?: { servers?: Record<string, unknown> };
+    };
+    return Boolean(parsed.mcp?.servers?.engrm);
+  } catch {
+    return content.includes('"mcp"') && content.includes('"servers"') && content.includes('"engrm"');
+  }
 }

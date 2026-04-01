@@ -80,6 +80,12 @@ Example Hermes MCP stanza:
 }
 ```
 
+Example OpenClaw registration after updating to a build with `openclaw mcp`:
+
+```bash
+./openclaw/install-or-update-openclaw-mcp.sh http://192.168.5.81:3767/mcp replace-with-a-long-random-token
+```
+
 ## Recall Protocol
 
 The recommended continuity flow is:

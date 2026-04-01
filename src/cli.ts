@@ -549,12 +549,15 @@ function handleStatus(): void {
   const claudeSettings = join(homedir(), ".claude", "settings.json");
   const codexConfig = join(homedir(), ".codex", "config.toml");
   const codexHooks = join(homedir(), ".codex", "hooks.json");
+  const openclawConfig = join(homedir(), ".openclaw", "openclaw.json");
+  const openclawPlugin = join(homedir(), ".openclaw", "extensions", "engrm", "openclaw.plugin.json");
   const opencodeConfig = join(homedir(), ".config", "opencode", "opencode.json");
   const opencodePlugin = join(homedir(), ".config", "opencode", "plugins", "engrm.js");
   const mcpRegistered = existsSync(claudeJson) && readFileSync(claudeJson, "utf-8").includes('"engrm"');
   const settingsContent = existsSync(claudeSettings) ? readFileSync(claudeSettings, "utf-8") : "";
   const codexContent = existsSync(codexConfig) ? readFileSync(codexConfig, "utf-8") : "";
   const codexHooksContent = existsSync(codexHooks) ? readFileSync(codexHooks, "utf-8") : "";
+  const openclawConfigContent = existsSync(openclawConfig) ? readFileSync(openclawConfig, "utf-8") : "";
   const opencodeConfigContent = existsSync(opencodeConfig) ? readFileSync(opencodeConfig, "utf-8") : "";
   const hooksRegistered =
     settingsContent.includes("engrm") ||
@@ -566,6 +569,8 @@ function handleStatus(): void {
   const codexHooksRegistered =
     codexHooksContent.includes("\"SessionStart\"") &&
     codexHooksContent.includes("\"Stop\"");
+  const openclawMcpRegistered = hasOpenClawMcpRegistration(openclawConfigContent);
+  const openclawPluginRegistered = existsSync(openclawPlugin);
   const opencodeRegistered = opencodeConfigContent.includes('"engrm"') && opencodeConfigContent.includes('"local"');
   const opencodePluginRegistered = existsSync(opencodePlugin);
 
@@ -592,6 +597,8 @@ function handleStatus(): void {
 
   console.log(`    MCP server:    ${mcpRegistered ? "registered" : "not registered"}`);
   console.log(`    Codex MCP:     ${codexRegistered ? "registered" : "not registered"}`);
+  console.log(`    OpenClaw MCP:  ${openclawMcpRegistered ? "registered" : "not registered"}`);
+  console.log(`    OpenClaw plug: ${openclawPluginRegistered ? "registered" : "not registered"}`);
   console.log(`    OpenCode MCP:  ${opencodeRegistered ? "registered" : "not registered"}`);
   console.log(`    Hooks:         ${hooksRegistered ? `registered (${hookCount || "?"} hooks)` : "not registered"}`);
   console.log(`    Codex hooks:   ${codexHooksRegistered ? "registered (2 hooks)" : "not registered"}`);
@@ -1142,6 +1149,30 @@ async function handleDoctor(): Promise<void> {
   }
 
   // 6d. OpenCode MCP registered
+  const openclawConfig = join(homedir(), ".openclaw", "openclaw.json");
+  try {
+    if (existsSync(openclawConfig)) {
+      const content = readFileSync(openclawConfig, "utf-8");
+      if (hasOpenClawMcpRegistration(content)) {
+        pass("MCP server registered in OpenClaw");
+      } else {
+        warn("MCP server not registered in OpenClaw");
+      }
+    } else {
+      warn("OpenClaw config not found (~/.openclaw/openclaw.json)");
+    }
+  } catch {
+    warn("Could not check OpenClaw MCP registration");
+  }
+
+  const openclawPlugin = join(homedir(), ".openclaw", "extensions", "engrm", "openclaw.plugin.json");
+  if (existsSync(openclawPlugin)) {
+    pass("Plugin installed in OpenClaw");
+  } else {
+    warn("OpenClaw plugin not installed (~/.openclaw/extensions/engrm/openclaw.plugin.json)");
+  }
+
+  // 6d. OpenCode MCP registered
   const opencodeConfig = join(homedir(), ".config", "opencode", "opencode.json");
   try {
     if (existsSync(opencodeConfig)) {
@@ -1489,6 +1520,18 @@ codex_hooks = true
 
 function formatTomlArray(values: string[]): string {
   return `[${values.map((value) => JSON.stringify(value)).join(", ")}]`;
+}
+
+function hasOpenClawMcpRegistration(content: string): boolean {
+  if (!content) return false;
+  try {
+    const parsed = JSON.parse(content) as {
+      mcp?: { servers?: Record<string, unknown> };
+    };
+    return Boolean(parsed.mcp?.servers?.engrm);
+  } catch {
+    return content.includes('"mcp"') && content.includes('"servers"') && content.includes('"engrm"');
+  }
 }
 
 function printUsage(): void {
