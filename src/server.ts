@@ -9,6 +9,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
@@ -179,6 +181,7 @@ process.on("SIGTERM", () => {
 
 // --- MCP Server ---
 
+function buildServer(): McpServer {
 const server = new McpServer({
   name: "engrm",
   version: "0.4.40",
@@ -2602,6 +2605,11 @@ function formatFactPreview(factsRaw: string | null, narrative: string | null): s
   return trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
 }
 
+  return server;
+}
+
+const server = buildServer();
+
 // --- Start ---
 
 async function main(): Promise<void> {
@@ -2653,15 +2661,19 @@ async function startHttpServer(): Promise<void> {
   if (tokens.length === 0) {
     throw new Error("HTTP mode requires at least one bearer token via settings.json http.bearer_tokens or ENGRM_HTTP_BEARER_TOKENS");
   }
-
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-  });
-  await server.connect(transport);
+  const streamableTransports = new Map<string, StreamableHTTPServerTransport>();
+  const sseTransports = new Map<string, SSEServerTransport>();
 
   const httpServer = createServer(async (req, res) => {
     try {
-      if (!req.url || !req.url.startsWith("/mcp")) {
+      if (!req.url) {
+        res.writeHead(404).end("Not found");
+        return;
+      }
+
+      const url = new URL(req.url, "http://localhost");
+      const pathname = url.pathname;
+      if (pathname !== "/mcp" && pathname !== "/sse" && pathname !== "/messages") {
         res.writeHead(404).end("Not found");
         return;
       }
@@ -2677,7 +2689,97 @@ async function startHttpServer(): Promise<void> {
       const authorizedReq = req as AuthorizedRequest;
       authorizedReq.auth = { token };
       const parsedBody = req.method === "POST" ? await readJsonBody(req) : undefined;
-      await transport.handleRequest(authorizedReq, res, parsedBody);
+
+      if (pathname === "/sse" && req.method === "GET") {
+        const transport = new SSEServerTransport("/messages", res);
+        sseTransports.set(transport.sessionId, transport);
+        transport.onclose = () => {
+          sseTransports.delete(transport.sessionId);
+        };
+        const sseServer = buildServer();
+        await sseServer.connect(transport);
+        return;
+      }
+
+      if (pathname === "/messages" && req.method === "POST") {
+        const sessionId = url.searchParams.get("sessionId") ?? "";
+        const transport = sseTransports.get(sessionId);
+        if (!transport) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32000, message: "Bad Request: No SSE transport found for sessionId" },
+            id: null,
+          }));
+          return;
+        }
+        await transport.handlePostMessage(authorizedReq, res, parsedBody);
+        return;
+      }
+
+      const sessionIdHeader = Array.isArray(req.headers["mcp-session-id"])
+        ? req.headers["mcp-session-id"][0]
+        : req.headers["mcp-session-id"];
+      if (sessionIdHeader) {
+        const transport = streamableTransports.get(sessionIdHeader);
+        if (!transport) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+            id: null,
+          }));
+          return;
+        }
+        await transport.handleRequest(authorizedReq, res, parsedBody);
+        return;
+      }
+
+      if (pathname === "/mcp" && req.method === "POST" && isInitializeRequest(parsedBody)) {
+        let transport!: StreamableHTTPServerTransport;
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (sessionId) => {
+            streamableTransports.set(sessionId, transport);
+          },
+        });
+        transport.onclose = () => {
+          const sid = transport.sessionId;
+          if (sid) streamableTransports.delete(sid);
+        };
+        const streamableServer = buildServer();
+        await streamableServer.connect(transport);
+        await transport.handleRequest(authorizedReq, res, parsedBody);
+        return;
+      }
+
+      const wantsSse = (req.headers.accept ?? "").includes("text/event-stream");
+      if (pathname === "/mcp" && req.method === "GET" && wantsSse) {
+        const transport = new SSEServerTransport("/mcp", res);
+        sseTransports.set(transport.sessionId, transport);
+        transport.onclose = () => {
+          sseTransports.delete(transport.sessionId);
+        };
+        const sseServer = buildServer();
+        await sseServer.connect(transport);
+        return;
+      }
+
+      if (pathname === "/mcp" && req.method === "POST") {
+        const sessionId = url.searchParams.get("sessionId") ?? "";
+        const transport = sseTransports.get(sessionId);
+        if (transport) {
+          await transport.handlePostMessage(authorizedReq, res, parsedBody);
+          return;
+        }
+      }
+
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+        id: null,
+      }));
     } catch (error) {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
@@ -2688,7 +2790,7 @@ async function startHttpServer(): Promise<void> {
     httpServer.once("error", reject);
     httpServer.listen(port, () => resolve());
   });
-  console.error(`Engrm HTTP MCP listening on :${port}/mcp`);
+  console.error(`Engrm HTTP MCP listening on :${port}/mcp (compat: /sse, /messages)`);
 }
 
 interface AuthorizedRequest extends IncomingMessage {
