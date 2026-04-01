@@ -105,7 +105,7 @@ Add this to `~/.engrm/settings.json`:
     "bearer_tokens": ["replace-with-a-long-random-token"]
   },
   "fleet": {
-    "project_name": "huginn-fleet",
+    "project_name": "shared-experience",
     "namespace": "ns_fleet_shared",
     "api_key": "cvk_fleet_shared"
   }
@@ -134,7 +134,7 @@ Hermes should connect with a bearer token header:
 ```
 
 Fleet writes:
-- use the reserved project name `huginn-fleet` by default
+- use the reserved project name `shared-experience` by default
 - stay `shared` unless explicitly overridden
 - sync to the dedicated fleet namespace/key instead of the normal org namespace
 - get an extra outbound scrub pass that redacts hostnames, IPs, and MACs before upload

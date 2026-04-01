@@ -187,7 +187,7 @@ function createDefaultConfig(): Config {
       bearer_tokens: [],
     },
     fleet: {
-      project_name: "huginn-fleet",
+      project_name: "shared-experience",
       namespace: "",
       api_key: "",
     },

@@ -6,7 +6,7 @@ const baseConfig = {
   namespace: "org-ns",
   site_id: "site-1",
   fleet: {
-    project_name: "huginn-fleet",
+    project_name: "shared-experience",
     namespace: "fleet-ns",
     api_key: "cvk_fleet",
   },
@@ -14,8 +14,8 @@ const baseConfig = {
 
 describe("sync targets", () => {
   test("detects the reserved fleet project name", () => {
-    expect(isFleetProjectName("huginn-fleet", baseConfig)).toBe(true);
-    expect(isFleetProjectName("HUGINN-FLEET", baseConfig)).toBe(true);
+    expect(isFleetProjectName("shared-experience", baseConfig)).toBe(true);
+    expect(isFleetProjectName("SHARED-EXPERIENCE", baseConfig)).toBe(true);
     expect(isFleetProjectName("huginn", baseConfig)).toBe(false);
   });
 
@@ -25,7 +25,7 @@ describe("sync targets", () => {
   });
 
   test("routes fleet projects to the fleet namespace and key", () => {
-    const target = resolveSyncTarget(baseConfig, "huginn-fleet");
+    const target = resolveSyncTarget(baseConfig, "shared-experience");
     expect(target.isFleet).toBe(true);
     expect(target.namespace).toBe("fleet-ns");
     expect(target.apiKey).toBe("cvk_fleet");

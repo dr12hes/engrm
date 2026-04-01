@@ -9,7 +9,7 @@ export interface SyncTarget {
 }
 
 export function isFleetProjectName(projectName: string | null | undefined, config: Config): boolean {
-  const fleetProjectName = config.fleet?.project_name ?? "huginn-fleet";
+  const fleetProjectName = config.fleet?.project_name ?? "shared-experience";
   if (!projectName || !fleetProjectName) return false;
   return projectName.trim().toLowerCase() === fleetProjectName.trim().toLowerCase();
 }
@@ -18,7 +18,7 @@ export function hasFleetTarget(config: Config): boolean {
   return Boolean(
     config.fleet?.namespace?.trim() &&
     config.fleet?.api_key?.trim() &&
-    (config.fleet?.project_name ?? "huginn-fleet").trim()
+    (config.fleet?.project_name ?? "shared-experience").trim()
   );
 }
 
