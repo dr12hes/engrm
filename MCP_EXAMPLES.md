@@ -38,6 +38,48 @@ The goal is to turn useful local work into durable memory that can be recalled l
   - surfaced directly in startup/workbench when multi-agent continuity is active
 - `repair_recall`
 
+## Hermes Remote Setup
+
+For Hermes-style remote MCP deployment, Engrm can run over Streamable HTTP with bearer auth.
+
+Example `settings.json` additions:
+
+```json
+{
+  "http": {
+    "enabled": true,
+    "port": 3767,
+    "bearer_tokens": ["replace-with-a-long-random-token"]
+  },
+  "fleet": {
+    "project_name": "shared-experience",
+    "namespace": "ns_fleet_shared",
+    "api_key": "cvk_fleet_shared"
+  }
+}
+```
+
+Example launch:
+
+```bash
+ENGRM_HTTP_PORT=3767 engrm serve --http
+```
+
+Example Hermes MCP stanza:
+
+```json
+{
+  "mcpServers": {
+    "engrm": {
+      "url": "http://engrm:3767/mcp",
+      "headers": {
+        "Authorization": "Bearer replace-with-a-long-random-token"
+      }
+    }
+  }
+}
+```
+
 ## Recall Protocol
 
 The recommended continuity flow is:
