@@ -664,7 +664,7 @@ Engrm auto-registers in:
 - **Local storage:** SQLite via `better-sqlite3`, FTS5 full-text search, `sqlite-vec` for embeddings
 - **Embeddings:** all-MiniLM-L6-v2 via `@xenova/transformers` (384 dims, ~23MB)
 - **Remote backend:** Candengo Vector (BGE-M3, Qdrant, hybrid dense+sparse search)
-- **MCP:** `@modelcontextprotocol/sdk` (stdio transport)
+- **MCP:** `@modelcontextprotocol/sdk` (stdio for local agents, Streamable HTTP + SSE compatibility for Hermes-style remote clients)
 - **AI extraction:** `@anthropic-ai/claude-agent-sdk` (optional, for richer observations)
 
 ---

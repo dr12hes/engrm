@@ -228,6 +228,7 @@ Before recording or submitting a listing demo:
 Before submitting to another MCP directory:
 
 - check `server.json` version matches `package.json`
+- check `server.json` transport entries still reflect both local stdio and Hermes-ready remote HTTP support
 - ensure README starter-set section is current
 - ensure `MCP_EXAMPLES.md` still reflects the current tool surface
 - confirm `npm pack --dry-run` passes

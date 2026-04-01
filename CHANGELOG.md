@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+- aligned `server.json` and public metadata with Engrm's real MCP surface, so registries and installers no longer imply stdio-only support when Hermes-ready remote HTTP is available too
+
 ## 0.4.42
 
 - fixed the Hermes HTTP handshake by making Engrm’s `/mcp` endpoint compatible with SSE-style MCP clients as well as Streamable HTTP, so Hermes no longer fails to connect with `400 Bad Request` during initial negotiation
