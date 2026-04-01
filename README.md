@@ -139,6 +139,15 @@ Hermes should connect with a bearer token header:
 }
 ```
 
+If Hermes and OpenClaw run on the same machine, use `http://localhost:3767/mcp`.
+That is the correct MCP URL for same-host deployments.
+
+On macOS, watch out for mixed global npm prefixes. If you have both
+`~/.npm-global` and `/opt/homebrew` installs, make sure the long-running Engrm
+HTTP service points at the same package location that your `npm install -g`
+updates. A stale LaunchAgent path can keep serving an older Engrm build even
+after a successful npm upgrade.
+
 Fleet writes:
 - use the reserved project name `shared-experience` by default
 - stay `shared` unless explicitly overridden

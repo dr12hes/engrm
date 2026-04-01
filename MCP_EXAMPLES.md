@@ -80,6 +80,26 @@ Example Hermes MCP stanza:
 }
 ```
 
+If Hermes and OpenClaw run on the same machine, the URL should usually be:
+
+```json
+{
+  "mcpServers": {
+    "engrm": {
+      "url": "http://localhost:3767/mcp",
+      "headers": {
+        "Authorization": "Bearer replace-with-a-long-random-token"
+      }
+    }
+  }
+}
+```
+
+If that box has multiple global npm prefixes, verify the Engrm HTTP service is
+running from the same install path you just updated. Otherwise Hermes can keep
+talking to an older Engrm build even though npm reports the new version is
+installed.
+
 Example OpenClaw registration after updating to a build with `openclaw mcp`:
 
 ```bash

@@ -7,6 +7,7 @@ All notable changes to this repository should be documented here.
 - fixed the Hermes HTTP handshake by making Engrm’s `/mcp` endpoint compatible with SSE-style MCP clients as well as Streamable HTTP, so Hermes no longer fails to connect with `400 Bad Request` during initial negotiation
 - surfaced OpenClaw MCP registration in `engrm status`, `engrm doctor`, and `capture_status`, so the native plugin and the newer OpenClaw MCP registry are both visible in diagnostics
 - added `openclaw/install-or-update-openclaw-mcp.sh`, so a Hermes-style Engrm HTTP endpoint can be registered into OpenClaw with one command instead of manual JSON edits
+- documented the same-host Hermes/OpenClaw case and the mixed-global-npm-prefix pitfall, so operators do not accidentally leave LaunchAgents pinned to an older Engrm install after updating npm
 
 ## 0.4.40
 
