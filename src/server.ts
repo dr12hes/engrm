@@ -1453,6 +1453,10 @@ server.tool(
           type: "text" as const,
           text:
             `Schema: v${result.schema_version} (${result.schema_current ? "current" : "outdated"})\n` +
+            `HTTP MCP: ${result.http_enabled ? `enabled${result.http_port ? ` (:${result.http_port})` : ""}` : "disabled"}\n` +
+            `HTTP bearer tokens: ${result.http_bearer_token_count}\n` +
+            `Fleet project: ${result.fleet_project_name ?? "none"}\n` +
+            `Fleet sync: ${result.fleet_configured ? "configured" : "not configured"}\n\n` +
             `Claude MCP: ${result.claude_mcp_registered ? "registered" : "missing"}\n` +
             `Claude hooks: ${result.claude_hooks_registered ? `registered (${result.claude_hook_count})` : "missing"}\n` +
             `Claude raw chronology hooks: session-start=${result.claude_session_start_hook ? "yes" : "no"}, prompt=${result.claude_user_prompt_hook ? "yes" : "no"}, post-tool=${result.claude_post_tool_hook ? "yes" : "no"}, stop=${result.claude_stop_hook ? "yes" : "no"}\n` +

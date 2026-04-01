@@ -540,6 +540,10 @@ function handleStatus(): void {
   console.log("\n  Integration");
   console.log(`    Server:        ${config.candengo_url ? normalizeBaseUrl(config.candengo_url) : "(not set)"}`);
   console.log(`    Sync:          ${config.sync.enabled ? "enabled" : "disabled"}`);
+  console.log(`    HTTP MCP:      ${config.http.enabled ? `enabled (:${config.http.port})` : "disabled"}`);
+  console.log(`    HTTP tokens:   ${config.http.bearer_tokens.length}`);
+  console.log(`    Fleet project: ${config.fleet.project_name || "(not set)"}`);
+  console.log(`    Fleet sync:    ${config.fleet.namespace && config.fleet.api_key ? "configured" : "not configured"}`);
 
   const claudeJson = join(homedir(), ".claude.json");
   const claudeSettings = join(homedir(), ".claude", "settings.json");
@@ -991,6 +995,24 @@ async function handleDoctor(): Promise<void> {
     fail(`Configuration is invalid: ${err instanceof Error ? err.message : String(err)}`);
     printDoctorReport(results);
     return;
+  }
+
+  if (config.http.enabled) {
+    if (config.http.bearer_tokens.length > 0) {
+      pass(`HTTP MCP enabled on port ${config.http.port} with ${config.http.bearer_tokens.length} bearer token(s)`);
+    } else {
+      warn("HTTP MCP is enabled but no bearer tokens are configured");
+    }
+  } else {
+    info("HTTP MCP disabled");
+  }
+
+  if (config.fleet.project_name) {
+    if (config.fleet.namespace && config.fleet.api_key) {
+      pass(`Fleet project '${config.fleet.project_name}' is configured`);
+    } else {
+      info(`Fleet project '${config.fleet.project_name}' is reserved but not fully configured`);
+    }
   }
 
   // 3. Database opens

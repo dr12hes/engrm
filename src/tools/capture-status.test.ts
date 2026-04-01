@@ -4,10 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemDatabase } from "../storage/sqlite.js";
 import { getCaptureStatus } from "./capture-status.js";
+import { saveConfig } from "../config.js";
 
 let db: MemDatabase;
 let tmpDir: string;
 let fakeHome: string;
+const originalHome = process.env.HOME;
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "engrm-capture-status-test-"));
@@ -15,16 +17,37 @@ beforeEach(() => {
   mkdirSync(join(fakeHome, ".claude"), { recursive: true });
   mkdirSync(join(fakeHome, ".codex"), { recursive: true });
   mkdirSync(join(fakeHome, ".config", "opencode", "plugins"), { recursive: true });
+  process.env.HOME = fakeHome;
   db = new MemDatabase(join(tmpDir, "test.db"));
 });
 
 afterEach(() => {
   db.close();
+  process.env.HOME = originalHome;
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
 describe("getCaptureStatus", () => {
   test("reports registration and recent raw chronology capture", () => {
+    saveConfig({
+      candengo_url: "https://engrm.dev",
+      candengo_api_key: "cvk_org",
+      site_id: "site-1",
+      namespace: "org-ns",
+      user_id: "david",
+      user_email: "david@example.com",
+      device_id: "laptop-1",
+      teams: [],
+      sync: { enabled: true, interval_seconds: 30, batch_size: 50 },
+      search: { default_limit: 10, local_boost: 1.2, scope: "all" },
+      scrubbing: { enabled: true, custom_patterns: [], default_sensitivity: "shared" },
+      sentinel: { enabled: false, mode: "advisory", provider: "openai", model: "gpt-4o-mini", api_key: "", base_url: "", skip_patterns: [], daily_limit: 100, tier: "free" },
+      observer: { enabled: true, mode: "per_event", model: "sonnet" },
+      transcript_analysis: { enabled: false },
+      http: { enabled: true, port: 3767, bearer_tokens: ["token-1", "token-2"] },
+      fleet: { project_name: "shared-experience", namespace: "fleet-ns", api_key: "cvk_fleet" },
+    });
+
     writeFileSync(join(fakeHome, ".claude.json"), JSON.stringify({
       mcpServers: { engrm: { type: "stdio", command: "node", args: ["server.js"] } },
     }));
@@ -81,6 +104,11 @@ describe("getCaptureStatus", () => {
     });
 
     expect(result.schema_current).toBe(true);
+    expect(result.http_enabled).toBe(true);
+    expect(result.http_port).toBe(3767);
+    expect(result.http_bearer_token_count).toBe(2);
+    expect(result.fleet_project_name).toBe("shared-experience");
+    expect(result.fleet_configured).toBe(true);
     expect(result.claude_mcp_registered).toBe(true);
     expect(result.claude_hooks_registered).toBe(true);
     expect(result.claude_hook_count).toBeGreaterThanOrEqual(3);

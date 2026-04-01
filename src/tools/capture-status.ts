@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { configExists, loadConfig } from "../config.js";
 import { getSchemaVersion, LATEST_SCHEMA_VERSION } from "../storage/migrations.js";
 import type { MemDatabase } from "../storage/sqlite.js";
 
@@ -22,6 +23,11 @@ export interface CaptureStatusInput {
 export interface CaptureStatusResult {
   schema_version: number;
   schema_current: boolean;
+  http_enabled: boolean;
+  http_port: number | null;
+  http_bearer_token_count: number;
+  fleet_project_name: string | null;
+  fleet_configured: boolean;
   claude_mcp_registered: boolean;
   claude_hooks_registered: boolean;
   claude_hook_count: number;
@@ -62,6 +68,7 @@ export function getCaptureStatus(
   const codexHooks = join(home, ".codex", "hooks.json");
   const opencodeConfig = join(home, ".config", "opencode", "opencode.json");
   const opencodePlugin = join(home, ".config", "opencode", "plugins", "engrm.js");
+  const config = configExists() ? loadConfig() : null;
 
   const claudeJsonContent = existsSync(claudeJson) ? readFileSync(claudeJson, "utf-8") : "";
   const claudeSettingsContent = existsSync(claudeSettings) ? readFileSync(claudeSettings, "utf-8") : "";
@@ -211,6 +218,11 @@ export function getCaptureStatus(
   return {
     schema_version: schemaVersion,
     schema_current: schemaVersion >= LATEST_SCHEMA_VERSION,
+    http_enabled: Boolean(config?.http?.enabled || process.env.ENGRM_HTTP_PORT),
+    http_port: config?.http?.port ?? (process.env.ENGRM_HTTP_PORT ? Number(process.env.ENGRM_HTTP_PORT) : null),
+    http_bearer_token_count: config?.http?.bearer_tokens?.length ?? 0,
+    fleet_project_name: config?.fleet?.project_name ?? null,
+    fleet_configured: Boolean(config?.fleet?.namespace && config?.fleet?.api_key),
     claude_mcp_registered: claudeMcpRegistered,
     claude_hooks_registered: claudeHooksRegistered,
     claude_hook_count: claudeHookCount,
