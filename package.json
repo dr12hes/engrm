@@ -1,6 +1,6 @@
 {
   "name": "engrm",
-  "version": "0.4.40",
+  "version": "0.4.41",
   "description": "Shared memory across devices, sessions, and agents, with thin MCP tools for durable capture, live continuity, and Hermes-ready remote MCP support",
   "mcpName": "io.github.dr12hes/engrm",
   "type": "module",
