@@ -4,6 +4,10 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.40
+
+- fixed Hermes HTTP transport reuse by switching the remote MCP path onto a stateful Streamable HTTP session model, so authenticated SSE negotiation no longer crashes with `500` before initialization
+
 ## 0.4.39
 
 - added Hermes-ready remote MCP support with Streamable HTTP serving, bearer-token auth, reserved `shared-experience` fleet routing, and extra outbound fleet scrubbing for hostnames, IPs, and MACs
