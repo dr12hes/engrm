@@ -71,6 +71,7 @@ import { reduceGitDiffToMemory } from "./plugins/git-diff.js";
 import { reduceRepoScanToMemory } from "./plugins/repo-scan.js";
 import { reduceOpenClawContentToMemory } from "./plugins/openclaw-content.js";
 import { syncTranscriptChat } from "./capture/transcript.js";
+import { getEnabledToolNames } from "./tool-profiles.js";
 
 // --- Bootstrap ---
 
@@ -186,6 +187,15 @@ const server = new McpServer({
   name: "engrm",
   version: "0.4.42",
 });
+
+const enabledToolNames = getEnabledToolNames(config.tool_profile);
+const originalTool = server.tool.bind(server);
+(server as unknown as { tool: McpServer["tool"] }).tool = ((name: string, ...args: unknown[]) => {
+  if (enabledToolNames && !enabledToolNames.has(name)) {
+    return server;
+  }
+  return (originalTool as (...toolArgs: unknown[]) => unknown)(name, ...args);
+}) as McpServer["tool"];
 
 // Tool: save_observation
 server.tool(
@@ -1459,6 +1469,7 @@ server.tool(
             `Schema: v${result.schema_version} (${result.schema_current ? "current" : "outdated"})\n` +
             `HTTP MCP: ${result.http_enabled ? `enabled${result.http_port ? ` (:${result.http_port})` : ""}` : "disabled"}\n` +
             `HTTP bearer tokens: ${result.http_bearer_token_count}\n` +
+            `Tool profile: ${result.tool_profile}${typeof result.enabled_tool_count === "number" ? ` (${result.enabled_tool_count} tools)` : ""}\n` +
             `Fleet project: ${result.fleet_project_name ?? "none"}\n` +
             `Fleet sync: ${result.fleet_configured ? "configured" : "not configured"}\n\n` +
             `Claude MCP: ${result.claude_mcp_registered ? "registered" : "missing"}\n` +

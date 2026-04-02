@@ -110,6 +110,7 @@ Add this to `~/.engrm/settings.json`:
     "port": 3767,
     "bearer_tokens": ["replace-with-a-long-random-token"]
   },
+  "tool_profile": "memory",
   "fleet": {
     "project_name": "shared-experience",
     "namespace": "ns_fleet_shared",
@@ -153,6 +154,8 @@ Fleet writes:
 - stay `shared` unless explicitly overridden
 - sync to the dedicated fleet namespace/key instead of the normal org namespace
 - get an extra outbound scrub pass that redacts hostnames, IPs, and MACs before upload
+
+For Hermes-style shared learning deployments, set `"tool_profile": "memory"` to expose a reduced Engrm tool set focused on durable memory, recall, and thread resumption instead of the full developer-oriented surface.
 
 ---
 

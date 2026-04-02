@@ -542,6 +542,7 @@ function handleStatus(): void {
   console.log(`    Sync:          ${config.sync.enabled ? "enabled" : "disabled"}`);
   console.log(`    HTTP MCP:      ${config.http.enabled ? `enabled (:${config.http.port})` : "disabled"}`);
   console.log(`    HTTP tokens:   ${config.http.bearer_tokens.length}`);
+  console.log(`    Tool profile:  ${config.tool_profile ?? "full"}`);
   console.log(`    Fleet project: ${config.fleet.project_name || "(not set)"}`);
   console.log(`    Fleet sync:    ${config.fleet.namespace && config.fleet.api_key ? "configured" : "not configured"}`);
 
@@ -1013,6 +1014,8 @@ async function handleDoctor(): Promise<void> {
   } else {
     info("HTTP MCP disabled");
   }
+
+  info(`Tool profile: ${config.tool_profile ?? "full"}`);
 
   if (config.fleet.project_name) {
     if (config.fleet.namespace && config.fleet.api_key) {

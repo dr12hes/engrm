@@ -68,6 +68,8 @@ export interface FleetConfig {
   api_key: string;
 }
 
+export type ToolProfile = "full" | "memory";
+
 export interface Config {
   candengo_url: string;
   candengo_api_key: string;
@@ -85,6 +87,7 @@ export interface Config {
   transcript_analysis: TranscriptAnalysisConfig;
   http: HttpServerConfig;
   fleet: FleetConfig;
+  tool_profile?: ToolProfile;
 }
 
 // --- Paths ---
@@ -191,6 +194,7 @@ function createDefaultConfig(): Config {
       namespace: "",
       api_key: "",
     },
+    tool_profile: "full",
   };
 }
 
@@ -356,6 +360,7 @@ export function loadConfig(): Config {
         defaults.fleet.api_key
       ),
     },
+    tool_profile: asToolProfile(config["tool_profile"], defaults.tool_profile),
   };
 }
 
@@ -435,6 +440,14 @@ function asObserverMode(
   fallback: "per_event" | "per_session"
 ): "per_event" | "per_session" {
   if (value === "per_event" || value === "per_session") return value;
+  return fallback;
+}
+
+function asToolProfile(
+  value: unknown,
+  fallback: ToolProfile
+): ToolProfile {
+  if (value === "full" || value === "memory") return value;
   return fallback;
 }
 

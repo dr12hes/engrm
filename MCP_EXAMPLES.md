@@ -51,6 +51,7 @@ Example `settings.json` additions:
     "port": 3767,
     "bearer_tokens": ["replace-with-a-long-random-token"]
   },
+  "tool_profile": "memory",
   "fleet": {
     "project_name": "shared-experience",
     "namespace": "ns_fleet_shared",
@@ -79,6 +80,17 @@ Example Hermes MCP stanza:
   }
 }
 ```
+
+With `"tool_profile": "memory"`, Engrm exposes a reduced memory-focused surface for Hermes:
+- `save_observation`
+- `search_recall`
+- `resume_thread`
+- `list_recall_items`
+- `load_recall_item`
+- `recent_chat`
+- `search_chat`
+- `refresh_chat_recall`
+- `repair_recall`
 
 If Hermes and OpenClaw run on the same machine, the URL should usually be:
 

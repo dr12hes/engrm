@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { configExists, loadConfig } from "../config.js";
 import { getSchemaVersion, LATEST_SCHEMA_VERSION } from "../storage/migrations.js";
 import type { MemDatabase } from "../storage/sqlite.js";
+import { getEnabledToolNames } from "../tool-profiles.js";
 
 const LEGACY_CODEX_SERVER_NAME = `candengo-${"mem"}`;
 
@@ -26,6 +27,8 @@ export interface CaptureStatusResult {
   http_enabled: boolean;
   http_port: number | null;
   http_bearer_token_count: number;
+  tool_profile: string;
+  enabled_tool_count: number | null;
   fleet_project_name: string | null;
   fleet_configured: boolean;
   claude_mcp_registered: boolean;
@@ -228,6 +231,8 @@ export function getCaptureStatus(
     http_enabled: Boolean(config?.http?.enabled || process.env.ENGRM_HTTP_PORT),
     http_port: config?.http?.port ?? (process.env.ENGRM_HTTP_PORT ? Number(process.env.ENGRM_HTTP_PORT) : null),
     http_bearer_token_count: config?.http?.bearer_tokens?.length ?? 0,
+    tool_profile: config?.tool_profile ?? "full",
+    enabled_tool_count: config ? (getEnabledToolNames(config.tool_profile)?.size ?? null) : null,
     fleet_project_name: config?.fleet?.project_name ?? null,
     fleet_configured: Boolean(config?.fleet?.namespace && config?.fleet?.api_key),
     claude_mcp_registered: claudeMcpRegistered,

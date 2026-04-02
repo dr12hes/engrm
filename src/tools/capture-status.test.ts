@@ -47,6 +47,7 @@ describe("getCaptureStatus", () => {
       transcript_analysis: { enabled: false },
       http: { enabled: true, port: 3767, bearer_tokens: ["token-1", "token-2"] },
       fleet: { project_name: "shared-experience", namespace: "fleet-ns", api_key: "cvk_fleet" },
+      tool_profile: "memory",
     });
 
     writeFileSync(join(fakeHome, ".claude.json"), JSON.stringify({
@@ -125,6 +126,8 @@ describe("getCaptureStatus", () => {
     expect(result.http_enabled).toBe(true);
     expect(result.http_port).toBe(3767);
     expect(result.http_bearer_token_count).toBe(2);
+    expect(result.tool_profile).toBe("memory");
+    expect(result.enabled_tool_count).toBeGreaterThan(0);
     expect(result.fleet_project_name).toBe("shared-experience");
     expect(result.fleet_configured).toBe(true);
     expect(result.claude_mcp_registered).toBe(true);
