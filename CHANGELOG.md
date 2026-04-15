@@ -4,8 +4,11 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+## 0.4.43
+
 - aligned `server.json` and public metadata with Engrm's real MCP surface, so registries and installers no longer imply stdio-only support when Hermes-ready remote HTTP is available too
 - added a `tool_profile` config setting with a reduced `memory` profile, so Hermes-style shared-learning deployments can expose only recall and durable-memory tools instead of the full developer-oriented MCP surface
+- bounded stop-hook sync latency by adding request timeouts to remote sync calls and using a short, hook-safe timeout for the final shutdown push, so Claude Code stop hooks no longer wait minutes on a stalled network path
 
 ## 0.4.42
 
