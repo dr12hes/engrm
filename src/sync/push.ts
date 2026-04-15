@@ -34,6 +34,10 @@ export interface PushResult {
   skipped: number;
 }
 
+export interface PushOutboxOptions {
+  timeoutMs?: number;
+}
+
 export function buildChatVectorDocument(
   chat: ChatMessageRow,
   config: Config,
@@ -217,7 +221,8 @@ export function buildSummaryVectorDocument(
 export async function pushOutbox(
   db: MemDatabase,
   config: Config,
-  batchSize: number = 50
+  batchSize: number = 50,
+  options: PushOutboxOptions = {}
 ): Promise<PushResult> {
   const entries = getPendingEntries(db, batchSize);
 
@@ -361,6 +366,7 @@ export async function pushOutbox(
       apiKey: target.apiKey,
       namespace: target.namespace,
       siteId: target.siteId,
+      timeoutMs: options.timeoutMs,
     });
     try {
       await client.batchIngest(items.map((b) => b.doc));

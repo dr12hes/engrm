@@ -13,7 +13,10 @@ import type { MemDatabase } from "../storage/sqlite.js";
 import type { Config } from "../config.js";
 import { VectorClient } from "./client.js";
 import { pushOutbox } from "./push.js";
-import { pullSettings } from "./pull.js";
+
+export interface PushOnceOptions {
+  timeoutMs?: number;
+}
 
 /**
  * Push any pending outbox entries to Candengo Vector.
@@ -23,15 +26,19 @@ import { pullSettings } from "./pull.js";
  */
 export async function pushOnce(
   db: MemDatabase,
-  config: Config
+  config: Config,
+  options: PushOnceOptions = {}
 ): Promise<number> {
   if (!config.sync.enabled) return 0;
   if (!VectorClient.isConfigured(config)) return 0;
 
   try {
-    const client = new VectorClient(config);
-    const result = await pushOutbox(db, config, config.sync.batch_size);
-    await pullSettings(client, config);
+    const result = await pushOutbox(
+      db,
+      config,
+      config.sync.batch_size,
+      { timeoutMs: options.timeoutMs ?? 4000 }
+    );
     return result.pushed;
   } catch {
     return 0;

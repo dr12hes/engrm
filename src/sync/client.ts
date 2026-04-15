@@ -41,6 +41,7 @@ export interface VectorClientOverrides {
   apiKey?: string;
   siteId?: string;
   namespace?: string;
+  timeoutMs?: number;
 }
 
 // --- Client ---
@@ -50,6 +51,7 @@ export class VectorClient {
   private readonly apiKey: string;
   readonly siteId: string;
   readonly namespace: string;
+  private readonly timeoutMs: number;
 
   constructor(config: Config, overrides: VectorClientOverrides = {}) {
     const baseUrl = getBaseUrl(config);
@@ -65,6 +67,7 @@ export class VectorClient {
     this.apiKey = apiKey;
     this.siteId = overrides.siteId ?? config.site_id;
     this.namespace = overrides.namespace ?? config.namespace;
+    this.timeoutMs = overrides.timeoutMs ?? 10000;
   }
 
   /**
@@ -176,6 +179,7 @@ export class VectorClient {
     if (body && method !== "GET") {
       init.body = JSON.stringify(body);
     }
+    init.signal = AbortSignal.timeout(this.timeoutMs);
 
     const response = await fetch(url, init);
 

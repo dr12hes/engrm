@@ -261,7 +261,7 @@ async function main(): Promise<void> {
 
     // Push all pending observations to Candengo Vector before exiting.
     // This is the last chance — the MCP server's sync timer may not fire again.
-    await pushOnce(db, config);
+    await pushOnce(db, config, { timeoutMs: 4000 });
 
     // Send telemetry beacon — fire-and-forget, metadata only
     try {
