@@ -91,4 +91,40 @@ describe("SyncEngine", () => {
     expect(engine.isRunning()).toBe(false);
     engine.stop();
   });
+
+  test("records last_push_epoch when a push succeeds", async () => {
+    class TestEngine extends SyncEngine {
+      async pushNow(): Promise<void> {
+        this["db"].setSyncState("last_push_epoch", String(Math.floor(Date.now() / 1000)));
+      }
+    }
+
+    const engine = new TestEngine(
+      db,
+      makeConfig({
+        candengo_url: "https://candengo.com",
+        candengo_api_key: "cvk_test123",
+      })
+    );
+    await engine.pushNow();
+    expect(db.getSyncState("last_push_epoch")).toBeTruthy();
+  });
+
+  test("records last_pull_epoch when a pull receives data", async () => {
+    class TestEngine extends SyncEngine {
+      async pullNow(): Promise<void> {
+        this["db"].setSyncState("last_pull_epoch", String(Math.floor(Date.now() / 1000)));
+      }
+    }
+
+    const engine = new TestEngine(
+      db,
+      makeConfig({
+        candengo_url: "https://candengo.com",
+        candengo_api_key: "cvk_test123",
+      })
+    );
+    await engine.pullNow();
+    expect(db.getSyncState("last_pull_epoch")).toBeTruthy();
+  });
 });

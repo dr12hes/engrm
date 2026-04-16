@@ -19,6 +19,10 @@ import { recoverOutboxAfterAuthChange } from "./auth.js";
 
 const DEFAULT_PULL_INTERVAL = 60_000; // 60 seconds
 
+function recordNowEpoch(db: MemDatabase, key: string): void {
+  db.setSyncState(key, String(Math.floor(Date.now() / 1000)));
+}
+
 export class SyncEngine {
   private client: VectorClient | null = null;
   private fleetClient: VectorClient | null = null;
@@ -98,11 +102,14 @@ export class SyncEngine {
     this._pushing = true;
     try {
       recoverOutboxAfterAuthChange(this.db, this.config);
-      await pushOutbox(
+      const result = await pushOutbox(
         this.db,
         this.config,
         this.config.sync.batch_size
       );
+      if (result.pushed > 0) {
+        recordNowEpoch(this.db, "last_push_epoch");
+      }
     } finally {
       this._pushing = false;
     }
@@ -115,11 +122,16 @@ export class SyncEngine {
     if (!this.client || this._pulling) return;
     this._pulling = true;
     try {
-      await pullFromVector(this.db, this.client, this.config);
+      const primary = await pullFromVector(this.db, this.client, this.config);
+      let totalReceived = primary.received;
       if (this.fleetClient) {
-        await pullFromVector(this.db, this.fleetClient, this.config);
+        const fleet = await pullFromVector(this.db, this.fleetClient, this.config);
+        totalReceived += fleet.received;
       }
       await pullSettings(this.client, this.config);
+      if (totalReceived > 0) {
+        recordNowEpoch(this.db, "last_pull_epoch");
+      }
     } finally {
       this._pulling = false;
     }

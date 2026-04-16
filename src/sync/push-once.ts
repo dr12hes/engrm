@@ -15,6 +15,10 @@ import { VectorClient } from "./client.js";
 import { pushOutbox } from "./push.js";
 import { recoverOutboxAfterAuthChange } from "./auth.js";
 
+function recordNowEpoch(db: MemDatabase, key: string): void {
+  db.setSyncState(key, String(Math.floor(Date.now() / 1000)));
+}
+
 export interface PushOnceOptions {
   timeoutMs?: number;
 }
@@ -41,6 +45,9 @@ export async function pushOnce(
       config.sync.batch_size,
       { timeoutMs: options.timeoutMs ?? 4000 }
     );
+    if (result.pushed > 0) {
+      recordNowEpoch(db, "last_push_epoch");
+    }
     return result.pushed;
   } catch {
     return 0;
