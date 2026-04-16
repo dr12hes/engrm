@@ -10,6 +10,8 @@ import {
   markFailed,
   purgeSynced,
   getOutboxStats,
+  resetFailedEntries,
+  resetSyncingEntries,
 } from "./outbox.js";
 
 let db: MemDatabase;
@@ -225,5 +227,40 @@ describe("getOutboxStats", () => {
     expect(stats["pending"]).toBe(1);
     expect(stats["synced"]).toBe(1);
     expect(stats["failed"]).toBe(1);
+  });
+});
+
+describe("outbox recovery helpers", () => {
+  test("resetFailedEntries moves failed rows back to pending", () => {
+    const entryId = createObsAndOutboxEntry();
+    markFailed(db, entryId, "auth failed");
+
+    const changed = resetFailedEntries(db);
+    expect(changed).toBe(1);
+
+    const entry = db.db
+      .query<{ status: string; retry_count: number; last_error: string | null; next_retry_epoch: number | null }, [number]>(
+        "SELECT status, retry_count, last_error, next_retry_epoch FROM sync_outbox WHERE id = ?"
+      )
+      .get(entryId);
+    expect(entry?.status).toBe("pending");
+    expect(entry?.retry_count).toBe(0);
+    expect(entry?.last_error).toBeNull();
+    expect(entry?.next_retry_epoch).toBeNull();
+  });
+
+  test("resetSyncingEntries moves syncing rows back to pending", () => {
+    const entryId = createObsAndOutboxEntry();
+    markSyncing(db, entryId);
+
+    const changed = resetSyncingEntries(db);
+    expect(changed).toBe(1);
+
+    const entry = db.db
+      .query<{ status: string }, [number]>(
+        "SELECT status FROM sync_outbox WHERE id = ?"
+      )
+      .get(entryId);
+    expect(entry?.status).toBe("pending");
   });
 });

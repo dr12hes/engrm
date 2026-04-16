@@ -13,6 +13,7 @@ import type { MemDatabase } from "../storage/sqlite.js";
 import type { Config } from "../config.js";
 import { VectorClient } from "./client.js";
 import { pushOutbox } from "./push.js";
+import { recoverOutboxAfterAuthChange } from "./auth.js";
 
 export interface PushOnceOptions {
   timeoutMs?: number;
@@ -33,6 +34,7 @@ export async function pushOnce(
   if (!VectorClient.isConfigured(config)) return 0;
 
   try {
+    recoverOutboxAfterAuthChange(db, config);
     const result = await pushOutbox(
       db,
       config,

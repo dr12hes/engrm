@@ -1,6 +1,10 @@
-import { describe, expect, test, afterEach } from "bun:test";
-import { getApiKey, getBaseUrl, buildSourceId, parseSourceId } from "./auth.js";
+import { describe, expect, test, afterEach, beforeEach } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { getApiKey, getAuthFingerprint, getBaseUrl, buildSourceId, parseSourceId, recoverOutboxAfterAuthChange } from "./auth.js";
 import type { Config } from "../config.js";
+import { MemDatabase } from "../storage/sqlite.js";
 
 function makeConfig(overrides: Partial<Config> = {}): Config {
   return {
@@ -15,11 +19,27 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     sync: { enabled: true, interval_seconds: 30, batch_size: 50 },
     search: { default_limit: 10, local_boost: 1.2, scope: "all" },
     scrubbing: { enabled: true, custom_patterns: [], default_sensitivity: "shared" },
+    sentinel: { enabled: false, mode: "advisory", provider: "openai", model: "gpt-4o-mini", api_key: "", base_url: "", skip_patterns: [], daily_limit: 100, tier: "free" },
+    observer: { enabled: true, mode: "per_event", model: "sonnet" },
+    transcript_analysis: { enabled: false },
+    http: { enabled: false, port: 3767, bearer_tokens: [] },
+    fleet: { project_name: "shared-experience", namespace: "", api_key: "" },
+    tool_profile: "full",
   };
 }
 
+let db: MemDatabase;
+let tmpDir: string;
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), "engrm-sync-auth-test-"));
+  db = new MemDatabase(join(tmpDir, "test.db"));
+});
+
 afterEach(() => {
   delete process.env.ENGRM_TOKEN;
+  db.close();
+  rmSync(tmpDir, { recursive: true, force: true });
 });
 
 describe("getApiKey", () => {
@@ -55,6 +75,66 @@ describe("getBaseUrl", () => {
 
   test("returns null for empty URL", () => {
     expect(getBaseUrl(makeConfig({ candengo_url: "" }))).toBeNull();
+  });
+});
+
+describe("auth fingerprint recovery", () => {
+  test("returns a stable fingerprint when configured", () => {
+    const fingerprint = getAuthFingerprint(makeConfig());
+    expect(fingerprint).toBeTruthy();
+    expect(fingerprint).toHaveLength(64);
+  });
+
+  test("requeues failed and syncing outbox items when auth changes", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+
+    const obs1 = db.insertObservation({
+      project_id: project.id,
+      type: "change",
+      title: "Test 1",
+      user_id: "david",
+      device_id: "laptop-abc",
+      agent: "claude-code",
+    });
+    db.addToOutbox("observation", obs1.id);
+    db.db.query("UPDATE sync_outbox SET status = 'failed', retry_count = 10, last_error = 'auth failed' WHERE record_id = ?").run(obs1.id);
+
+    const obs2 = db.insertObservation({
+      project_id: project.id,
+      type: "change",
+      title: "Test 2",
+      user_id: "david",
+      device_id: "laptop-abc",
+      agent: "claude-code",
+    });
+    db.addToOutbox("observation", obs2.id);
+    db.db.query("UPDATE sync_outbox SET status = 'syncing' WHERE record_id = ?").run(obs2.id);
+
+    const result = recoverOutboxAfterAuthChange(db, makeConfig());
+    expect(result.fingerprintChanged).toBe(true);
+    expect(result.failedReset).toBe(1);
+    expect(result.syncingReset).toBe(1);
+
+    const rows = db.db
+      .query<{ record_id: number; status: string; retry_count: number }, []>(
+        "SELECT record_id, status, retry_count FROM sync_outbox ORDER BY record_id"
+      )
+      .all();
+    expect(rows[0]).toEqual({ record_id: obs1.id, status: "pending", retry_count: 0 });
+    expect(rows[1]).toEqual({ record_id: obs2.id, status: "pending", retry_count: 0 });
+  });
+
+  test("does nothing when auth fingerprint has not changed", () => {
+    const first = recoverOutboxAfterAuthChange(db, makeConfig());
+    expect(first.fingerprintChanged).toBe(true);
+
+    const second = recoverOutboxAfterAuthChange(db, makeConfig());
+    expect(second.fingerprintChanged).toBe(false);
+    expect(second.failedReset).toBe(0);
+    expect(second.syncingReset).toBe(0);
   });
 });
 

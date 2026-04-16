@@ -5,7 +5,10 @@
  * Environment variable takes precedence for CI/CD use.
  */
 
+import { createHash } from "node:crypto";
 import type { Config } from "../config.js";
+import type { MemDatabase } from "../storage/sqlite.js";
+import { resetFailedEntries, resetSyncingEntries } from "../storage/outbox.js";
 
 const LEGACY_PUBLIC_HOSTS = new Set(["www.candengo.com", "candengo.com"]);
 
@@ -44,6 +47,43 @@ export function getBaseUrl(config: Config): string | null {
     return normalizeBaseUrl(config.candengo_url);
   }
   return null;
+}
+
+export function getAuthFingerprint(config: Config): string | null {
+  const apiKey = getApiKey(config);
+  const baseUrl = getBaseUrl(config);
+  if (!apiKey || !baseUrl) return null;
+  return createHash("sha256")
+    .update(`${baseUrl}\n${apiKey}\n${config.namespace}\n${config.site_id}`)
+    .digest("hex");
+}
+
+export interface OutboxRecoveryResult {
+  fingerprintChanged: boolean;
+  failedReset: number;
+  syncingReset: number;
+}
+
+export function recoverOutboxAfterAuthChange(
+  db: MemDatabase,
+  config: Config
+): OutboxRecoveryResult {
+  const fingerprint = getAuthFingerprint(config);
+  if (!fingerprint) {
+    return { fingerprintChanged: false, failedReset: 0, syncingReset: 0 };
+  }
+
+  const key = "sync_auth_fingerprint";
+  const previous = db.getSyncState(key);
+  const fingerprintChanged = previous !== fingerprint;
+  if (!fingerprintChanged) {
+    return { fingerprintChanged: false, failedReset: 0, syncingReset: 0 };
+  }
+
+  const failedReset = resetFailedEntries(db);
+  const syncingReset = resetSyncingEntries(db);
+  db.setSyncState(key, fingerprint);
+  return { fingerprintChanged: true, failedReset, syncingReset };
 }
 
 /**

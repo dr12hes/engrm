@@ -15,6 +15,7 @@ import { VectorClient } from "./client.js";
 import { pushOutbox } from "./push.js";
 import { pullFromVector, pullSettings } from "./pull.js";
 import { hasFleetTarget } from "./targets.js";
+import { recoverOutboxAfterAuthChange } from "./auth.js";
 
 const DEFAULT_PULL_INTERVAL = 60_000; // 60 seconds
 
@@ -96,6 +97,7 @@ export class SyncEngine {
     if (!this.client || this._pushing) return;
     this._pushing = true;
     try {
+      recoverOutboxAfterAuthChange(this.db, this.config);
       await pushOutbox(
         this.db,
         this.config,

@@ -129,3 +129,37 @@ export function getOutboxStats(
 
   return stats;
 }
+
+/**
+ * Reset failed entries back to pending so they can be retried immediately.
+ * Useful after auth/config changes that make previously terminal failures recoverable.
+ */
+export function resetFailedEntries(db: MemDatabase): number {
+  const result = db.db
+    .query(
+      `UPDATE sync_outbox
+       SET status = 'pending',
+           retry_count = 0,
+           last_error = NULL,
+           next_retry_epoch = NULL
+       WHERE status = 'failed'`
+    )
+    .run();
+  return result.changes;
+}
+
+/**
+ * Reset in-progress entries back to pending.
+ * This is safe on process restart because syncing state is local bookkeeping only.
+ */
+export function resetSyncingEntries(db: MemDatabase): number {
+  const result = db.db
+    .query(
+      `UPDATE sync_outbox
+       SET status = 'pending',
+           next_retry_epoch = NULL
+       WHERE status = 'syncing'`
+    )
+    .run();
+  return result.changes;
+}
