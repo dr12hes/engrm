@@ -22,6 +22,11 @@ export interface OutboxEntry {
   next_retry_epoch: number | null;
 }
 
+export interface OutboxFailureSummary {
+  error: string;
+  count: number;
+}
+
 /**
  * Get pending outbox entries that are ready to sync.
  * Returns entries that are 'pending' or 'failed' with next_retry_epoch in the past.
@@ -128,6 +133,43 @@ export function getOutboxStats(
   }
 
   return stats;
+}
+
+export function getOutboxFailureSummaries(
+  db: MemDatabase,
+  limit: number = 5
+): OutboxFailureSummary[] {
+  return db.db
+    .query<OutboxFailureSummary, [number]>(
+      `SELECT COALESCE(last_error, '') as error, COUNT(*) as count
+       FROM sync_outbox
+       WHERE status = 'failed'
+       GROUP BY COALESCE(last_error, '')
+       ORDER BY count DESC, error ASC
+       LIMIT ?`
+    )
+    .all(limit)
+    .filter((row) => row.error.length > 0);
+}
+
+export function classifyOutboxFailure(error: string): string {
+  const normalized = error.toLowerCase();
+  if (normalized.includes("401") || normalized.includes("invalid or missing credentials")) {
+    return "auth";
+  }
+  if (normalized.includes("429") || normalized.includes("rate limit")) {
+    return "rate_limit";
+  }
+  if (normalized.includes("timeout") || normalized.includes("abort")) {
+    return "timeout";
+  }
+  if (normalized.includes("network") || normalized.includes("fetch") || normalized.includes("econn")) {
+    return "network";
+  }
+  if (normalized.includes("400") || normalized.includes("422") || normalized.includes("validation")) {
+    return "validation";
+  }
+  return "other";
 }
 
 /**

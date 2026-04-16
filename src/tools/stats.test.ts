@@ -82,6 +82,9 @@ describe("getMemoryStats", () => {
     });
     db.markPackInstalled("typescript-patterns", 12);
     db.addToOutbox("observation", 1);
+    db.db
+      .query("UPDATE sync_outbox SET status = 'failed', last_error = 'Vector API error 401 on /v1/ingest: {\"detail\":\"Invalid or missing credentials\"}' WHERE record_id = 1")
+      .run();
 
     const stats = getMemoryStats(db);
 
@@ -98,6 +101,11 @@ describe("getMemoryStats", () => {
     expect(stats.recent_lessons).toContain("Refresh token path was skipped");
     expect(stats.recent_completed).toContain("Added refresh before retry");
     expect(stats.installed_packs).toContain("typescript-patterns");
-    expect(stats.outbox.pending).toBe(1);
+    expect(stats.outbox.failed).toBe(1);
+    expect(stats.outbox_failure_summary[0]).toEqual({
+      category: "auth",
+      error: 'Vector API error 401 on /v1/ingest: {"detail":"Invalid or missing credentials"}',
+      count: 1,
+    });
   });
 });

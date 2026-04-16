@@ -6,7 +6,7 @@
  */
 
 import type { MemDatabase } from "../storage/sqlite.js";
-import { getOutboxStats } from "../storage/outbox.js";
+import { classifyOutboxFailure, getOutboxFailureSummaries, getOutboxStats } from "../storage/outbox.js";
 import { computeSessionValueSignals } from "../intelligence/value-signals.js";
 import { computeSessionInsights } from "../intelligence/session-insights.js";
 import { getHandoffMessageFilterSql, getInboxMessageCount } from "./inbox-messages.js";
@@ -39,6 +39,7 @@ export interface MemoryStatsResult {
   next_steps: string[];
   installed_packs: string[];
   outbox: Record<string, number>;
+  outbox_failure_summary: { category: string; error: string; count: number }[];
 }
 
 export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
@@ -104,5 +105,10 @@ export function getMemoryStats(db: MemDatabase): MemoryStatsResult {
     next_steps: insights.next_steps,
     installed_packs: db.getInstalledPacks(),
     outbox: getOutboxStats(db),
+    outbox_failure_summary: getOutboxFailureSummaries(db).map((row) => ({
+      category: classifyOutboxFailure(row.error),
+      error: row.error,
+      count: row.count,
+    })),
   };
 }

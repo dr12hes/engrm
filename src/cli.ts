@@ -26,7 +26,7 @@ import {
   type Config,
 } from "./config.js";
 import { MemDatabase } from "./storage/sqlite.js";
-import { getOutboxStats } from "./storage/outbox.js";
+import { classifyOutboxFailure, getOutboxFailureSummaries, getOutboxStats } from "./storage/outbox.js";
 import { computeSessionValueSignals } from "./intelligence/value-signals.js";
 import { getSchemaVersion, LATEST_SCHEMA_VERSION } from "./storage/migrations.js";
 import {
@@ -761,6 +761,13 @@ function handleStatus(): void {
       console.log(
         `    Outbox:        ${outbox["pending"] ?? 0} pending, ${outbox["failed"] ?? 0} failed, ${outbox["synced"] ?? 0} synced`
       );
+      const topFailures = getOutboxFailureSummaries(db, 2);
+      if (topFailures.length > 0) {
+        const failureSummary = topFailures
+          .map((row) => `${classifyOutboxFailure(row.error)} ${row.count}`)
+          .join(", ");
+        console.log(`    Failures:      ${failureSummary}`);
+      }
 
       try {
         const lastPush = db.db
