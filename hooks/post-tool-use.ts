@@ -221,19 +221,30 @@ function persistRawToolChronology(
     metricsIncrement.files = 1;
   }
 
-  rawDb.incrementSessionMetrics(event.session_id, metricsIncrement);
-  rawDb.insertToolEvent({
-    session_id: event.session_id,
-    project_id: project.id,
-    tool_name: event.tool_name,
-    tool_input_json: safeSerializeToolInput(event.tool_input),
-    tool_response_preview: truncatePreview(event.tool_response, 1200),
-    file_path: extractFilePath(event.tool_input),
-    command: extractCommand(event.tool_input),
-    user_id: userId,
-    device_id: deviceId,
-    agent: "claude-code",
-  });
+  try {
+    rawDb.insertToolEvent({
+      session_id: event.session_id,
+      project_id: project.id,
+      tool_name: event.tool_name,
+      tool_input_json: safeSerializeToolInput(event.tool_input),
+      tool_response_preview: truncatePreview(event.tool_response, 1200),
+      file_path: extractFilePath(event.tool_input),
+      command: extractCommand(event.tool_input),
+      user_id: userId,
+      device_id: deviceId,
+      agent: "claude-code",
+    });
+    rawDb.incrementSessionMetrics(event.session_id, metricsIncrement);
+    rawDb.setSyncState("hook_post_tool_last_store_status", "stored");
+    rawDb.setSyncState("hook_post_tool_last_store_error", "");
+  } catch (error) {
+    rawDb.setSyncState("hook_post_tool_last_store_status", "store-error");
+    rawDb.setSyncState(
+      "hook_post_tool_last_store_error",
+      truncatePreview(error instanceof Error ? error.message : String(error), 400) ?? "unknown"
+    );
+    throw error;
+  }
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
