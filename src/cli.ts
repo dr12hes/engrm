@@ -41,6 +41,7 @@ import { listPacks, installPack } from "./packs/loader.js";
 import { listRulePacks, installRulePacks } from "./sentinel/rules.js";
 import { getCaptureStatus } from "./tools/capture-status.js";
 import { normalizeBaseUrl } from "./sync/auth.js";
+import { recoverOutboxAfterSuccessfulAuth } from "./sync/auth.js";
 
 const LEGACY_CODEX_SERVER_NAME = `candengo-${"mem"}`;
 
@@ -262,14 +263,30 @@ function writeConfigFromProvision(
 ): void {
   ensureConfigDir();
 
-  // Preserve existing device_id and sentinel config on re-init
+  // Preserve machine-local and operator config on re-init.
   let existingDeviceId: string | undefined;
   let existingSentinel: Config["sentinel"] | undefined;
+  let existingObserver: Config["observer"] | undefined;
+  let existingTranscriptAnalysis: Config["transcript_analysis"] | undefined;
+  let existingHttp: Config["http"] | undefined;
+  let existingFleet: Config["fleet"] | undefined;
+  let existingToolProfile: Config["tool_profile"] | undefined;
+  let existingSync: Config["sync"] | undefined;
+  let existingSearch: Config["search"] | undefined;
+  let existingScrubbing: Config["scrubbing"] | undefined;
   if (configExists()) {
     try {
       const existing = loadConfig();
       existingDeviceId = existing.device_id;
       existingSentinel = existing.sentinel;
+      existingObserver = existing.observer;
+      existingTranscriptAnalysis = existing.transcript_analysis;
+      existingHttp = existing.http;
+      existingFleet = existing.fleet;
+      existingToolProfile = existing.tool_profile;
+      existingSync = existing.sync;
+      existingSearch = existing.search;
+      existingScrubbing = existing.scrubbing;
     } catch { /* ignore */ }
   }
 
@@ -282,17 +299,17 @@ function writeConfigFromProvision(
     user_email: result.user_email,
     device_id: existingDeviceId || generateDeviceId(),
     teams: result.teams ?? [],
-    sync: {
+    sync: existingSync ?? {
       enabled: true,
       interval_seconds: 30,
       batch_size: 50,
     },
-    search: {
+    search: existingSearch ?? {
       default_limit: 10,
       local_boost: 1.2,
       scope: "all",
     },
-    scrubbing: {
+    scrubbing: existingScrubbing ?? {
       enabled: true,
       custom_patterns: [],
       default_sensitivity: "shared",
@@ -308,20 +325,32 @@ function writeConfigFromProvision(
       daily_limit: 100,
       tier: "free",
     },
-    observer: {
+    observer: existingObserver ?? {
       enabled: true,
       mode: "per_event",
       model: "haiku",
     },
-    transcript_analysis: {
+    transcript_analysis: existingTranscriptAnalysis ?? {
       enabled: false,
     },
+    http: existingHttp ?? {
+      enabled: false,
+      port: 3767,
+      bearer_tokens: [],
+    },
+    fleet: existingFleet ?? {
+      project_name: "shared-experience",
+      namespace: "",
+      api_key: "",
+    },
+    tool_profile: existingToolProfile ?? "full",
   };
 
   saveConfig(config);
 
   // Initialise database
   const db = new MemDatabase(getDbPath());
+  recoverOutboxAfterSuccessfulAuth(db, config);
   db.close();
 
   console.log(`Configuration saved to ${getSettingsPath()}`);

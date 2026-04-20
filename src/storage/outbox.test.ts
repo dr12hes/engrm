@@ -12,6 +12,7 @@ import {
   getOutboxStats,
   resetFailedEntries,
   resetSyncingEntries,
+  resetStaleSyncingEntries,
 } from "./outbox.js";
 
 let db: MemDatabase;
@@ -108,9 +109,21 @@ describe("markSyncing", () => {
     const entry = db.db
       .query<{ status: string }, [number]>(
         "SELECT status FROM sync_outbox WHERE id = ?"
-      )
+    )
       .get(entryId);
     expect(entry!.status).toBe("syncing");
+  });
+
+  test("stamps next_retry_epoch as sync start time", () => {
+    const entryId = createObsAndOutboxEntry();
+    markSyncing(db, entryId);
+
+    const entry = db.db
+      .query<{ next_retry_epoch: number | null }, [number]>(
+        "SELECT next_retry_epoch FROM sync_outbox WHERE id = ?"
+      )
+      .get(entryId);
+    expect(entry?.next_retry_epoch).not.toBeNull();
   });
 });
 
@@ -259,8 +272,33 @@ describe("outbox recovery helpers", () => {
     const entry = db.db
       .query<{ status: string }, [number]>(
         "SELECT status FROM sync_outbox WHERE id = ?"
-      )
+    )
       .get(entryId);
     expect(entry?.status).toBe("pending");
+  });
+
+  test("resetStaleSyncingEntries only requeues stale syncing rows", () => {
+    const staleId = createObsAndOutboxEntry();
+    const freshId = createObsAndOutboxEntry();
+    markSyncing(db, staleId);
+    markSyncing(db, freshId);
+
+    db.db
+      .query("UPDATE sync_outbox SET next_retry_epoch = 1 WHERE id = ?")
+      .run(staleId);
+    db.db
+      .query("UPDATE sync_outbox SET next_retry_epoch = ? WHERE id = ?")
+      .run(Math.floor(Date.now() / 1000), freshId);
+
+    const changed = resetStaleSyncingEntries(db, 300);
+    expect(changed).toBe(1);
+
+    const rows = db.db
+      .query<{ id: number; status: string }, []>(
+        "SELECT id, status FROM sync_outbox WHERE id IN (?, ?) ORDER BY id"
+      )
+      .all(staleId, freshId);
+    expect(rows[0]?.status).toBe("pending");
+    expect(rows[1]?.status).toBe("syncing");
   });
 });

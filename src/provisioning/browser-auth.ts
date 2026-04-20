@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { execFile } from "node:child_process";
 
-const CALLBACK_TIMEOUT_MS = 120_000; // 2 minutes
+const CALLBACK_TIMEOUT_MS = 600_000; // 10 minutes
 
 export interface AuthCallbackResult {
   code: string;

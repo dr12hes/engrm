@@ -51,9 +51,12 @@ export function getPendingEntries(
  * Mark an entry as syncing (in-progress).
  */
 export function markSyncing(db: MemDatabase, entryId: number): void {
+  const now = Math.floor(Date.now() / 1000);
   db.db
-    .query("UPDATE sync_outbox SET status = 'syncing' WHERE id = ?")
-    .run(entryId);
+    .query(
+      "UPDATE sync_outbox SET status = 'syncing', next_retry_epoch = ? WHERE id = ?"
+    )
+    .run(now, entryId);
 }
 
 /**
@@ -63,7 +66,7 @@ export function markSynced(db: MemDatabase, entryId: number): void {
   const now = Math.floor(Date.now() / 1000);
   db.db
     .query(
-      "UPDATE sync_outbox SET status = 'synced', synced_at_epoch = ? WHERE id = ?"
+      "UPDATE sync_outbox SET status = 'synced', synced_at_epoch = ?, next_retry_epoch = NULL, last_error = NULL WHERE id = ?"
     )
     .run(now, entryId);
 }
@@ -190,6 +193,38 @@ export function resetFailedEntries(db: MemDatabase): number {
   return result.changes;
 }
 
+export function resetFailedEntriesMatching(
+  db: MemDatabase,
+  predicate: (error: string) => boolean
+): number {
+  const rows = db.db
+    .query<{ id: number; last_error: string | null }, []>(
+      `SELECT id, last_error
+       FROM sync_outbox
+       WHERE status = 'failed'`
+    )
+    .all();
+
+  const matchingIds = rows
+    .filter((row) => row.last_error && predicate(row.last_error))
+    .map((row) => row.id);
+
+  if (matchingIds.length === 0) return 0;
+
+  const placeholders = matchingIds.map(() => "?").join(", ");
+  const result = db.db
+    .query(
+      `UPDATE sync_outbox
+       SET status = 'pending',
+           retry_count = 0,
+           last_error = NULL,
+           next_retry_epoch = NULL
+       WHERE id IN (${placeholders})`
+    )
+    .run(...matchingIds);
+  return result.changes;
+}
+
 /**
  * Reset in-progress entries back to pending.
  * This is safe on process restart because syncing state is local bookkeeping only.
@@ -200,8 +235,29 @@ export function resetSyncingEntries(db: MemDatabase): number {
       `UPDATE sync_outbox
        SET status = 'pending',
            next_retry_epoch = NULL
-       WHERE status = 'syncing'`
+      WHERE status = 'syncing'`
     )
     .run();
+  return result.changes;
+}
+
+/**
+ * Reset in-progress entries that have been stuck in syncing longer than maxAgeSeconds.
+ * We use next_retry_epoch as the sync-start timestamp.
+ */
+export function resetStaleSyncingEntries(
+  db: MemDatabase,
+  maxAgeSeconds: number = 300
+): number {
+  const cutoff = Math.floor(Date.now() / 1000) - maxAgeSeconds;
+  const result = db.db
+    .query(
+      `UPDATE sync_outbox
+       SET status = 'pending',
+           next_retry_epoch = NULL
+       WHERE status = 'syncing'
+         AND (next_retry_epoch IS NULL OR next_retry_epoch <= ?)`
+    )
+    .run(cutoff);
   return result.changes;
 }

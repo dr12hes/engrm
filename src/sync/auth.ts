@@ -8,7 +8,7 @@
 import { createHash } from "node:crypto";
 import type { Config } from "../config.js";
 import type { MemDatabase } from "../storage/sqlite.js";
-import { resetFailedEntries, resetSyncingEntries } from "../storage/outbox.js";
+import { classifyOutboxFailure, resetFailedEntries, resetFailedEntriesMatching, resetStaleSyncingEntries, resetSyncingEntries } from "../storage/outbox.js";
 
 const LEGACY_PUBLIC_HOSTS = new Set(["www.candengo.com", "candengo.com"]);
 
@@ -61,7 +61,9 @@ export function getAuthFingerprint(config: Config): string | null {
 export interface OutboxRecoveryResult {
   fingerprintChanged: boolean;
   failedReset: number;
+  authFailedReset: number;
   syncingReset: number;
+  staleSyncingReset: number;
 }
 
 export function recoverOutboxAfterAuthChange(
@@ -70,20 +72,47 @@ export function recoverOutboxAfterAuthChange(
 ): OutboxRecoveryResult {
   const fingerprint = getAuthFingerprint(config);
   if (!fingerprint) {
-    return { fingerprintChanged: false, failedReset: 0, syncingReset: 0 };
+    const staleSyncingReset = resetStaleSyncingEntries(db);
+    return { fingerprintChanged: false, failedReset: 0, authFailedReset: 0, syncingReset: 0, staleSyncingReset };
   }
 
   const key = "sync_auth_fingerprint";
   const previous = db.getSyncState(key);
   const fingerprintChanged = previous !== fingerprint;
   if (!fingerprintChanged) {
-    return { fingerprintChanged: false, failedReset: 0, syncingReset: 0 };
+    const staleSyncingReset = resetStaleSyncingEntries(db);
+    return { fingerprintChanged: false, failedReset: 0, authFailedReset: 0, syncingReset: 0, staleSyncingReset };
   }
 
   const failedReset = resetFailedEntries(db);
   const syncingReset = resetSyncingEntries(db);
+  const staleSyncingReset = 0;
   db.setSyncState(key, fingerprint);
-  return { fingerprintChanged: true, failedReset, syncingReset };
+  return { fingerprintChanged: true, failedReset, authFailedReset: 0, syncingReset, staleSyncingReset };
+}
+
+export function recoverOutboxAfterSuccessfulAuth(
+  db: MemDatabase,
+  config: Config
+): OutboxRecoveryResult {
+  const fingerprint = getAuthFingerprint(config);
+  const staleSyncingReset = resetStaleSyncingEntries(db);
+  const authFailedReset = resetFailedEntriesMatching(
+    db,
+    (error) => classifyOutboxFailure(error) === "auth"
+  );
+
+  if (fingerprint) {
+    db.setSyncState("sync_auth_fingerprint", fingerprint);
+  }
+
+  return {
+    fingerprintChanged: false,
+    failedReset: 0,
+    authFailedReset,
+    syncingReset: 0,
+    staleSyncingReset,
+  };
 }
 
 /**
