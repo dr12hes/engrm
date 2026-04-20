@@ -13,7 +13,6 @@
 import type { Config } from "../src/config.js";
 import { extractObservation, type ToolUseEvent } from "../src/capture/extractor.js";
 import { readStdin, bootstrapHook, runHook } from "../src/hooks/common.js";
-import { getDbPath } from "../src/config.js";
 import { MemDatabase } from "../src/storage/sqlite.js";
 import { saveObservation } from "../src/tools/save.js";
 import { scanForSecrets } from "../src/capture/scanner.js";
@@ -59,7 +58,7 @@ async function main(): Promise<void> {
   try {
     // --- Session + Metrics tracking ---
     if (event.session_id) {
-      persistRawToolChronology(event, config.user_id, config.device_id);
+      persistRawToolChronology(db, event, config.user_id, config.device_id);
       await syncTranscriptChat(db, config, event.session_id, event.cwd);
     }
 
@@ -191,54 +190,50 @@ async function main(): Promise<void> {
 }
 
 function persistRawToolChronology(
+  rawDb: MemDatabase,
   event: ToolUseEvent,
   userId: string,
   deviceId: string
 ): void {
-  const rawDb = new MemDatabase(getDbPath());
-  try {
-    const detected = detectProjectForEvent(event);
-    const project = rawDb.upsertProject({
-      canonical_id: detected.canonical_id,
-      name: detected.name,
-      local_path: detected.local_path,
-      remote_url: detected.remote_url ?? null,
-    });
+  const detected = detectProjectForEvent(event);
+  const project = rawDb.upsertProject({
+    canonical_id: detected.canonical_id,
+    name: detected.name,
+    local_path: detected.local_path,
+    remote_url: detected.remote_url ?? null,
+  });
 
-    rawDb.upsertSession(
-      event.session_id,
-      project.id,
-      userId,
-      deviceId,
-      "claude-code"
-    );
+  rawDb.upsertSession(
+    event.session_id,
+    project.id,
+    userId,
+    deviceId,
+    "claude-code"
+  );
 
-    const metricsIncrement: { files?: number; toolCalls?: number } = {
-      toolCalls: 1,
-    };
-    if (
-      (event.tool_name === "Edit" || event.tool_name === "Write") &&
-      event.tool_input["file_path"]
-    ) {
-      metricsIncrement.files = 1;
-    }
-
-    rawDb.incrementSessionMetrics(event.session_id, metricsIncrement);
-    rawDb.insertToolEvent({
-      session_id: event.session_id,
-      project_id: project.id,
-      tool_name: event.tool_name,
-      tool_input_json: safeSerializeToolInput(event.tool_input),
-      tool_response_preview: truncatePreview(event.tool_response, 1200),
-      file_path: extractFilePath(event.tool_input),
-      command: extractCommand(event.tool_input),
-      user_id: userId,
-      device_id: deviceId,
-      agent: "claude-code",
-    });
-  } finally {
-    rawDb.close();
+  const metricsIncrement: { files?: number; toolCalls?: number } = {
+    toolCalls: 1,
+  };
+  if (
+    (event.tool_name === "Edit" || event.tool_name === "Write") &&
+    event.tool_input["file_path"]
+  ) {
+    metricsIncrement.files = 1;
   }
+
+  rawDb.incrementSessionMetrics(event.session_id, metricsIncrement);
+  rawDb.insertToolEvent({
+    session_id: event.session_id,
+    project_id: project.id,
+    tool_name: event.tool_name,
+    tool_input_json: safeSerializeToolInput(event.tool_input),
+    tool_response_preview: truncatePreview(event.tool_response, 1200),
+    file_path: extractFilePath(event.tool_input),
+    command: extractCommand(event.tool_input),
+    user_id: userId,
+    device_id: deviceId,
+    agent: "claude-code",
+  });
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {

@@ -385,6 +385,7 @@ export class MemDatabase {
     this.db = openDatabase(dbPath);
     this.db.exec("PRAGMA journal_mode = WAL");
     this.db.exec("PRAGMA foreign_keys = ON");
+    this.db.exec("PRAGMA busy_timeout = 5000");
 
     // Attempt to load sqlite-vec extension before migrations
     this.vecAvailable = this.loadVecExtension();
