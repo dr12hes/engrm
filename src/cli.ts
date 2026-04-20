@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { hostname, homedir, networkInterfaces } from "node:os";
 import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   loadConfig,
   saveConfig,
@@ -52,6 +52,9 @@ const IS_BUILT_DIST = THIS_DIR.endsWith("/dist") || THIS_DIR.endsWith("\\dist");
 switch (command) {
   case "init":
     await handleInit(args.slice(1));
+    break;
+  case "serve":
+    await handleServe();
     break;
   case "status":
     handleStatus();
@@ -133,6 +136,19 @@ async function handleInit(flags: string[]): Promise<void> {
 
   // Install starter pack if specified
   await maybeInstallPack(flags);
+}
+
+async function handleServe(): Promise<void> {
+  const packageRoot = join(THIS_DIR, "..");
+  const serverPath = IS_BUILT_DIST
+    ? join(packageRoot, "dist", "server.js")
+    : join(packageRoot, "src", "server.ts");
+
+  await import(pathToFileURL(serverPath).href);
+
+  // src/server.ts bootstraps itself on import. Keep the CLI process alive so
+  // local MCP clients like OpenCode can hold the stdio session open.
+  await new Promise<never>(() => {});
 }
 
 /**
@@ -1516,7 +1532,7 @@ codex_hooks = true
   "mcp": {
     "engrm": {
       "type": "local",
-      "command": ["engrm", "serve"],
+      "command": ${JSON.stringify(IS_BUILT_DIST ? [process.execPath, join(packageRoot, "dist", "server.js")] : ["bun", "run", join(packageRoot, "src", "server.ts")])},
       "enabled": true,
       "timeout": 5000
     }
@@ -1547,6 +1563,7 @@ function hasOpenClawMcpRegistration(content: string): boolean {
 function printUsage(): void {
   console.log("Engrm — Memory layer for AI coding agents\n");
   console.log("Usage:");
+  console.log("  engrm serve                 Run the MCP server over stdio");
   console.log("  engrm init                  Setup via browser (recommended)");
   console.log("  engrm init --token=cmt_xxx  Setup from provisioning token");
   console.log("  engrm init --pack=<name>    Setup + install a starter pack");

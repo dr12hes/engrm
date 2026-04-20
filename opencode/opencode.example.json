@@ -4,8 +4,8 @@
     "engrm": {
       "type": "local",
       "command": [
-        "engrm",
-        "serve"
+        "node",
+        "/absolute/path/to/engrm/dist/server.js"
       ],
       "enabled": true,
       "timeout": 5000

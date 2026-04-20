@@ -31,12 +31,12 @@ The MCP entry written by the helper script matches:
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "engrm": {
-      "type": "local",
-      "command": ["engrm", "serve"],
-      "enabled": true,
-      "timeout": 5000
-    }
+      "engrm": {
+        "type": "local",
+        "command": ["node", "/absolute/path/to/engrm/dist/server.js"],
+        "enabled": true,
+        "timeout": 5000
+      }
   }
 }
 ```

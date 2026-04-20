@@ -4,6 +4,8 @@ All notable changes to this repository should be documented here.
 
 ## Unreleased
 
+- fixed OpenCode local MCP startup by making `engrm serve` a real long-running stdio entrypoint and by registering OpenCode against an explicit runtime + Engrm server path instead of a PATH-dependent `engrm` lookup, so OpenCode no longer drops the MCP connection with `32000 connection closed` when a stale global CLI is installed
+
 ## 0.4.43
 
 - aligned `server.json` and public metadata with Engrm's real MCP surface, so registries and installers no longer imply stdio-only support when Hermes-ready remote HTTP is available too

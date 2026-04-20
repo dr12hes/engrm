@@ -13,6 +13,12 @@ import os
 root = Path(os.environ["ENGRM_OPENCODE_SCRIPT_DIR"]).resolve()
 repo = root.parent
 plugin_source = repo / "opencode" / "plugin" / "engrm-opencode.js"
+runtime = shutil.which("node") or shutil.which("bun") or "node"
+dist_server = repo / "dist" / "server.js"
+src_server = repo / "src" / "server.ts"
+command = [runtime, str(dist_server if dist_server.exists() else src_server)]
+if not dist_server.exists() and command[0].endswith("bun"):
+    command = [runtime, "run", str(src_server)]
 config_dir = Path.home() / ".config" / "opencode"
 plugins_dir = config_dir / "plugins"
 config_path = config_dir / "opencode.json"
@@ -32,7 +38,7 @@ config.setdefault("$schema", "https://opencode.ai/config.json")
 mcp = config.setdefault("mcp", {})
 mcp["engrm"] = {
     "type": "local",
-    "command": ["engrm", "serve"],
+    "command": command,
     "enabled": True,
     "timeout": 5000,
 }

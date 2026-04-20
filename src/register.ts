@@ -275,14 +275,19 @@ export function registerCodexHooks(): { path: string; added: boolean } {
 }
 
 export function registerOpenCode(): { path: string; added: boolean; pluginPath: string } {
+  const runtime = findRuntime();
   const root = findPackageRoot();
+  const dist = isBuiltDist();
   const pluginSource = join(root, "opencode", "plugin", "engrm-opencode.js");
+  const serverPath = dist
+    ? join(root, "dist", "server.js")
+    : join(root, "src", "server.ts");
   const config = readJsonFile(OPENCODE_CONFIG);
   const mcp = (config["mcp"] ?? {}) as Record<string, unknown>;
 
   mcp["engrm"] = {
     type: "local",
-    command: ["engrm", "serve"],
+    command: dist ? [runtime, serverPath] : [runtime, "run", serverPath],
     enabled: true,
     timeout: 5000,
   };
