@@ -687,6 +687,7 @@ export function ensureObservationTypes(db: CompatDatabase): void {
         DROP TABLE observations;
         ALTER TABLE observations_repair RENAME TO observations;
         CREATE INDEX IF NOT EXISTS idx_observations_project ON observations(project_id);
+        CREATE INDEX IF NOT EXISTS idx_observations_project_lifecycle ON observations(project_id, lifecycle);
         CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type);
         CREATE INDEX IF NOT EXISTS idx_observations_created ON observations(created_at_epoch);
         CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);

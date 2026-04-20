@@ -164,11 +164,13 @@ export interface DetectedProject {
 }
 
 export function detectProject(directory: string): DetectedProject {
+  const resolvedDirectory = resolve(directory);
+
   // Try git remote first (covers fallback #1 and #2)
-  const remoteUrl = getGitRemoteUrl(directory);
+  const remoteUrl = getGitRemoteUrl(resolvedDirectory);
   if (remoteUrl) {
     const canonicalId = normaliseGitRemoteUrl(remoteUrl);
-    const repoRoot = getGitTopLevel(directory) ?? directory;
+    const repoRoot = getGitTopLevel(resolvedDirectory) ?? resolvedDirectory;
     return {
       canonical_id: canonicalId,
       name: projectNameFromCanonicalId(canonicalId),
@@ -178,23 +180,24 @@ export function detectProject(directory: string): DetectedProject {
   }
 
   // Try .engrm.json config file
-  const configFile = readProjectConfigFile(directory);
+  const configFile = readProjectConfigFile(resolvedDirectory);
   if (configFile) {
     return {
       canonical_id: configFile.project_id,
       name: configFile.name ?? projectNameFromCanonicalId(configFile.project_id),
       remote_url: null,
-      local_path: directory,
+      local_path: resolvedDirectory,
     };
   }
 
   // Last resort: directory name
-  const dirName = basename(directory);
+  const dirName = basename(resolvedDirectory);
+  const safeDirName = !dirName || dirName === "/" || dirName === "." ? "root" : dirName;
   return {
-    canonical_id: `local/${dirName}`,
-    name: dirName,
+    canonical_id: `local/${safeDirName}`,
+    name: safeDirName,
     remote_url: null,
-    local_path: directory,
+    local_path: resolvedDirectory,
   };
 }
 

@@ -414,12 +414,20 @@ export class MemDatabase {
   // --- Projects ---
 
   upsertProject(project: InsertProject): ProjectRow {
+    const canonicalId = project.canonical_id?.trim();
+    const name = project.name?.trim();
+    if (!canonicalId) {
+      throw new Error("Project canonical_id is required");
+    }
+    if (!name) {
+      throw new Error("Project name is required");
+    }
     const now = Math.floor(Date.now() / 1000);
     const existing = this.db
       .query<ProjectRow, [string]>(
         "SELECT * FROM projects WHERE canonical_id = ?"
       )
-      .get(project.canonical_id);
+      .get(canonicalId);
 
     if (existing) {
       this.db
@@ -450,8 +458,8 @@ export class MemDatabase {
         VALUES (?, ?, ?, ?, ?, ?)`
       )
       .run(
-        project.canonical_id,
-        project.name,
+        canonicalId,
+        name,
         project.local_path ?? null,
         project.remote_url ?? null,
         now,
