@@ -6,12 +6,12 @@
     "url": "https://github.com/dr12hes/engrm",
     "source": "github"
   },
-  "version": "0.4.44",
+  "version": "0.4.45",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "engrm",
-      "version": "0.4.44",
+      "version": "0.4.45",
       "transport": {
         "type": "stdio"
       }
@@ -19,7 +19,7 @@
     {
       "registryType": "npm",
       "identifier": "engrm",
-      "version": "0.4.44",
+      "version": "0.4.45",
       "transport": {
         "type": "streamable-http"
       }
