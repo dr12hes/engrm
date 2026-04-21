@@ -167,18 +167,46 @@ function resolveAgentName(clientName: string): string {
 
 // Sync engine (started in main, needs module-level ref for shutdown)
 let syncEngine: SyncEngine | null = null;
+let shuttingDown = false;
 
 // Graceful shutdown
-process.on("SIGINT", () => {
+function shutdown(code: number = 0): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
   syncEngine?.stop();
   db.close();
-  process.exit(0);
-});
-process.on("SIGTERM", () => {
-  syncEngine?.stop();
-  db.close();
-  process.exit(0);
-});
+  process.exit(code);
+}
+
+process.on("SIGINT", () => shutdown(0));
+process.on("SIGTERM", () => shutdown(0));
+
+function installStdioLivenessGuards(): void {
+  // MCP over stdio should exit as soon as the host closes stdin.
+  process.stdin.on("end", () => shutdown(0));
+  process.stdin.on("close", () => shutdown(0));
+  process.stdin.on("error", () => shutdown(0));
+  process.stdin.resume();
+
+  const parentPid = process.ppid;
+  if (!Number.isInteger(parentPid) || parentPid <= 1) return;
+
+  // macOS lacks PR_SET_PDEATHSIG, so use a lightweight parent liveness poll
+  // as a backstop in case stdin stays open due to an unusual wrapper process.
+  const heartbeat = setInterval(() => {
+    try {
+      process.kill(parentPid, 0);
+    } catch {
+      shutdown(0);
+    }
+
+    if (process.ppid === 1) {
+      shutdown(0);
+    }
+  }, 30_000);
+
+  heartbeat.unref();
+}
 
 // --- MCP Server ---
 
@@ -2641,6 +2669,7 @@ async function main(): Promise<void> {
     return;
   }
 
+  installStdioLivenessGuards();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
