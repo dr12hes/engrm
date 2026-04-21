@@ -213,7 +213,7 @@ function installStdioLivenessGuards(): void {
 function buildServer(): McpServer {
 const server = new McpServer({
   name: "engrm",
-  version: "0.4.42",
+  version: "0.4.44",
 });
 
 const enabledToolNames = getEnabledToolNames(config.tool_profile);

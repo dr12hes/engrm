@@ -6,6 +6,17 @@ All notable changes to this repository should be documented here.
 
 - fixed OpenCode local MCP startup by making `engrm serve` a real long-running stdio entrypoint and by registering OpenCode against an explicit runtime + Engrm server path instead of a PATH-dependent `engrm` lookup, so OpenCode no longer drops the MCP connection with `32000 connection closed` when a stale global CLI is installed
 
+## 0.4.44
+
+### Changed
+
+- hardened `PostToolUse` and related continuity helpers so structured tool payloads no longer crash raw chronology capture or downstream handoff/recall processing
+- raw tool chronology writes now use the already-open hook database connection with a SQLite `busy_timeout`, reducing lock-contention losses under concurrent hook activity
+- stdio MCP server processes now exit when stdin closes, with a parent-pid heartbeat backstop for macOS orphaned-child cases
+- auth recovery now preserves machine-local config on re-auth and automatically requeues stale auth-failed outbox rows even when the auth fingerprint is already current
+- improved project/repair hardening for corrupt local project rows and missing observation lifecycle indexes
+- stabilized OpenCode MCP startup by ensuring `engrm serve` is a real entrypoint and OpenCode registrations launch the correct runtime/server path
+
 ## 0.4.43
 
 - aligned `server.json` and public metadata with Engrm's real MCP surface, so registries and installers no longer imply stdio-only support when Hermes-ready remote HTTP is available too
