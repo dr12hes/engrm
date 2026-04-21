@@ -80,8 +80,12 @@ export function recoverOutboxAfterAuthChange(
   const previous = db.getSyncState(key);
   const fingerprintChanged = previous !== fingerprint;
   if (!fingerprintChanged) {
+    const authFailedReset = resetFailedEntriesMatching(
+      db,
+      (error) => classifyOutboxFailure(error) === "auth"
+    );
     const staleSyncingReset = resetStaleSyncingEntries(db);
-    return { fingerprintChanged: false, failedReset: 0, authFailedReset: 0, syncingReset: 0, staleSyncingReset };
+    return { fingerprintChanged: false, failedReset: 0, authFailedReset, syncingReset: 0, staleSyncingReset };
   }
 
   const failedReset = resetFailedEntries(db);

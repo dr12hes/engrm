@@ -135,8 +135,45 @@ describe("auth fingerprint recovery", () => {
     const second = recoverOutboxAfterAuthChange(db, makeConfig());
     expect(second.fingerprintChanged).toBe(false);
     expect(second.failedReset).toBe(0);
+    expect(second.authFailedReset).toBe(0);
     expect(second.syncingReset).toBe(0);
     expect(second.staleSyncingReset).toBe(0);
+  });
+
+  test("requeues stale auth failures even when auth fingerprint is unchanged", () => {
+    const project = db.upsertProject({
+      canonical_id: "github.com/org/repo",
+      name: "repo",
+    });
+    const obs = db.insertObservation({
+      project_id: project.id,
+      type: "change",
+      title: "Test stale auth failure",
+      user_id: "david",
+      device_id: "laptop-abc",
+      agent: "claude-code",
+    });
+    db.addToOutbox("observation", obs.id);
+
+    const first = recoverOutboxAfterAuthChange(db, makeConfig());
+    expect(first.fingerprintChanged).toBe(true);
+
+    db.db
+      .query("UPDATE sync_outbox SET status = 'failed', retry_count = 4, last_error = 'Vector API error 401 on /v1/ingest: {\"detail\":\"Invalid or missing credentials\"}' WHERE record_id = ?")
+      .run(obs.id);
+
+    const second = recoverOutboxAfterAuthChange(db, makeConfig());
+    expect(second.fingerprintChanged).toBe(false);
+    expect(second.authFailedReset).toBe(1);
+
+    const row = db.db
+      .query<{ status: string; retry_count: number; last_error: string | null }, [number]>(
+        "SELECT status, retry_count, last_error FROM sync_outbox WHERE record_id = ?"
+      )
+      .get(obs.id);
+    expect(row?.status).toBe("pending");
+    expect(row?.retry_count).toBe(0);
+    expect(row?.last_error).toBeNull();
   });
 
   test("requeues stale syncing entries even when auth fingerprint is unchanged", () => {
