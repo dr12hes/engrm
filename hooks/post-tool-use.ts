@@ -341,9 +341,23 @@ function safeSerializeToolInput(toolInput: Record<string, unknown>): string | nu
   }
 }
 
-function truncatePreview(value: string | null | undefined, maxLen: number): string | null {
-  if (!value) return null;
-  const normalized = value.replace(/\s+/g, " ").trim();
+function truncatePreview(value: unknown, maxLen: number): string | null {
+  if (value === null || value === undefined) return null;
+
+  let text: string;
+  if (typeof value === "string") {
+    text = value;
+  } else {
+    try {
+      text = JSON.stringify(value);
+    } catch {
+      text = String(value);
+    }
+  }
+
+  if (!text) return null;
+
+  const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return null;
   if (normalized.length <= maxLen) return normalized;
   return `${normalized.slice(0, maxLen - 1)}…`;

@@ -524,8 +524,21 @@ function formatTimestamp(nowMs: number): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}Z`;
 }
 
-function compactLine(value: string | null | undefined): string | null {
-  const trimmed = value?.replace(/\s+/g, " ").trim();
+function compactLine(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+
+  let text: string;
+  if (typeof value === "string") {
+    text = value;
+  } else {
+    try {
+      text = JSON.stringify(value);
+    } catch {
+      text = String(value);
+    }
+  }
+
+  const trimmed = text.replace(/\s+/g, " ").trim();
   if (!trimmed) return null;
   return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
 }

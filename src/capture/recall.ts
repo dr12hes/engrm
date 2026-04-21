@@ -26,10 +26,23 @@ export interface RecallResult {
  * Extract a concise error signature from tool output.
  * Returns null if no clear error is detected (avoids false positives).
  */
-export function extractErrorSignature(output: string): string | null {
-  if (!output || output.length < 10) return null;
+export function extractErrorSignature(output: unknown): string | null {
+  if (output === null || output === undefined) return null;
 
-  const lines = output.split("\n");
+  let text: string;
+  if (typeof output === "string") {
+    text = output;
+  } else {
+    try {
+      text = JSON.stringify(output);
+    } catch {
+      text = String(output);
+    }
+  }
+
+  if (!text || text.length < 10) return null;
+
+  const lines = text.split("\n");
 
   // Python tracebacks — get the last "Error: ..." line
   for (let i = lines.length - 1; i >= 0; i--) {

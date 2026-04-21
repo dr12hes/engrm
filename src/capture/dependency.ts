@@ -100,7 +100,7 @@ const INSTALL_PATTERNS: {
  */
 export function detectDependencyInstalls(
   command: string,
-  output?: string
+  output?: unknown
 ): DependencyInstall[] {
   const results: DependencyInstall[] = [];
   const textToScan = command;
